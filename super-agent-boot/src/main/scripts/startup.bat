@@ -75,8 +75,8 @@ for /f "tokens=2" %%i in ('tasklist /fi "imagename eq java.exe" /fo csv ^| find 
 if defined PID (
     echo !PID! > "%PID_FILE%"
     echo ✅ %APP_NAME% 启动成功，PID: !PID!
-    echo 📖 API文档: http://localhost:8080/doc.html
-    echo 📊 监控页面: http://localhost:8080/druid
+    echo 📖 API文档: http://localhost:8081/doc.html
+    echo 📊 监控页面: http://localhost:8081/druid
     echo 📝 日志文件: %LOG_FILE%
 ) else (
     echo ❌ %APP_NAME% 启动失败，请检查日志: %LOG_FILE%

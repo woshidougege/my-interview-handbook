@@ -83,9 +83,9 @@ export DB_PASSWORD="secure_password"
 ## 📖 访问地址
 
 ### 开发/测试环境
-- **应用**: http://localhost:8080/super-agent
-- **API文档**: http://localhost:8080/super-agent/doc.html
-- **监控页面**: http://localhost:8080/super-agent/druid (admin/admin)
+- **应用**: http://localhost:8081/super-agent
+- **API文档**: http://localhost:8081/super-agent/doc.html
+- **监控页面**: http://localhost:8081/super-agent/druid (admin/admin)
 
 ### 生产环境
 - **应用**: http://server:port
