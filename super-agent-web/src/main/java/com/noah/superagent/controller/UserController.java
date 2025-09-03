@@ -51,7 +51,7 @@ public class UserController {
     @Operation(summary = "查询用户", description = "根据ID查询用户详情")
     public BaseResponse<UserResponse> getUserById(
             @Parameter(description = "用户ID", example = "1") 
-            @PathVariable Long id) {
+            @PathVariable("id") Long id) {
         log.info("接收查询用户请求: {}", id);
         
         try {
@@ -81,7 +81,7 @@ public class UserController {
     @Operation(summary = "更新用户", description = "更新用户信息")
     public BaseResponse<UserResponse> updateUser(
             @Parameter(description = "用户ID", example = "1") 
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UserUpdateRequest request) {
         log.info("接收更新用户请求: {}", id);
         
@@ -98,7 +98,7 @@ public class UserController {
     @Operation(summary = "删除用户", description = "根据ID删除用户")
     public BaseResponse<Void> deleteUser(
             @Parameter(description = "用户ID", example = "1") 
-            @PathVariable Long id) {
+            @PathVariable("id") Long id) {
         log.info("接收删除用户请求: {}", id);
         
         try {
@@ -114,7 +114,7 @@ public class UserController {
     @Operation(summary = "检查手机号", description = "检查手机号是否已被注册")
     public BaseResponse<Boolean> checkPhone(
             @Parameter(description = "手机号", example = "13800138000") 
-            @RequestParam String phone) {
+            @RequestParam("phone") String phone) {
         log.info("接收检查手机号请求: {}", phone);
         
         try {
