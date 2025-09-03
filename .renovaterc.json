@@ -1,0 +1,54 @@
+{
+  "extends": [
+    "config:base"
+  ],
+  "timezone": "Asia/Shanghai",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "updateNotScheduled": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on monday"
+    ]
+  },
+  "packageRules": [
+    {
+      "matchPackagePatterns": [
+        "org.springframework.boot"
+      ],
+      "schedule": [
+        "before 6am on monday"
+      ],
+      "groupName": "Spring Boot"
+    },
+    {
+      "matchPackagePatterns": [
+        "com.mybatis-flex"
+      ],
+      "schedule": [
+        "before 6am on monday"
+      ],
+      "groupName": "MyBatis Flex"
+    },
+    {
+      "matchPackagePatterns": [
+        "mysql",
+        "com.alibaba:druid"
+      ],
+      "schedule": [
+        "before 6am on monday"
+      ],
+      "groupName": "Database"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true
+  }
+}
