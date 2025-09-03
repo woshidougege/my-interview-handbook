@@ -55,35 +55,5 @@ public abstract class BaseEntity {
     @Column(isLogicDelete = true, onInsertValue = "0")
     private Integer deleted;
 
-    /**
-     * 判断是否已删除
-     *
-     * @return true-已删除，false-未删除
-     */
-    public boolean isDeleted() {
-        return DeletedEnum.isDeleted(this.deleted);
-    }
 
-    /**
-     * 判断是否未删除
-     *
-     * @return true-未删除，false-已删除
-     */
-    public boolean isNotDeleted() {
-        return DeletedEnum.isNotDeleted(this.deleted);
-    }
-
-    /**
-     * 设置为已删除
-     */
-    public void markDeleted() {
-        this.deleted = DeletedEnum.DELETED.getValue();
-    }
-
-    /**
-     * 设置为未删除
-     */
-    public void markNotDeleted() {
-        this.deleted = DeletedEnum.NOT_DELETED.getValue();
-    }
 }
