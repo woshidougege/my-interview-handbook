@@ -1,4 +1,4 @@
-package com.noah.superagent.common.dto.user;
+package com.noah.superagent.common.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;

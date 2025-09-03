@@ -5,6 +5,7 @@ import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.noah.superagent.dao.entity.Workspace;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -72,4 +73,12 @@ public interface WorkspaceMapper extends BaseMapper<Workspace> {
                 .and(Workspace::getIsDefault).eq(0)
                 .orderBy(Workspace::getCreateTime).desc());
     }
+    
+    /**
+     * 分页查询工作空间
+     * @param page 分页对象
+     * @param keyword 关键词
+     * @return 分页结果
+     */
+    Page<Workspace> selectPlanPage(Page<Workspace> page, @Param("keyword") String keyword);
 }
