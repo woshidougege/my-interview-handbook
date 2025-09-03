@@ -15,7 +15,5 @@ public class SuperAgentApplication {
     public static void main(String[] args) {
         SpringApplication.run(SuperAgentApplication.class, args);
         System.out.println("🚀 Super Agent Platform Started Successfully!");
-        System.out.println("📖 API文档地址: http://localhost:8080/doc.html");
-        System.out.println("📊 Druid监控: http://localhost:8080/druid (admin/admin)");
     }
 }

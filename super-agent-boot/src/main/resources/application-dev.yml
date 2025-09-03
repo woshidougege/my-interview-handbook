@@ -14,6 +14,11 @@ spring:
         login-username: ${DRUID_USERNAME:admin}
         login-password: ${DRUID_PASSWORD:admin}
         allow: 127.0.0.1
+        reset-enable: false
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*,/error"
   
   # 开发环境自动执行数据库迁移
   flyway:

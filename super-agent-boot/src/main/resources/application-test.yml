@@ -10,8 +10,15 @@ spring:
     druid:
       stat-view-servlet:
         enabled: true
+        url-pattern: /druid/*
         login-username: ${DRUID_USERNAME:test}
         login-password: ${DRUID_PASSWORD:test}
+        allow: 127.0.0.1
+        reset-enable: false
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*,/error"
   
   # 测试环境执行数据库迁移
   flyway:
