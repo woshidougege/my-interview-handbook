@@ -3,7 +3,7 @@ package com.noah.superagent.common.dto.user;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import jakarta.validation.constraints.Size;
+import javax.validation.constraints.Size;
 
 /**
  * 用户更新请求DTO

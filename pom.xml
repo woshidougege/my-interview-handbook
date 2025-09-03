@@ -26,18 +26,18 @@
         <revision>1.0.0-SNAPSHOT</revision>
         
         <!-- Java版本 -->
-        <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <java.version>11</java.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         
         <!-- Spring Boot版本 -->
-        <spring-boot.version>3.2.1</spring-boot.version>
+        <spring-boot.version>2.7.18</spring-boot.version>
         
         <!-- 数据库相关版本 -->
-        <mybatis-flex.version>1.11.1</mybatis-flex.version>
+        <mybatis-flex.version>1.7.8</mybatis-flex.version>
         <mysql.version>8.0.33</mysql.version>
-        <druid.version>1.2.27</druid.version>
+        <druid.version>1.2.18</druid.version>
         <flyway.version>9.22.3</flyway.version>
         
         <!-- 工具类版本 -->
@@ -48,7 +48,7 @@
         
         <!-- 调度和文档版本 -->
         <db-scheduler.version>12.1.0</db-scheduler.version>
-        <knife4j.version>4.4.0</knife4j.version>
+        <knife4j.version>3.0.3</knife4j.version>
         
         <!-- Maven插件版本 -->
         <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
@@ -98,10 +98,10 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- MyBatis Flex -->
+            <!-- MyBatis Flex for Spring Boot 2.x -->
             <dependency>
                 <groupId>com.mybatis-flex</groupId>
-                <artifactId>mybatis-flex-spring-boot3-starter</artifactId>
+                <artifactId>mybatis-flex-spring-boot-starter</artifactId>
                 <version>${mybatis-flex.version}</version>
             </dependency>
 
@@ -112,10 +112,10 @@
                 <version>${mysql.version}</version>
             </dependency>
 
-            <!-- Druid 连接池 for Spring Boot 3.x -->
+            <!-- Druid 连接池 for Spring Boot 2.x -->
             <dependency>
                 <groupId>com.alibaba</groupId>
-                <artifactId>druid-spring-boot-3-starter</artifactId>
+                <artifactId>druid-spring-boot-starter</artifactId>
                 <version>${druid.version}</version>
             </dependency>
 
@@ -133,10 +133,10 @@
                 <version>${mapstruct.version}</version>
             </dependency>
 
-            <!-- Knife4j API文档 -->
+            <!-- Knife4j API文档 for Spring Boot 2.x -->
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>
-                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <artifactId>knife4j-spring-boot-starter</artifactId>
                 <version>${knife4j.version}</version>
             </dependency>
 
@@ -190,8 +190,8 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven-compiler-plugin.version}</version>
                     <configuration>
-                        <source>17</source>
-                        <target>17</target>
+                        <source>11</source>
+                        <target>11</target>
                         <parameters>true</parameters>  <!-- 保留参数名信息 -->
                         <annotationProcessorPaths>
                             <!-- Lombok -->

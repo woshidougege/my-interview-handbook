@@ -3,8 +3,8 @@ package com.noah.superagent.common.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.Max;
 
 /**
  * 分页请求DTO

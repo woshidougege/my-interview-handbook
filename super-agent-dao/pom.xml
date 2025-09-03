@@ -21,10 +21,10 @@
             <artifactId>super-agent-common</artifactId>
         </dependency>
 
-        <!-- MyBatis Flex for Spring Boot 3.x -->
+        <!-- MyBatis Flex for Spring Boot 2.x -->
         <dependency>
             <groupId>com.mybatis-flex</groupId>
-            <artifactId>mybatis-flex-spring-boot3-starter</artifactId>
+            <artifactId>mybatis-flex-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- 数据库驱动 -->
@@ -33,10 +33,10 @@
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
 
-        <!-- Druid 连接池 for Spring Boot 3.x -->
+        <!-- Druid 连接池 for Spring Boot 2.x -->
         <dependency>
             <groupId>com.alibaba</groupId>
-            <artifactId>druid-spring-boot-3-starter</artifactId>
+            <artifactId>druid-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- Lombok -->
