@@ -19,7 +19,6 @@
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-common</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- MyBatis Flex -->

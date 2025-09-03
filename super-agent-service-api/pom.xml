@@ -19,14 +19,12 @@
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-common</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- 依赖DAO模块 -->
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-dao</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- Lombok -->

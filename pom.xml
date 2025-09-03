@@ -57,6 +57,7 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
@@ -64,113 +65,116 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!-- 项目内部模块 -->
+            <dependency>
+                <groupId>com.noah</groupId>
+                <artifactId>super-agent-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.noah</groupId>
+                <artifactId>super-agent-dao</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.noah</groupId>
+                <artifactId>super-agent-service-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.noah</groupId>
+                <artifactId>super-agent-service-impl</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.noah</groupId>
+                <artifactId>super-agent-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.noah</groupId>
+                <artifactId>super-agent-schedule</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- MyBatis Flex -->
+            <dependency>
+                <groupId>com.mybatis-flex</groupId>
+                <artifactId>mybatis-flex-spring-boot-starter</artifactId>
+                <version>${mybatis-flex.version}</version>
+            </dependency>
+
+            <!-- 数据库驱动 -->
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${mysql.version}</version>
+            </dependency>
+
+            <!-- Druid 连接池 -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>druid-spring-boot-starter</artifactId>
+                <version>${druid.version}</version>
+            </dependency>
+
+            <!-- db-scheduler 定时任务 -->
+            <dependency>
+                <groupId>com.github.kagkarlsson</groupId>
+                <artifactId>db-scheduler-spring-boot-starter</artifactId>
+                <version>${db-scheduler.version}</version>
+            </dependency>
+
+            <!-- MapStruct -->
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
+
+            <!-- Knife4j API文档 -->
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <version>${knife4j.version}</version>
+            </dependency>
+
+            <!-- Flyway 数据库迁移 -->
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-core</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-mysql</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+
+            <!-- 工具类 -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
+
+            <!-- Lombok -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <optional>true</optional>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
-    <dependencies>
-        <!-- Spring Boot Starter -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-client</artifactId>
-        </dependency>
-
-        <!-- MyBatis Flex -->
-        <dependency>
-            <groupId>com.mybatis-flex</groupId>
-            <artifactId>mybatis-flex-spring-boot-starter</artifactId>
-            <version>${mybatis-flex.version}</version>
-        </dependency>
-
-        <!-- 数据库驱动 -->
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>${mysql.version}</version>
-        </dependency>
-
-        <!-- Druid 连接池 -->
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>druid-spring-boot-starter</artifactId>
-            <version>${druid.version}</version>
-        </dependency>
-
-        <!-- db-scheduler 定时任务 -->
-        <dependency>
-            <groupId>com.github.kagkarlsson</groupId>
-            <artifactId>db-scheduler-spring-boot-starter</artifactId>
-            <version>${db-scheduler.version}</version>
-        </dependency>
-
-        <!-- MapStruct -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${mapstruct.version}</version>
-        </dependency>
-
-        <!-- Knife4j API文档 -->
-        <dependency>
-            <groupId>com.github.xiaoymin</groupId>
-            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
-            <version>${knife4j.version}</version>
-        </dependency>
-
-        <!-- Flyway 数据库迁移 -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-mysql</artifactId>
-            <version>${flyway.version}</version>
-        </dependency>
-
-        <!-- 工具类 -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>${commons-lang3.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-all</artifactId>
-            <version>${hutool.version}</version>
-        </dependency>
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Test -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 
     <build>
         <pluginManagement>

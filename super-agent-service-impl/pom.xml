@@ -19,7 +19,6 @@
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-service-api</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- Spring Boot Starter -->

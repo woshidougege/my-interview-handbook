@@ -20,13 +20,11 @@
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-web</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-schedule</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <!-- Spring Boot Starter -->
@@ -61,10 +59,22 @@
     </dependencies>
 
     <build>
+        <finalName>${project.artifactId}</finalName>
         <plugins>
+            <!-- Spring Boot 打包插件 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                    <!-- 生成可执行jar -->
+                    <executable>true</executable>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -74,23 +84,40 @@
                 </executions>
             </plugin>
 
+            <!-- 编译插件 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
 
+            <!-- 打包成标准目录结构 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/main/assembly/assembly.xml</descriptor>
+                    </descriptors>
+                    <finalName>${project.artifactId}-${project.version}</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Flyway 数据库迁移插件 -->
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
-                <configuration>
-                    <url>jdbc:mysql://localhost:3306/super_agent?useUnicode=true&amp;characterEncoding=utf8&amp;zeroDateTimeBehavior=convertToNull&amp;useSSL=false&amp;serverTimezone=GMT%2B8&amp;allowPublicKeyRetrieval=true</url>
-                    <user>root</user>
-                    <password>123456</password>
-                    <driver>com.mysql.cj.jdbc.Driver</driver>
-                    <locations>
-                        <location>classpath:db/migration</location>
-                    </locations>
-                </configuration>
+                <!-- 配置从 application.yml 中读取 -->
             </plugin>
         </plugins>
     </build>
