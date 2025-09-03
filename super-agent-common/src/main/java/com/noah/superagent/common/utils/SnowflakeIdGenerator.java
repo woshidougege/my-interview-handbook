@@ -1,14 +1,11 @@
 package com.noah.superagent.common.utils;
 
-import org.springframework.stereotype.Component;
-
 /**
  * 雪花算法ID生成器
  * 
  * @author System
  * @since 1.0.0
  */
-@Component
 public class SnowflakeIdGenerator {
 
     /** 开始时间戳（2023-01-01） */

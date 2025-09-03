@@ -15,10 +15,7 @@ import org.springframework.context.annotation.Configuration;
  * @since 1.0.0
  */
 @Configuration
-@RequiredArgsConstructor
 public class MyBatisFlexConfig implements MyBatisFlexCustomizer {
-
-    private final SnowflakeIdGenerator idGenerator;
 
     @Override
     public void customize(FlexGlobalConfig globalConfig) {

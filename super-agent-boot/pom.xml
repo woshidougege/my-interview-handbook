@@ -27,6 +27,12 @@
             <artifactId>super-agent-schedule</artifactId>
         </dependency>
 
+        <!-- 直接依赖common模块 - 配置类需要使用 -->
+        <dependency>
+            <groupId>com.noah</groupId>
+            <artifactId>super-agent-common</artifactId>
+        </dependency>
+
         <!-- Spring Boot Starter -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
