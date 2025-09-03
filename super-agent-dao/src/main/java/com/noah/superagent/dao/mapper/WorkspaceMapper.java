@@ -3,7 +3,7 @@ package com.noah.superagent.dao.mapper;
 import com.mybatisflex.core.BaseMapper;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
-import com.noah.superagent.dao.entity.Workspace;
+import com.noah.superagent.dao.entity.WorkspaceEntity;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -16,41 +16,41 @@ import java.util.List;
  * @since 1.0.0
  */
 @Mapper
-public interface WorkspaceMapper extends BaseMapper<Workspace> {
+public interface WorkspaceMapper extends BaseMapper<WorkspaceEntity> {
 
     /**
      * 根据用户ID查询工作空间列表
      */
-    default List<Workspace> selectByUserId(Long userId) {
+    default List<WorkspaceEntity> selectByUserId(Long userId) {
         return selectListByQuery(QueryWrapper.create()
-                .where(Workspace::getUserId).eq(userId));
+                .where(WorkspaceEntity::getUserId).eq(userId));
     }
 
     /**
      * 根据用户ID查询默认工作空间
      */
-    default Workspace selectDefaultByUserId(Long userId) {
+    default WorkspaceEntity selectDefaultByUserId(Long userId) {
         return selectOneByQuery(QueryWrapper.create()
-                .where(Workspace::getUserId).eq(userId)
-                .and(Workspace::getIsDefault).eq(1));
+                .where(WorkspaceEntity::getUserId).eq(userId)
+                .and(WorkspaceEntity::getIsDefault).eq(1));
     }
 
     /**
      * 根据工作空间名称查询工作空间列表
      */
-    default List<Workspace> selectByName(Long userId, String name) {
+    default List<WorkspaceEntity> selectByName(Long userId, String name) {
         return selectListByQuery(QueryWrapper.create()
-                .where(Workspace::getUserId).eq(userId)
-                .and(Workspace::getName).like(name));
+                .where(WorkspaceEntity::getUserId).eq(userId)
+                .and(WorkspaceEntity::getName).like(name));
     }
 
     /**
      * 根据状态查询工作空间列表
      */
-    default List<Workspace> selectByStatus(Long userId, Integer status) {
+    default List<WorkspaceEntity> selectByStatus(Long userId, Integer status) {
         return selectListByQuery(QueryWrapper.create()
-                .where(Workspace::getUserId).eq(userId)
-                .and(Workspace::getStatus).eq(status));
+                .where(WorkspaceEntity::getUserId).eq(userId)
+                .and(WorkspaceEntity::getStatus).eq(status));
     }
 
     /**
@@ -58,20 +58,20 @@ public interface WorkspaceMapper extends BaseMapper<Workspace> {
      */
     default int updateStatusById(Long id, Integer status) {
         // 创建仅包含状态字段的更新对象
-        Workspace updateWorkspace = new Workspace();
-        updateWorkspace.setStatus(status);
-        return updateByQuery(updateWorkspace, 
-                QueryWrapper.create().where(Workspace::getId).eq(id));
+        WorkspaceEntity updateWorkspaceEntity = new WorkspaceEntity();
+        updateWorkspaceEntity.setStatus(status);
+        return updateByQuery(updateWorkspaceEntity,
+                QueryWrapper.create().where(WorkspaceEntity::getId).eq(id));
     }
 
     /**
      * 查询用户默认工作空间以外的其他工作空间
      */
-    default List<Workspace> selectNonDefaultWorkspaces(Long userId) {
+    default List<WorkspaceEntity> selectNonDefaultWorkspaces(Long userId) {
         return selectListByQuery(QueryWrapper.create()
-                .where(Workspace::getUserId).eq(userId)
-                .and(Workspace::getIsDefault).eq(0)
-                .orderBy(Workspace::getCreateTime).desc());
+                .where(WorkspaceEntity::getUserId).eq(userId)
+                .and(WorkspaceEntity::getIsDefault).eq(0)
+                .orderBy(WorkspaceEntity::getCreateTime).desc());
     }
     
     /**
@@ -80,5 +80,5 @@ public interface WorkspaceMapper extends BaseMapper<Workspace> {
      * @param keyword 关键词
      * @return 分页结果
      */
-    Page<Workspace> selectPlanPage(Page<Workspace> page, @Param("keyword") String keyword);
+    Page<WorkspaceEntity> selectPlanPage(Page<WorkspaceEntity> page, @Param("keyword") String keyword);
 }

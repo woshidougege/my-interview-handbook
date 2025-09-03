@@ -2,7 +2,7 @@ package com.noah.superagent.convert;
 
 import com.noah.superagent.common.dto.request.WorkspaceCreateRequest;
 import com.noah.superagent.common.dto.response.WorkspaceResponse;
-import com.noah.superagent.dao.entity.Workspace;
+import com.noah.superagent.dao.entity.WorkspaceEntity;
 import org.mapstruct.Mapper;
 
 import java.util.List;
@@ -19,15 +19,15 @@ public interface WorkspaceConvert {
     /**
      * 创建请求转实体
      */
-    Workspace toEntity(WorkspaceCreateRequest request);
+    WorkspaceEntity toEntity(WorkspaceCreateRequest request);
 
     /**
      * 实体转响应
      */
-    WorkspaceResponse toResponse(Workspace workspace);
+    WorkspaceResponse toResponse(WorkspaceEntity workspaceEntity);
 
     /**
      * 实体列表转响应列表
      */
-    List<WorkspaceResponse> toResponseList(List<Workspace> workspaces);
+    List<WorkspaceResponse> toResponseList(List<WorkspaceEntity> workspaceEntities);
 }

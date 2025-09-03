@@ -94,7 +94,7 @@ public class KillBillServiceImpl implements KillBillService {
                     RequestOptions requestOptions = RequestOptions.builder()
                 .withCreatedBy("super-agent")
                 .withReason("Add credit")
-                .withComment("User credit purchase: " + creditAmount)
+                .withComment("UserEntity credit purchase: " + creditAmount)
                 .build();
 
             // 使用官方推荐的InvoiceApi

@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Table("t_credit_account")
-public class UserCreditAccount extends BaseEntity {
+public class UserCreditAccountEntity extends BaseEntity {
 
     /**
      * 用户ID

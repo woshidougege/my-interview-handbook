@@ -13,7 +13,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Table("t_user")
-public class User extends BaseEntity {
+public class UserEntity extends BaseEntity {
 
     /**
      * 手机号

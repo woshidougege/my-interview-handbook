@@ -1,7 +1,7 @@
 package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
-import com.noah.superagent.dao.entity.User;
+import com.noah.superagent.dao.entity.UserEntity;
 import com.noah.superagent.convert.UserConvert;
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
@@ -44,33 +44,33 @@ public class UserServiceImpl implements UserService {
         }
         
         // 转换为实体
-        User user = userConvert.toEntity(request);
-        user.setStatus(UserStatusEnum.ACTIVE.getCode());
+        UserEntity userEntity = userConvert.toEntity(request);
+        userEntity.setStatus(UserStatusEnum.ACTIVE.getCode());
         // ID由MyBatis Flex的雪花算法自动生成
         
         // TODO: 密码加密处理
-        // user.setPassword(passwordEncoder.encode(request.getPassword()));
+        // userEntity.setPassword(passwordEncoder.encode(request.getPassword()));
         
         // 保存用户
-        int result = userMapper.insertSelective(user);
+        int result = userMapper.insertSelective(userEntity);
         if (result <= 0) {
             throw new RuntimeException("用户创建失败");
         }
         
-        log.info("用户创建成功，ID: {}", user.getId());
-        return userConvert.toResponse(user);
+        log.info("用户创建成功，ID: {}", userEntity.getId());
+        return userConvert.toResponse(userEntity);
     }
 
     @Override
     public UserResponse getUserById(Long id) {
         log.info("查询用户信息，ID: {}", id);
         
-        User user = userMapper.selectOneById(id);
-        if (user == null) {
+        UserEntity userEntity = userMapper.selectOneById(id);
+        if (userEntity == null) {
             throw new RuntimeException("用户不存在: " + id);
         }
         
-        return userConvert.toResponse(user);
+        return userConvert.toResponse(userEntity);
     }
 
     @Override
@@ -79,10 +79,10 @@ public class UserServiceImpl implements UserService {
                 request.getPageNum(), request.getPageSize(), request.getKeyword());
         
         // 创建分页对象
-        Page<User> page = new Page<>(request.getPageNum(), request.getPageSize());
+        Page<UserEntity> page = new Page<>(request.getPageNum(), request.getPageSize());
         
         // 执行分页查询
-        Page<User> userPage = userMapper.selectUserPage(page, request.getKeyword());
+        Page<UserEntity> userPage = userMapper.selectUserPage(page, request.getKeyword());
         
         // 转换结果
         return new PageResponse<>(
@@ -99,33 +99,33 @@ public class UserServiceImpl implements UserService {
         log.info("更新用户信息，ID: {}", id);
         
         // 查询用户是否存在
-        User existingUser = userMapper.selectOneById(id);
-        if (existingUser == null) {
+        UserEntity existingUserEntity = userMapper.selectOneById(id);
+        if (existingUserEntity == null) {
             throw new RuntimeException("用户不存在: " + id);
         }
         
         // 更新字段
         if (StringUtils.hasText(request.getNickname())) {
-            existingUser.setNickname(request.getNickname());
+            existingUserEntity.setNickname(request.getNickname());
         }
         
         if (StringUtils.hasText(request.getPassword())) {
             // TODO: 密码加密处理
-            existingUser.setPassword(request.getPassword());
+            existingUserEntity.setPassword(request.getPassword());
         }
         
         if (request.getStatus() != null) {
-            existingUser.setStatus(request.getStatus());
+            existingUserEntity.setStatus(request.getStatus());
         }
         
         // 执行更新
-        int result = userMapper.update(existingUser);
+        int result = userMapper.update(existingUserEntity);
         if (result <= 0) {
             throw new RuntimeException("用户更新失败");
         }
         
         log.info("用户更新成功，ID: {}", id);
-        return userConvert.toResponse(existingUser);
+        return userConvert.toResponse(existingUserEntity);
     }
 
     @Override
@@ -134,8 +134,8 @@ public class UserServiceImpl implements UserService {
         log.info("删除用户，ID: {}", id);
         
         // 检查用户是否存在
-        User user = userMapper.selectOneById(id);
-        if (user == null) {
+        UserEntity userEntity = userMapper.selectOneById(id);
+        if (userEntity == null) {
             throw new RuntimeException("用户不存在: " + id);
         }
         
@@ -150,7 +150,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean isPhoneExists(String phone) {
-        User user = userMapper.selectByPhone(phone);
-        return user != null;
+        UserEntity userEntity = userMapper.selectByPhone(phone);
+        return userEntity != null;
     }
 }

@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Table("t_credit_transaction")
-public class CreditTransaction extends BaseEntity {
+public class CreditTransactionEntity extends BaseEntity {
 
     /**
      * 用户ID

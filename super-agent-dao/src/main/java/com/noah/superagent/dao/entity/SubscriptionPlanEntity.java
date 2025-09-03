@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Table("t_subscription_plan")
-public class SubscriptionPlan extends BaseEntity {
+public class SubscriptionPlanEntity extends BaseEntity {
 
     /**
      * 套餐名称

@@ -13,7 +13,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Table("t_user_workspace")
-public class Workspace extends BaseEntity {
+public class WorkspaceEntity extends BaseEntity {
 
     /**
      * 关联用户ID

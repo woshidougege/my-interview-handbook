@@ -1,7 +1,7 @@
 package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
-import com.noah.superagent.dao.entity.Workspace;
+import com.noah.superagent.dao.entity.WorkspaceEntity;
 import com.noah.superagent.convert.WorkspaceConvert;
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
@@ -37,29 +37,29 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         log.info("开始创建工作空间，名称: {}", request.getName());
         
         // 转换为实体
-        Workspace workspace = workspaceConvert.toEntity(request);
+        WorkspaceEntity workspaceEntity = workspaceConvert.toEntity(request);
         // ID由MyBatis Flex的雪花算法自动生成
         
         // 保存工作空间
-        int result = workspaceMapper.insertSelective(workspace);
+        int result = workspaceMapper.insertSelective(workspaceEntity);
         if (result <= 0) {
             throw new RuntimeException("工作空间创建失败");
         }
         
-        log.info("工作空间创建成功，ID: {}", workspace.getId());
-        return workspaceConvert.toResponse(workspace);
+        log.info("工作空间创建成功，ID: {}", workspaceEntity.getId());
+        return workspaceConvert.toResponse(workspaceEntity);
     }
 
     @Override
     public WorkspaceResponse getWorkspaceById(Long id) {
         log.info("查询工作空间信息，ID: {}", id);
         
-        Workspace workspace = workspaceMapper.selectOneById(id);
-        if (workspace == null) {
+        WorkspaceEntity workspaceEntity = workspaceMapper.selectOneById(id);
+        if (workspaceEntity == null) {
             throw new RuntimeException("工作空间不存在: " + id);
         }
         
-        return workspaceConvert.toResponse(workspace);
+        return workspaceConvert.toResponse(workspaceEntity);
     }
 
     @Override
@@ -68,11 +68,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 request.getPageNum(), request.getPageSize(), request.getKeyword());
         
         // 创建分页对象
-        Page<Workspace> page = new Page<>(request.getPageNum(), request.getPageSize());
+        Page<WorkspaceEntity> page = new Page<>(request.getPageNum(), request.getPageSize());
         
         // 执行分页查询
         // TODO: 实现具体的分页查询逻辑
-        Page<Workspace> workspacePage = workspaceMapper.selectPlanPage(page, request.getKeyword());
+        Page<WorkspaceEntity> workspacePage = workspaceMapper.selectPlanPage(page, request.getKeyword());
         
         // 转换结果
         return new PageResponse<>(
@@ -89,32 +89,32 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         log.info("更新工作空间信息，ID: {}", id);
         
         // 查询工作空间是否存在
-        Workspace existingWorkspace = workspaceMapper.selectOneById(id);
-        if (existingWorkspace == null) {
+        WorkspaceEntity existingWorkspaceEntity = workspaceMapper.selectOneById(id);
+        if (existingWorkspaceEntity == null) {
             throw new RuntimeException("工作空间不存在: " + id);
         }
         
         // 更新字段
         if (StringUtils.hasText(request.getName())) {
-            existingWorkspace.setName(request.getName());
+            existingWorkspaceEntity.setName(request.getName());
         }
         
         if (StringUtils.hasText(request.getDescription())) {
-            existingWorkspace.setDescription(request.getDescription());
+            existingWorkspaceEntity.setDescription(request.getDescription());
         }
         
         if (request.getStatus() != null) {
-            existingWorkspace.setStatus(request.getStatus());
+            existingWorkspaceEntity.setStatus(request.getStatus());
         }
         
         // 执行更新
-        int result = workspaceMapper.update(existingWorkspace);
+        int result = workspaceMapper.update(existingWorkspaceEntity);
         if (result <= 0) {
             throw new RuntimeException("工作空间更新失败");
         }
         
         log.info("工作空间更新成功，ID: {}", id);
-        return workspaceConvert.toResponse(existingWorkspace);
+        return workspaceConvert.toResponse(existingWorkspaceEntity);
     }
 
     @Override
@@ -123,8 +123,8 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         log.info("删除工作空间，ID: {}", id);
         
         // 检查工作空间是否存在
-        Workspace workspace = workspaceMapper.selectOneById(id);
-        if (workspace == null) {
+        WorkspaceEntity workspaceEntity = workspaceMapper.selectOneById(id);
+        if (workspaceEntity == null) {
             throw new RuntimeException("工作空间不存在: " + id);
         }
         
