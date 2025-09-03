@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Super Agent Platform 启动脚本
-# 使用方法: ./startup.sh [start|stop|restart|status]
+# 使用方法: ./startup.sh [start|stop|restart|status] [profile]
+# 示例: ./startup.sh start dev
 
 APP_NAME="super-agent-boot"
 APP_JAR="lib/${APP_NAME}.jar"
@@ -12,9 +13,12 @@ LOG_FILE="logs/${APP_NAME}.log"
 APP_HOME=$(cd "$(dirname "$0")/.." && pwd)
 cd "$APP_HOME"
 
+# 获取profile参数
+PROFILE=${2:-dev}
+
 # JVM参数
 JVM_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=logs/"
-SPRING_OPTS="--spring.config.location=conf/application.yml --logging.file.path=logs/"
+SPRING_OPTS="--spring.config.location=conf/ --spring.profiles.active=${PROFILE} --logging.file.path=logs/"
 
 # 检查Java环境
 if [ -z "$JAVA_HOME" ]; then
@@ -52,7 +56,7 @@ start() {
 
     check_java
     
-    echo "🚀 启动 $APP_NAME..."
+    echo "🚀 启动 $APP_NAME (Profile: $PROFILE)..."
     mkdir -p logs
     
     nohup $JAVA_CMD $JVM_OPTS -jar "$APP_JAR" $SPRING_OPTS > "$LOG_FILE" 2>&1 &
@@ -149,13 +153,22 @@ case "$1" in
         status
         ;;
     *)
-        echo "用法: $0 {start|stop|restart|status}"
+        echo "用法: $0 {start|stop|restart|status} [profile]"
         echo ""
         echo "命令说明:"
         echo "  start   - 启动应用"
         echo "  stop    - 停止应用"
         echo "  restart - 重启应用"
         echo "  status  - 查看运行状态"
+        echo ""
+        echo "Profile说明:"
+        echo "  dev     - 开发环境（默认）"
+        echo "  test    - 测试环境"
+        echo "  prod    - 生产环境"
+        echo ""
+        echo "示例:"
+        echo "  $0 start dev    # 以开发环境启动"
+        echo "  $0 start prod   # 以生产环境启动"
         exit 1
         ;;
 esac

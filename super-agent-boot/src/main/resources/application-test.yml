@@ -1,0 +1,33 @@
+# 测试环境配置
+spring:
+  # 测试环境数据源
+  datasource:
+    url: jdbc:mysql://test-db:3306/super_agent_test?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8
+    username: ${DB_USERNAME:test_user}
+    password: ${DB_PASSWORD:test_pass}
+    
+    # 测试环境Druid配置
+    druid:
+      stat-view-servlet:
+        enabled: true
+        login-username: ${DRUID_USERNAME:test}
+        login-password: ${DRUID_PASSWORD:test}
+  
+  # 测试环境执行数据库迁移
+  flyway:
+    enabled: true
+
+# MyBatis Flex 测试环境配置
+mybatis-flex:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 测试环境也打印SQL
+
+# 测试环境日志配置
+logging:
+  level:
+    com.noah.superagent: DEBUG
+    com.mybatis: DEBUG
+    org.springframework.security: INFO
+    org.flywaydb: INFO
+  file:
+    name: logs/super-agent-test.log

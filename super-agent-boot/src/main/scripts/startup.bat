@@ -3,7 +3,8 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 rem Super Agent Platform 启动脚本 - Windows版本
-rem 使用方法: startup.bat [start|stop|restart|status]
+rem 使用方法: startup.bat [start|stop|restart|status] [profile]
+rem 示例: startup.bat start dev
 
 set APP_NAME=super-agent-boot
 set APP_JAR=lib\%APP_NAME%.jar
@@ -14,9 +15,13 @@ rem 获取脚本所在目录
 set APP_HOME=%~dp0..
 cd /d "%APP_HOME%"
 
+rem 获取profile参数
+set PROFILE=%2
+if "%PROFILE%"=="" set PROFILE=dev
+
 rem JVM参数
 set JVM_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=logs/
-set SPRING_OPTS=--spring.config.location=conf/application.yml --logging.file.path=logs/
+set SPRING_OPTS=--spring.config.location=conf/ --spring.profiles.active=%PROFILE% --logging.file.path=logs/
 
 rem 检查Java环境
 if defined JAVA_HOME (
@@ -56,7 +61,7 @@ if exist "%PID_FILE%" (
 
 call :check_java
 
-echo 🚀 启动 %APP_NAME%...
+echo 🚀 启动 %APP_NAME% (Profile: %PROFILE%)...
 if not exist logs mkdir logs
 
 start /b "" %JAVA_CMD% %JVM_OPTS% -jar "%APP_JAR%" %SPRING_OPTS% > "%LOG_FILE%" 2>&1
@@ -126,13 +131,22 @@ call :start
 goto :eof
 
 :usage
-echo 用法: %0 {start^|stop^|restart^|status}
+echo 用法: %0 {start^|stop^|restart^|status} [profile]
 echo.
 echo 命令说明:
 echo   start   - 启动应用
 echo   stop    - 停止应用
 echo   restart - 重启应用
 echo   status  - 查看运行状态
+echo.
+echo Profile说明:
+echo   dev     - 开发环境（默认）
+echo   test    - 测试环境
+echo   prod    - 生产环境
+echo.
+echo 示例:
+echo   %0 start dev    # 以开发环境启动
+echo   %0 start prod   # 以生产环境启动
 echo.
 pause
 exit /b 1
