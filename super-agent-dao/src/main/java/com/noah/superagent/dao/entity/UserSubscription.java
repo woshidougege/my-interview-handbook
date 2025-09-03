@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 用户订阅记录表
@@ -30,12 +31,12 @@ public class UserSubscription extends BaseEntity {
     /**
      * 订阅开始时间
      */
-    private java.time.LocalDateTime startTime;
+    private LocalDateTime startTime;
 
     /**
      * 订阅结束时间
      */
-    private java.time.LocalDateTime endTime;
+    private LocalDateTime endTime;
 
     /**
      * 支付金额

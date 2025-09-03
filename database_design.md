@@ -29,22 +29,20 @@
 
 ## 3. 基础表结构示例
 
-### 3.1 用户表 (users)
+### 3.1 用户表 (user)
 用户系统的核心表，存储用户基本信息和账户状态
 
 | 字段名 | 类型 | 是否为空 | 默认值 | 说明 |
 |-------|------|---------|-------|------|
 | id | BIGINT UNSIGNED | 否 | 无 | 主键ID，自增 |
-| username | VARCHAR(50) | 否 | 无 | 用户名，全局唯一 |
-| email | VARCHAR(100) | 否 | 无 | 邮箱地址，全局唯一 |
-| phone | VARCHAR(20) | 否 | 无 | 手机号码，全局唯一 |
-| password | VARCHAR(255) | 否 | 无 | 加密后的密码 |
-| status | TINYINT | 否 | 1 | 状态: 1正常 2禁用 |
+| phone | VARCHAR(20) | 否 | 无 | 手机号 |
+| nickname | VARCHAR(50) | 否 | 无 | 昵称 |
+| password | VARCHAR(255) | 否 | 无 | 密码（加密后） |
+| status | INT | 否 | 1 | 用户状态 1-正常 0-禁用 |
 | create_time | DATETIME | 否 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | DATETIME | 否 | CURRENT_TIMESTAMP | 更新时间 |
 | create_by | BIGINT UNSIGNED | 是 | 无 | 创建人ID |
 | update_by | BIGINT UNSIGNED | 是 | 无 | 更新人ID |
-| sso_id | VARCHAR(100) | 是 | 无 | 单点登录系统用户ID |
 
 
 ## 4. 表关系设计
@@ -57,8 +55,8 @@
 ### 4.2 用户与套餐订阅 (1:N)
 每个用户可以订阅多个套餐，通过user_id关联
 
-### 4.3 套餐计划与套餐订阅 (1:N)
-每个套餐计划可以被多个用户订阅，通过plan_id关联
+### 4.3 奋斗计划与套餐订阅 (1:N)
+每个奋斗计划可以被多个用户订阅，通过plan_id关联
 
 ### 4.4 用户与工作空间 (1:1)
 每个用户默认拥有一个工作空间，通过user_id关联
@@ -69,38 +67,34 @@
 ## 5. 索引设计
 
 ### 5.1 唯一索引
-- users表: username（用户名唯一），email（邮箱唯一），sso_id（单点登录ID唯一），phone（手机号唯一）
+- user表: phone（手机号唯一）
 
 ### 5.2 普通索引
 - 所有create_time字段建议添加索引，便于按时间查询
 
 ## 6. SQL建表语句
 -- =============================================
--- 用户表 (users)
+-- 用户表 (user)
 -- =============================================
-CREATE TABLE users (
+CREATE TABLE user (
 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-username VARCHAR(50) NOT NULL COMMENT '用户名（系统唯一标识，用于登录）',
-email VARCHAR(100) NOT NULL COMMENT '用户邮箱（系统唯一标识，用于登录和通知）',
-phone VARCHAR(20) NOT NULL COMMENT '手机号码（系统唯一标识，用于登录和通知）',
-password VARCHAR(255) NOT NULL COMMENT '加密后的密码',
-status TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1正常 2禁用',
+phone VARCHAR(20) NOT NULL COMMENT '手机号',
+nickname VARCHAR(50) NOT NULL COMMENT '昵称',
+password VARCHAR(255) NOT NULL COMMENT '密码（加密后）',
+status INT NOT NULL DEFAULT 1 COMMENT '用户状态 1-正常 0-禁用',
 create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
 update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
 create_by BIGINT UNSIGNED COMMENT '创建人ID',
 update_by BIGINT UNSIGNED COMMENT '更新人ID',
-sso_id VARCHAR(100) COMMENT '单点登录系统用户ID',
 PRIMARY KEY (id)
-) COMMENT='平台用户基本信息表，存储用户身份认证和个人资料信息';
+) COMMENT='用户表，存储用户基本信息和账户状态';
 
 -- 索引
-CREATE UNIQUE INDEX uk_users_username ON users(username);
-CREATE UNIQUE INDEX uk_users_email ON users(email);
-CREATE UNIQUE INDEX uk_users_phone ON users(phone);
-CREATE UNIQUE INDEX uk_users_sso_id ON users(sso_id);
-CREATE INDEX idx_users_create_time ON users(create_time);
+CREATE UNIQUE INDEX uk_user_phone ON user(phone);
+CREATE INDEX idx_user_create_time ON user(create_time);
 
--- ============================================= -- 积分账户表 (user_credit_accounts)
+-- =============================================
+-- 积分账户表 (user_credit_accounts)
 -- =============================================
 CREATE TABLE user_credit_accounts (
 id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
