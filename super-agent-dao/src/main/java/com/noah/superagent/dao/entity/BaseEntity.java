@@ -1,0 +1,48 @@
+package com.noah.superagent.dao.entity;
+
+import com.mybatisflex.annotation.Column;
+import com.mybatisflex.annotation.Id;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.time.LocalDateTime;
+
+/**
+ * 基础实体类
+ * 包含5个公共字段：id、创建时间、更新时间、创建人、更新人
+ *
+ * @author System
+ * @since 1.0.0
+ */
+@Data
+@EqualsAndHashCode
+public abstract class BaseEntity {
+
+    /**
+     * 主键ID - 雪花算法生成
+     */
+    @Id
+    private Long id;
+
+    /**
+     * 创建时间
+     */
+    @Column(onInsertValue = "now()")
+    private LocalDateTime createTime;
+
+    /**
+     * 更新时间
+     */
+    @Column(onInsertValue = "now()", onUpdateValue = "now()")
+    private LocalDateTime updateTime;
+
+    /**
+     * 创建人ID
+     */
+    private Long createBy;
+
+    /**
+     * 更新人ID
+     */
+    private Long updateBy;
+}
