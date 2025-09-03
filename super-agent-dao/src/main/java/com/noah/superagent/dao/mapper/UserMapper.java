@@ -6,6 +6,8 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.noah.superagent.dao.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 
+import java.util.List;
+
 /**
  * 用户Mapper接口
  *
@@ -33,5 +35,34 @@ public interface UserMapper extends BaseMapper<User> {
                 .orderBy(User::getCreateTime).desc();
         
         return paginate(page, query);
+    }
+
+    /**
+     * 根据用户状态查询用户列表
+     */
+    default List<User> selectByStatus(Integer status) {
+        return selectListByQuery(QueryWrapper.create()
+                .where(User::getStatus).eq(status)
+                .orderBy(User::getCreateTime).desc());
+    }
+
+    /**
+     * 根据昵称模糊查询用户列表
+     */
+    default List<User> selectByNickname(String nickname) {
+        return selectListByQuery(QueryWrapper.create()
+                .where(User::getNickname).like(nickname)
+                .orderBy(User::getCreateTime).desc());
+    }
+
+    /**
+     * 更新用户状态
+     */
+    default int updateStatusByPhone(String phone, Integer status) {
+        // 创建仅包含状态字段的更新对象
+        User updateUser = new User();
+        updateUser.setStatus(status);
+        return updateByQuery(updateUser, 
+                QueryWrapper.create().where(User::getPhone).eq(phone));
     }
 }
