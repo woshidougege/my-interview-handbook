@@ -33,11 +33,13 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- OAuth2 SSO -->
+        <!-- OAuth2 SSO - 暂时禁用，后续开发SSO功能时启用 -->
+        <!--
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
         </dependency>
+        -->
 
         <!-- Flyway 数据库迁移 -->
         <dependency>
