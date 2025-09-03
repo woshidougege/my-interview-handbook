@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 积分交易记录表
@@ -60,5 +61,5 @@ public class CreditTransaction extends BaseEntity {
     /**
      * 过期时间（包月积分会有过期时间）
      */
-    private java.time.LocalDateTime expireTime;
+    private LocalDateTime expireTime;
 }
