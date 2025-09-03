@@ -30,13 +30,13 @@ fi
 # 检查Java版本
 check_java() {
     if ! command -v $JAVA_CMD &> /dev/null; then
-        echo "❌ 错误: 未找到Java运行环境，请安装JDK 17+"
+        echo "❌ 错误: 未找到Java运行环境，请安装JDK 11+"
         exit 1
     fi
     
     JAVA_VERSION=$($JAVA_CMD -version 2>&1 | grep "version" | cut -d'"' -f2 | cut -d'.' -f1)
-    if [ "$JAVA_VERSION" -lt "17" ]; then
-        echo "❌ 错误: Java版本过低，需要JDK 17+，当前版本: $JAVA_VERSION"
+    if [ "$JAVA_VERSION" -lt "11" ]; then
+        echo "❌ 错误: Java版本过低，需要JDK 11+，当前版本: $JAVA_VERSION"
         exit 1
     fi
 }

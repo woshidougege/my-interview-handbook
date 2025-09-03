@@ -41,7 +41,7 @@ goto usage
 :check_java
 %JAVA_CMD% -version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ 错误: 未找到Java运行环境，请安装JDK 17+
+    echo ❌ 错误: 未找到Java运行环境，请安装JDK 11+
     exit /b 1
 )
 goto :eof

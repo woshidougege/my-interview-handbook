@@ -93,6 +93,6 @@ export DB_PASSWORD="secure_password"
 - **监控页面**: 已关闭
 
 ## 🔧 环境要求
-- **JDK**: 17+
+- **JDK**: 11+
 - **MySQL**: 8.0+
 - **内存**: 最少512MB，推荐1GB+
