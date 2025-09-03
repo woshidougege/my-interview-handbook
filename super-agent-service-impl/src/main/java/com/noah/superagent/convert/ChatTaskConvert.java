@@ -1,10 +1,9 @@
 package com.noah.superagent.convert;
 
-import com.noah.superagent.common.dto.chat.ChatTaskCreateRequest;
-import com.noah.superagent.common.dto.chat.ChatTaskResponse;
+import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
+import com.noah.superagent.common.dto.response.ChatTaskResponse;
 import com.noah.superagent.dao.entity.ChatTask;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 
 import java.util.List;
 

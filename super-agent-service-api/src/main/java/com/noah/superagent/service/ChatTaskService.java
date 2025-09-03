@@ -1,10 +1,10 @@
-package com.noah.superagent.chat.service;
+package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.chat.ChatTaskCreateRequest;
-import com.noah.superagent.common.dto.chat.ChatTaskUpdateRequest;
-import com.noah.superagent.common.dto.chat.ChatTaskResponse;
+import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
+import com.noah.superagent.common.dto.request.ChatTaskUpdateRequest;
+import com.noah.superagent.common.dto.response.ChatTaskResponse;
 
 /**
  * 对话任务服务接口

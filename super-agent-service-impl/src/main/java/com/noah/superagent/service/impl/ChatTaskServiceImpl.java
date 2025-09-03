@@ -1,16 +1,16 @@
-package com.noah.superagent.chat;
+package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
 import com.noah.superagent.convert.ChatTaskConvert;
 import com.noah.superagent.dao.entity.ChatTask;
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.chat.ChatTaskCreateRequest;
-import com.noah.superagent.common.dto.chat.ChatTaskUpdateRequest;
-import com.noah.superagent.common.dto.chat.ChatTaskResponse;
+import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
+import com.noah.superagent.common.dto.request.ChatTaskUpdateRequest;
+import com.noah.superagent.common.dto.response.ChatTaskResponse;
 
 import com.noah.superagent.dao.mapper.ChatTaskMapper;
-import com.noah.superagent.chat.service.ChatTaskService;
+import com.noah.superagent.service.ChatTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

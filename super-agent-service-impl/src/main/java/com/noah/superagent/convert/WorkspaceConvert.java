@@ -1,7 +1,7 @@
 package com.noah.superagent.convert;
 
-import com.noah.superagent.common.dto.workspace.WorkspaceCreateRequest;
-import com.noah.superagent.common.dto.workspace.WorkspaceResponse;
+import com.noah.superagent.common.dto.request.WorkspaceCreateRequest;
+import com.noah.superagent.common.dto.response.WorkspaceResponse;
 import com.noah.superagent.dao.entity.Workspace;
 import org.mapstruct.Mapper;
 

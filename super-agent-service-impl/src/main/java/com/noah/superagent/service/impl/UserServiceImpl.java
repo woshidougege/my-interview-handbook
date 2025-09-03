@@ -1,17 +1,17 @@
-package com.noah.superagent.user;
+package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
 import com.noah.superagent.dao.entity.User;
 import com.noah.superagent.convert.UserConvert;
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.user.UserCreateRequest;
-import com.noah.superagent.common.dto.user.UserUpdateRequest;
-import com.noah.superagent.common.dto.user.UserResponse;
+import com.noah.superagent.common.dto.request.UserCreateRequest;
+import com.noah.superagent.common.dto.request.UserUpdateRequest;
+import com.noah.superagent.common.dto.response.UserResponse;
 import com.noah.superagent.common.enums.UserStatusEnum;
 
 import com.noah.superagent.dao.mapper.UserMapper;
-import com.noah.superagent.user.service.UserService;
+import com.noah.superagent.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

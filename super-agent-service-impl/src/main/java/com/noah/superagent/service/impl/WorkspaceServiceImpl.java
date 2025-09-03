@@ -1,16 +1,16 @@
-package com.noah.superagent.workspace;
+package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
 import com.noah.superagent.dao.entity.Workspace;
 import com.noah.superagent.convert.WorkspaceConvert;
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.workspace.WorkspaceCreateRequest;
-import com.noah.superagent.common.dto.workspace.WorkspaceUpdateRequest;
-import com.noah.superagent.common.dto.workspace.WorkspaceResponse;
+import com.noah.superagent.common.dto.request.WorkspaceCreateRequest;
+import com.noah.superagent.common.dto.request.WorkspaceUpdateRequest;
+import com.noah.superagent.common.dto.response.WorkspaceResponse;
 
 import com.noah.superagent.dao.mapper.WorkspaceMapper;
-import com.noah.superagent.workspace.service.WorkspaceService;
+import com.noah.superagent.service.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

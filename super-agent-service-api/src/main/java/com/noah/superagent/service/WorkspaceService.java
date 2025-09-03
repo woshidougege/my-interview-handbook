@@ -1,10 +1,10 @@
-package com.noah.superagent.workspace.service;
+package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.workspace.WorkspaceCreateRequest;
-import com.noah.superagent.common.dto.workspace.WorkspaceUpdateRequest;
-import com.noah.superagent.common.dto.workspace.WorkspaceResponse;
+import com.noah.superagent.common.dto.request.WorkspaceCreateRequest;
+import com.noah.superagent.common.dto.request.WorkspaceUpdateRequest;
+import com.noah.superagent.common.dto.response.WorkspaceResponse;
 
 /**
  * 工作空间服务接口

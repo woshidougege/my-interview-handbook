@@ -2,10 +2,10 @@ package com.noah.superagent.controller;
 
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.user.UserCreateRequest;
-import com.noah.superagent.common.dto.user.UserUpdateRequest;
-import com.noah.superagent.common.dto.user.UserResponse;
-import com.noah.superagent.user.service.UserService;
+import com.noah.superagent.common.dto.request.UserCreateRequest;
+import com.noah.superagent.common.dto.request.UserUpdateRequest;
+import com.noah.superagent.common.dto.response.UserResponse;
+import com.noah.superagent.service.UserService;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
