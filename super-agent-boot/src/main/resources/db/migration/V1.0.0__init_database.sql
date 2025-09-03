@@ -13,6 +13,7 @@ CREATE TABLE `t_user` (
     `nickname` VARCHAR(50) NOT NULL COMMENT '昵称',
     `password` VARCHAR(255) NOT NULL COMMENT '密码（加密后）',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '用户状态 1-正常 0-禁用',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by` BIGINT COMMENT '创建人ID',
@@ -20,6 +21,8 @@ CREATE TABLE `t_user` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_phone` (`phone`),
     INDEX `idx_status` (`status`),
+    INDEX `idx_deleted` (`deleted`),
+    INDEX `idx_phone_deleted` (`phone`, `deleted`),
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
@@ -33,12 +36,14 @@ CREATE TABLE `t_credit_account` (
     `total_earned` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '累计获得积分',
     `total_spent` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '累计消费积分',
     `version` INT NOT NULL DEFAULT 0 COMMENT '版本号（乐观锁）',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by` BIGINT COMMENT '创建人ID',
     `update_by` BIGINT COMMENT '更新人ID',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_id` (`user_id`),
+    INDEX `idx_deleted` (`deleted`),
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户积分账户表';
 
@@ -54,6 +59,7 @@ CREATE TABLE `t_credit_transaction` (
     `related_order_id` BIGINT COMMENT '关联订单ID',
     `related_subscription_id` BIGINT COMMENT '关联订阅ID（逻辑外键->t_user_subscription.id）',
     `expire_time` DATETIME COMMENT '过期时间（包月积分）',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by` BIGINT COMMENT '创建人ID',
@@ -61,6 +67,8 @@ CREATE TABLE `t_credit_transaction` (
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_transaction_type` (`transaction_type`),
+    INDEX `idx_deleted` (`deleted`),
+    INDEX `idx_user_deleted_time` (`user_id`, `deleted`, `create_time`),
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分交易记录表';
 
@@ -74,12 +82,14 @@ CREATE TABLE `t_subscription_plan` (
     `validity_days` INT NOT NULL COMMENT '套餐有效期（天）',
     `enabled` TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用 1-启用 0-禁用',
     `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by` BIGINT COMMENT '创建人ID',
     `update_by` BIGINT COMMENT '更新人ID',
     PRIMARY KEY (`id`),
     INDEX `idx_enabled_sort` (`enabled`, `sort_order`),
+    INDEX `idx_deleted` (`deleted`),
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订阅套餐表';
 
@@ -95,6 +105,7 @@ CREATE TABLE `t_user_subscription` (
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '订阅状态 1-生效中 2-已过期 3-已取消',
     `pay_order_no` VARCHAR(64) COMMENT '支付订单号',
     `remark` VARCHAR(255) COMMENT '备注',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by` BIGINT COMMENT '创建人ID',
@@ -103,6 +114,8 @@ CREATE TABLE `t_user_subscription` (
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_plan_id` (`plan_id`),
     INDEX `idx_status_end_time` (`status`, `end_time`),
+    INDEX `idx_deleted` (`deleted`),
+    INDEX `idx_user_deleted_status` (`user_id`, `deleted`, `status`),
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户订阅记录表';
 
@@ -114,6 +127,7 @@ CREATE TABLE `t_user_workspace` (
     `description` TEXT COMMENT '工作空间描述',
     `is_default` TINYINT NOT NULL DEFAULT 0 COMMENT '是否默认工作空间：1是 0否',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1正常 2禁用',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by` BIGINT COMMENT '创建人ID',
@@ -121,6 +135,8 @@ CREATE TABLE `t_user_workspace` (
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_user_default` (`user_id`, `is_default`),
+    INDEX `idx_deleted` (`deleted`),
+    INDEX `idx_user_deleted_default` (`user_id`, `deleted`, `is_default`),
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户工作空间表';
 
@@ -133,6 +149,7 @@ CREATE TABLE `t_workspace_chat_task` (
     `content` TEXT COMMENT '对话任务内容',
     `is_favorite` TINYINT NOT NULL DEFAULT 0 COMMENT '是否收藏：1是 0否',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1进行中 2已完成 3已归档',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by` BIGINT COMMENT '创建人ID',
@@ -141,6 +158,8 @@ CREATE TABLE `t_workspace_chat_task` (
     INDEX `idx_workspace_id` (`workspace_id`),
     INDEX `idx_session_id` (`session_id`),
     INDEX `idx_status` (`status`),
+    INDEX `idx_deleted` (`deleted`),
+    INDEX `idx_workspace_deleted_status` (`workspace_id`, `deleted`, `status`),
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作空间对话任务表';
 
