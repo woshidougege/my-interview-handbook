@@ -12,7 +12,7 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@Table("workspace_chat_tasks")
+@Table("t_workspace_chat_task")
 public class ChatTask extends BaseEntity {
 
     /**

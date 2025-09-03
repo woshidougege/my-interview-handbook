@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@Table("user_subscription")
+@Table("t_user_subscription")
 public class UserSubscription extends BaseEntity {
 
     /**
