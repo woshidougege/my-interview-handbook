@@ -69,7 +69,7 @@ mybatis-flex:
 # db-scheduler 配置 - 暂时禁用排查问题
 db-scheduler:
   enabled: false
-  table-name: scheduled_tasks
+  table-name: t_scheduled_task
   immediate-execution-enabled: false
   heartbeat-interval: 5m
   polling-interval: 10s
