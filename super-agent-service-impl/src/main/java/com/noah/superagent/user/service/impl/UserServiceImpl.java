@@ -9,7 +9,7 @@ import com.noah.superagent.common.dto.user.UserCreateRequest;
 import com.noah.superagent.common.dto.user.UserUpdateRequest;
 import com.noah.superagent.common.dto.user.UserResponse;
 import com.noah.superagent.common.enums.UserStatusEnum;
-import com.noah.superagent.common.utils.SnowflakeIdGenerator;
+
 import com.noah.superagent.dao.mapper.UserMapper;
 import com.noah.superagent.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
     private final UserConvert userConvert;
-    private final SnowflakeIdGenerator idGenerator;
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -45,8 +45,8 @@ public class UserServiceImpl implements UserService {
         
         // 转换为实体
         User user = userConvert.toEntity(request);
-        user.setId(idGenerator.nextId());
         user.setStatus(UserStatusEnum.ACTIVE.getCode());
+        // ID由MyBatis Flex的雪花算法自动生成
         
         // TODO: 密码加密处理
         // user.setPassword(passwordEncoder.encode(request.getPassword()));

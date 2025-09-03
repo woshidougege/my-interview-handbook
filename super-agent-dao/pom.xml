@@ -21,10 +21,10 @@
             <artifactId>super-agent-common</artifactId>
         </dependency>
 
-        <!-- MyBatis Flex -->
+        <!-- MyBatis Flex for Spring Boot 3.x -->
         <dependency>
             <groupId>com.mybatis-flex</groupId>
-            <artifactId>mybatis-flex-spring-boot-starter</artifactId>
+            <artifactId>mybatis-flex-spring-boot3-starter</artifactId>
         </dependency>
 
         <!-- 数据库驱动 -->

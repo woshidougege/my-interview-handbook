@@ -35,7 +35,7 @@
         <spring-boot.version>3.2.1</spring-boot.version>
         
         <!-- 数据库相关版本 -->
-        <mybatis-flex.version>1.7.8</mybatis-flex.version>
+        <mybatis-flex.version>1.11.1</mybatis-flex.version>
         <mysql.version>8.0.33</mysql.version>
         <druid.version>1.2.20</druid.version>
         <flyway.version>9.22.3</flyway.version>
@@ -101,7 +101,7 @@
             <!-- MyBatis Flex -->
             <dependency>
                 <groupId>com.mybatis-flex</groupId>
-                <artifactId>mybatis-flex-spring-boot-starter</artifactId>
+                <artifactId>mybatis-flex-spring-boot3-starter</artifactId>
                 <version>${mybatis-flex.version}</version>
             </dependency>
 

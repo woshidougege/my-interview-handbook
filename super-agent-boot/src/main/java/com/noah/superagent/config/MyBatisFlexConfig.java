@@ -3,9 +3,6 @@ package com.noah.superagent.config;
 import com.mybatisflex.core.FlexGlobalConfig;
 import com.mybatisflex.core.audit.AuditManager;
 import com.mybatisflex.spring.boot.MyBatisFlexCustomizer;
-import com.noah.superagent.common.utils.SnowflakeIdGenerator;
-import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -19,21 +16,10 @@ public class MyBatisFlexConfig implements MyBatisFlexCustomizer {
 
     @Override
     public void customize(FlexGlobalConfig globalConfig) {
-        // 开启审计功能
+        // 开启审计功能（可选）
         AuditManager.setAuditEnable(true);
         
-        // 设置SQL审计收集器
-        AuditManager.setMessageCollector(auditMessage -> {
-            System.out.println("SQL: " + auditMessage.getFullSql());
-            System.out.println("Time: " + auditMessage.getElapsedTime() + " ms");
-        });
-    }
-
-    /**
-     * 注册雪花算法ID生成器
-     */
-    @Bean
-    public SnowflakeIdGenerator snowflakeIdGenerator() {
-        return new SnowflakeIdGenerator();
+        // 雪花算法ID生成器已内置，无需额外配置
+        // 直接在实体类使用: @Id(keyType = KeyType.Generator, value = "snowFlakeId")
     }
 }

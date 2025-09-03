@@ -55,9 +55,9 @@ mybatis-flex:
     map-underscore-to-camel-case: true
     cache-enabled: false
 
-# db-scheduler 配置
+# db-scheduler 配置 - 暂时禁用排查问题
 db-scheduler:
-  enabled: true
+  enabled: false
   table-name: scheduled_tasks
   immediate-execution-enabled: false
   heartbeat-interval: 5m
