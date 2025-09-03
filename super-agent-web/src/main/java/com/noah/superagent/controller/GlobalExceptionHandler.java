@@ -1,4 +1,4 @@
-package com.noah.superagent.common.exception;
+package com.noah.superagent.controller;
 
 import com.noah.superagent.common.base.BaseResponse;
 import lombok.extern.slf4j.Slf4j;
