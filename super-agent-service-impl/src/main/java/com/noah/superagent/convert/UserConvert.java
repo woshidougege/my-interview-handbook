@@ -1,4 +1,4 @@
-package com.noah.superagent.user.convert;
+package com.noah.superagent.convert;
 
 import com.noah.superagent.common.dto.user.UserCreateRequest;
 import com.noah.superagent.common.dto.user.UserResponse;

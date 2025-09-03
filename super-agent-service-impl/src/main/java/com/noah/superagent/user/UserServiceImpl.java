@@ -1,8 +1,8 @@
-package com.noah.superagent.user.service.impl;
+package com.noah.superagent.user;
 
 import com.mybatisflex.core.paginate.Page;
 import com.noah.superagent.dao.entity.User;
-import com.noah.superagent.user.convert.UserConvert;
+import com.noah.superagent.convert.UserConvert;
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.user.UserCreateRequest;
