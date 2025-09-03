@@ -18,7 +18,7 @@ spring:
       web-stat-filter:
         enabled: true
         url-pattern: /*
-        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*,/error"
+        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*,/error,/favicon.ico"
   
   # 开发环境自动执行数据库迁移
   flyway:

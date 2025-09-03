@@ -16,7 +16,7 @@
     <packaging>jar</packaging>
 
     <dependencies>
-        <!-- 聚合所有模块 -->
+        <!-- 聚合所有模块 - 通过传递依赖获得完整功能 -->
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-web</artifactId>
@@ -29,18 +29,6 @@
             <artifactId>super-agent-schedule</artifactId>
         </dependency>
         -->
-
-        <!-- 直接依赖common模块 - 配置类需要使用 -->
-        <dependency>
-            <groupId>com.noah</groupId>
-            <artifactId>super-agent-common</artifactId>
-        </dependency>
-
-        <!-- Spring Boot Starter -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
 
         <!-- OAuth2 SSO - 暂时禁用，后续开发SSO功能时启用 -->
         <!--
