@@ -1,7 +1,7 @@
 package com.noah.superagent.controller;
 
 import com.noah.superagent.common.exception.BusinessException;
-import com.noah.superagent.web.response.ApiResponse;
+import com.noah.superagent.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;

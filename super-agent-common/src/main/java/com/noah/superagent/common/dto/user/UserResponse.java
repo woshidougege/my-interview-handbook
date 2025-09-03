@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Schema(description = "用户信息响应")
 public class UserResponse {
 
-    @Schema(description = "用户ID", example = "1")
+    @Schema(description = "用户ID", example = "1234567890123456789")
     private Long id;
 
     @Schema(description = "手机号", example = "13800138000")

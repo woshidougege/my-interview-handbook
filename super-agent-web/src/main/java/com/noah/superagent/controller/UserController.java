@@ -6,7 +6,7 @@ import com.noah.superagent.common.dto.user.UserCreateRequest;
 import com.noah.superagent.common.dto.user.UserUpdateRequest;
 import com.noah.superagent.common.dto.user.UserResponse;
 import com.noah.superagent.user.service.UserService;
-import com.noah.superagent.web.response.ApiResponse;
+import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,7 +45,7 @@ public class UserController {
     @GetMapping("/{id}")
     @Operation(summary = "查询用户", description = "根据ID查询用户详情")
     public ApiResponse<UserResponse> getUserById(
-            @Parameter(description = "用户ID", example = "1") 
+            @Parameter(description = "用户ID", example = "1234567890123456789") 
             @PathVariable("id") Long id) {
         log.info("接收查询用户请求: {}", id);
         
@@ -65,7 +65,7 @@ public class UserController {
     @PutMapping("/{id}")
     @Operation(summary = "更新用户", description = "更新用户信息")
     public ApiResponse<UserResponse> updateUser(
-            @Parameter(description = "用户ID", example = "1") 
+            @Parameter(description = "用户ID", example = "1234567890123456789") 
             @PathVariable("id") Long id,
             @Valid @RequestBody UserUpdateRequest request) {
         log.info("接收更新用户请求: {}", id);
@@ -77,7 +77,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     @Operation(summary = "删除用户", description = "根据ID删除用户")
     public ApiResponse<Void> deleteUser(
-            @Parameter(description = "用户ID", example = "1") 
+            @Parameter(description = "用户ID", example = "1234567890123456789") 
             @PathVariable("id") Long id) {
         log.info("接收删除用户请求: {}", id);
         

@@ -1,4 +1,4 @@
-package com.noah.superagent.web.response;
+package com.noah.superagent.response;
 
 import com.noah.superagent.common.enums.ResponseCodeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
