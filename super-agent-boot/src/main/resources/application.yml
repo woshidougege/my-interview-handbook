@@ -102,3 +102,12 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Kill Bill 计费系统配置
+killbill:
+  server:
+    url: http://localhost:8080
+    username: admin
+    password: password
+    api-key: bob
+    api-secret: lazar
