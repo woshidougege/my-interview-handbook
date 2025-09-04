@@ -13,7 +13,7 @@ spring:
     name: super-agent
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}  # 默认使用开发环境
-#    include: sso  # 引入SSO配置
+    include: billing  # 引入计费配置
   
   # 修复Spring Boot 2.7.x与Knife4j兼容性问题
   mvc:
@@ -104,25 +104,8 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
-# Kill Bill 计费系统配置
-killbill:
-  server:
-    url: http://localhost:8080
-    username: admin
-    password: password
-    api-key: admin
-    api-secret: password
-
 # 异步处理配置
 async:
-  # Token上报专用线程池配置
-  token-report:
-    core-pool-size: ${ASYNC_TOKEN_CORE_POOL_SIZE:4}
-    max-pool-size: ${ASYNC_TOKEN_MAX_POOL_SIZE:8}
-    queue-capacity: ${ASYNC_TOKEN_QUEUE_CAPACITY:500}
-    keep-alive-seconds: ${ASYNC_TOKEN_KEEP_ALIVE:60}
-    thread-name-prefix: "token-report-"
-    
   # 通用异步线程池配置
   general:
     core-pool-size: ${ASYNC_GENERAL_CORE_POOL_SIZE:2}
