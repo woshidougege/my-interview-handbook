@@ -8,8 +8,11 @@ import com.noah.superagent.dao.mapper.TokenUsageRecordMapper;
 import com.noah.superagent.token.service.TokenUsageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Token使用量记录服务实现 - 简化版
@@ -24,35 +27,6 @@ public class TokenUsageServiceImpl implements TokenUsageService {
 
     private final TokenUsageRecordMapper tokenUsageRecordMapper;
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public TokenUsageResponse recordTokenUsage(TokenUsageRequest request) {
-        try {
-            log.info("记录Token使用量 - requestId: {}, userKey: {}, agentId: {}, inputTokens: {}, outputTokens: {}", 
-                request.getRequestId(), request.getUserId(), request.getAgentId(),
-                request.getInputTokens(), request.getOutputTokens());
-
-            // 1. 幂等性检查
-            TokenUsageRecordEntity existingRecord = tokenUsageRecordMapper.findByRequestId(request.getRequestId());
-            if (existingRecord != null) {
-                log.info("重复请求，已存在记录 - requestId: {}, reportId: {}", 
-                    request.getRequestId(), existingRecord.getReportId());
-                return TokenUsageResponse.duplicate(existingRecord.getReportId());
-            }
-
-            // 2. 创建并保存记录
-            TokenUsageRecordEntity record = buildTokenUsageRecord(request);
-            tokenUsageRecordMapper.insert(record);
-
-            log.info("Token使用量记录成功 - reportId: {}", record.getReportId());
-            return TokenUsageResponse.success(record.getReportId());
-
-        } catch (Exception e) {
-            log.error("记录Token使用量失败 - requestId: {}, 错误: {}", 
-                request.getRequestId(), e.getMessage(), e);
-            return TokenUsageResponse.failed("记录失败: " + e.getMessage());
-        }
-    }
 
     /**
      * 构建Token使用记录实体
@@ -70,6 +44,40 @@ public class TokenUsageServiceImpl implements TokenUsageService {
         record.setDescription(request.getDescription());
         // 直接保存，不需要状态字段
         return record;
+    }
+
+    /**
+     * 异步记录Token使用量
+     */
+    @Override
+    @Async("tokenReportExecutor")
+    @Transactional(rollbackFor = Exception.class)
+    public CompletableFuture<TokenUsageResponse> recordTokenUsageAsync(TokenUsageRequest request) {
+        try {
+            log.info("异步记录Token使用量 - requestId: {}, userKey: {}, agentId: {}, inputTokens: {}, outputTokens: {}", 
+                request.getRequestId(), request.getUserId(), request.getAgentId(),
+                request.getInputTokens(), request.getOutputTokens());
+
+            // 1. 幂等性检查
+            TokenUsageRecordEntity existingRecord = tokenUsageRecordMapper.findByRequestId(request.getRequestId());
+            if (existingRecord != null) {
+                log.info("重复请求，已存在记录 - requestId: {}, reportId: {}", 
+                    request.getRequestId(), existingRecord.getReportId());
+                return CompletableFuture.completedFuture(TokenUsageResponse.duplicate(existingRecord.getReportId()));
+            }
+
+            // 2. 创建并保存记录
+            TokenUsageRecordEntity record = buildTokenUsageRecord(request);
+            tokenUsageRecordMapper.insert(record);
+
+            log.info("Token使用量记录成功 - reportId: {}", record.getReportId());
+            return CompletableFuture.completedFuture(TokenUsageResponse.success(record.getReportId()));
+
+        } catch (Exception e) {
+            log.error("Token使用量记录失败 - requestId: {}, 错误: {}", 
+                request.getRequestId(), e.getMessage(), e);
+            return CompletableFuture.completedFuture(TokenUsageResponse.failed("记录失败: " + e.getMessage()));
+        }
     }
 
     /**
