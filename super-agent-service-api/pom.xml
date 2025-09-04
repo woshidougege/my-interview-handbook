@@ -27,12 +27,7 @@
             <artifactId>super-agent-dao</artifactId>
         </dependency>
 
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
+        <!-- Lombok - 通过 common 模块传递依赖获得 -->
     </dependencies>
 
     <build>
