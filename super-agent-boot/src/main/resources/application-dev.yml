@@ -23,6 +23,10 @@ spring:
   # 开发环境自动执行数据库迁移
   flyway:
     enabled: true
+    # 开发环境允许清理数据库（生产环境应禁用）
+    clean-disabled: false
+    # 开发环境详细日志
+    validate-on-migrate: true
 
 # MyBatis Flex 开发环境配置
 mybatis-flex:
