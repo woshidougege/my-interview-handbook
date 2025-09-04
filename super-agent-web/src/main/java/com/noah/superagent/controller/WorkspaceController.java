@@ -5,6 +5,8 @@ import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.request.WorkspaceCreateRequest;
 import com.noah.superagent.common.dto.request.WorkspaceUpdateRequest;
 import com.noah.superagent.common.dto.response.WorkspaceResponse;
+import com.noah.superagent.convert.WorkspaceWebConvert;
+import com.noah.superagent.model.WorkspaceDO;
 import com.noah.superagent.service.WorkspaceService;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,13 +34,18 @@ import javax.validation.Valid;
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
+    private final WorkspaceWebConvert workspaceWebConvert;
 
     @PostMapping
     @Operation(summary = "创建工作空间", description = "创建新工作空间")
     public ApiResponse<WorkspaceResponse> createWorkspace(@Valid @RequestBody WorkspaceCreateRequest request) {
         log.info("接收创建工作空间请求: {}", request.getName());
         
-        WorkspaceResponse response = workspaceService.createWorkspace(request);
+        // Request -> DO -> Service -> DO -> Response
+        WorkspaceDO workspaceDO = workspaceWebConvert.fromCreateRequest(request);
+        WorkspaceDO resultDO = workspaceService.createWorkspace(workspaceDO);
+        WorkspaceResponse response = workspaceWebConvert.toResponse(resultDO);
+        
         return ApiResponse.success("工作空间创建成功", response);
     }
 
@@ -49,7 +56,10 @@ public class WorkspaceController {
             @PathVariable("id") Long id) {
         log.info("接收查询工作空间请求: {}", id);
         
-        WorkspaceResponse response = workspaceService.getWorkspaceById(id);
+        // Service -> DO -> Response
+        WorkspaceDO workspaceDO = workspaceService.getWorkspaceById(id);
+        WorkspaceResponse response = workspaceWebConvert.toResponse(workspaceDO);
+        
         return ApiResponse.success("查询成功", response);
     }
 
@@ -58,7 +68,17 @@ public class WorkspaceController {
     public ApiResponse<PageResponse<WorkspaceResponse>> getWorkspacePage(@Valid PageRequest request) {
         log.info("接收分页查询工作空间请求: {}", request);
         
-        PageResponse<WorkspaceResponse> response = workspaceService.getWorkspacePage(request);
+        // Service -> PageResponse<DO> -> PageResponse<Response>
+        PageResponse<WorkspaceDO> doPageResponse = workspaceService.getWorkspacePage(
+                request.getPageNum(), request.getPageSize(), request.getKeyword());
+        
+        PageResponse<WorkspaceResponse> response = new PageResponse<>(
+                workspaceWebConvert.toResponseList(doPageResponse.getRecords()),
+                doPageResponse.getTotal(),
+                doPageResponse.getPageNum(),
+                doPageResponse.getPageSize()
+        );
+        
         return ApiResponse.success("查询成功", response);
     }
 
@@ -70,7 +90,12 @@ public class WorkspaceController {
             @Valid @RequestBody WorkspaceUpdateRequest request) {
         log.info("接收更新工作空间请求: {}", id);
         
-        WorkspaceResponse response = workspaceService.updateWorkspace(id, request);
+        // UpdateRequest -> DO -> Service -> DO -> Response
+        WorkspaceDO updateDO = workspaceWebConvert.fromUpdateRequest(request);
+        updateDO.setId(id); // 设置要更新的ID
+        WorkspaceDO resultDO = workspaceService.updateWorkspace(updateDO);
+        WorkspaceResponse response = workspaceWebConvert.toResponse(resultDO);
+        
         return ApiResponse.success("更新成功", response);
     }
 

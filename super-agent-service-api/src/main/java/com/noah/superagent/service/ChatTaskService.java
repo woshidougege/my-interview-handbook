@@ -2,12 +2,11 @@ package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
-import com.noah.superagent.common.dto.request.ChatTaskUpdateRequest;
-import com.noah.superagent.common.dto.response.ChatTaskResponse;
+import com.noah.superagent.model.ChatTaskDO;
 
 /**
  * 对话任务服务接口
+ * 业务层操作DO对象，与前端DTO解耦
  *
  * @author System
  * @since 1.0.0
@@ -17,10 +16,10 @@ public interface ChatTaskService {
     /**
      * 创建对话任务
      *
-     * @param request 创建请求
-     * @return 对话任务信息
+     * @param chatTaskDO 对话任务领域对象
+     * @return 创建后的对话任务信息
      */
-    ChatTaskResponse createChatTask(ChatTaskCreateRequest request);
+    ChatTaskDO createChatTask(ChatTaskDO chatTaskDO);
 
     /**
      * 根据ID查询对话任务
@@ -28,24 +27,25 @@ public interface ChatTaskService {
      * @param id 对话任务ID
      * @return 对话任务信息
      */
-    ChatTaskResponse getChatTaskById(Long id);
+    ChatTaskDO getChatTaskById(Long id);
 
     /**
      * 分页查询对话任务
      *
-     * @param request 分页请求
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param keyword 关键词
      * @return 分页结果
      */
-    PageResponse<ChatTaskResponse> getChatTaskPage(PageRequest request);
+    PageResponse<ChatTaskDO> getChatTaskPage(Integer pageNum, Integer pageSize, String keyword);
 
     /**
      * 更新对话任务信息
      *
-     * @param id 对话任务ID
-     * @param request 更新请求
+     * @param chatTaskDO 对话任务领域对象
      * @return 更新后的对话任务信息
      */
-    ChatTaskResponse updateChatTask(Long id, ChatTaskUpdateRequest request);
+    ChatTaskDO updateChatTask(ChatTaskDO chatTaskDO);
 
     /**
      * 删除对话任务

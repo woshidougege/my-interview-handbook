@@ -1,13 +1,11 @@
 package com.noah.superagent.service;
 
-import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.request.UserCreateRequest;
-import com.noah.superagent.common.dto.request.UserUpdateRequest;
-import com.noah.superagent.common.dto.response.UserResponse;
+import com.noah.superagent.model.UserDO;
 
 /**
  * 用户服务接口
+ * 业务层操作DO对象，与前端DTO解耦
  *
  * @author System
  * @since 1.0.0
@@ -17,10 +15,10 @@ public interface UserService {
     /**
      * 创建用户
      *
-     * @param request 创建请求
-     * @return 用户信息
+     * @param userDO 用户领域对象
+     * @return 创建后的用户信息
      */
-    UserResponse createUser(UserCreateRequest request);
+    UserDO createUser(UserDO userDO);
 
     /**
      * 根据ID查询用户
@@ -28,24 +26,25 @@ public interface UserService {
      * @param id 用户ID
      * @return 用户信息
      */
-    UserResponse getUserById(Long id);
+    UserDO getUserById(Long id);
 
     /**
      * 分页查询用户
      *
-     * @param request 分页请求
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param keyword 关键词
      * @return 分页结果
      */
-    PageResponse<UserResponse> getUserPage(PageRequest request);
+    PageResponse<UserDO> getUserPage(Integer pageNum, Integer pageSize, String keyword);
 
     /**
      * 更新用户信息
      *
-     * @param id 用户ID
-     * @param request 更新请求
+     * @param userDO 用户领域对象
      * @return 更新后的用户信息
      */
-    UserResponse updateUser(Long id, UserUpdateRequest request);
+    UserDO updateUser(UserDO userDO);
 
     /**
      * 删除用户
