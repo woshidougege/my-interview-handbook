@@ -6,16 +6,16 @@ sa-token:
     # sso-server前端访问地址
     auth-url: http://192.168.5.184:20000/#/index
     # sso-server后端接口地址
-    server-url: http://xxx:9001/sso-server/
+    server-url: http://192.168.5.174:10000/sso-server/
     # 业务系统标识 注：需登录认证中心-基础管理系统-权限管理-系统管理-（页签）单点登录-右侧按钮（详情）ServieCode
     servicecode: super_agent
     # 业务系统公钥 注：需登录认证中心-基础管理系统-权限管理-系统管理-（页签）单点登录-右侧按钮（详情）公钥
     public-key: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCP5GivQeU6PeyDzuTcO34PtQ9jttDJnzKZfhv8V+aonQj023w80QncQLaBsXM9jsWuqDPnEEwMOGQP/Xo5j27jCSPjO53y08yn9qpnf2HfFp/4AzerULmPl3f6UuU9X1QplXRFfLVQgt/vUu+NtDMvZRsDomcO6BHokgo2PM0M4wIDAQAB
     # 业务系统不需要认证的地址路径
-    exclude-urls: ["/sso/*","favicon.ico","/**/*.css","/**/*.html","/**/*.js","swagger-resource","/v2/api-docs"]
+    exclude-urls: ["/sso/*","favicon.ico","/**/*.css","/**/*.html","/**/*.js","swagger-resource","/v3/api-docs**","/doc.html**","/webjars/**","/swagger-ui/**","/swagger-resources/**"]
     isHttp: true
   # 是否打印启动成功标志
-  is-print: false
+  is-print: true
   # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录) =-1
   isConcurrent: false
   # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
