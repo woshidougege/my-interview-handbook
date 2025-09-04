@@ -40,6 +40,12 @@
         </dependency>
 
         <!-- Lombok - 通过 common 模块传递依赖获得 -->
+
+        <!-- MyBatis-Flex 注解处理器 - 用于生成 TableDef 类 -->
+        <dependency>
+            <groupId>com.mybatis-flex</groupId>
+            <artifactId>mybatis-flex-processor</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
