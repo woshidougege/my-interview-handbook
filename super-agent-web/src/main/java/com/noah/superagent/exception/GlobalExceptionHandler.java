@@ -1,4 +1,4 @@
-package com.noah.superagent.controller;
+package com.noah.superagent.exception;
 
 import com.noah.superagent.common.exception.BusinessException;
 import com.noah.superagent.response.ApiResponse;
