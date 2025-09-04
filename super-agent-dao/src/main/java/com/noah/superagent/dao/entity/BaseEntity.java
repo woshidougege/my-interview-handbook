@@ -3,7 +3,6 @@ package com.noah.superagent.dao.entity;
 import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
-import com.noah.superagent.common.enums.DeletedEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
