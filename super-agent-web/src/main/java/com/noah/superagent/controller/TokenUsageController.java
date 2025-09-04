@@ -35,7 +35,7 @@ public class TokenUsageController {
         long startTime = System.currentTimeMillis();
         
         log.info("接收Token使用量上报 - requestId: {}, userKey: {}, agentId: {}, inputTokens: {}, outputTokens: {}", 
-            request.getRequestId(), request.getUserExternalKey(), request.getAgentId(), 
+            request.getRequestId(), request.getUserId(), request.getAgentId(),
             request.getInputTokens(), request.getOutputTokens());
 
         try {

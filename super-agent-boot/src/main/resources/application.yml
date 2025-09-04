@@ -13,7 +13,7 @@ spring:
     name: super-agent
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}  # 默认使用开发环境
-    include: sso  # 引入SSO配置
+#    include: sso  # 引入SSO配置
   
   # 修复Spring Boot 2.7.x与Knife4j兼容性问题
   mvc:
@@ -94,7 +94,7 @@ knife4j:
     license: Apache 2.0
     license-url: https://www.apache.org/licenses/LICENSE-2.0
   setting:
-    language: zh_cn
+    language: zh-CN
     enable-version: true
     enable-dynamic-parameter: true
 

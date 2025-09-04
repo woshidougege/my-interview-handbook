@@ -3,7 +3,7 @@ CREATE TABLE t_token_usage_record (
     id BIGINT PRIMARY KEY COMMENT '主键ID',
     request_id VARCHAR(100) NOT NULL UNIQUE COMMENT '请求ID（幂等键）',
     report_id VARCHAR(50) NOT NULL COMMENT '报告ID',
-    user_external_key VARCHAR(100) NOT NULL COMMENT '用户外部键',
+    user_id VARCHAR(100) NOT NULL COMMENT '用户ID',
     agent_id VARCHAR(100) NOT NULL COMMENT '智能体ID',
     session_id VARCHAR(100) COMMENT '会话ID',
     model_name VARCHAR(50) NOT NULL COMMENT '模型名称',
@@ -20,7 +20,7 @@ CREATE TABLE t_token_usage_record (
 
 -- 创建索引
 CREATE INDEX idx_token_usage_request_id ON t_token_usage_record(request_id);
-CREATE INDEX idx_token_usage_user_key ON t_token_usage_record(user_external_key);
+CREATE INDEX idx_token_usage_user_key ON t_token_usage_record(user_id);
 CREATE INDEX idx_token_usage_agent_id ON t_token_usage_record(agent_id);
 CREATE INDEX idx_token_usage_create_time ON t_token_usage_record(create_time);
 CREATE INDEX idx_token_usage_session_id ON t_token_usage_record(session_id);

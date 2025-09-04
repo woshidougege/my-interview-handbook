@@ -29,7 +29,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
     public TokenUsageResponse recordTokenUsage(TokenUsageRequest request) {
         try {
             log.info("记录Token使用量 - requestId: {}, userKey: {}, agentId: {}, inputTokens: {}, outputTokens: {}", 
-                request.getRequestId(), request.getUserExternalKey(), request.getAgentId(),
+                request.getRequestId(), request.getUserId(), request.getAgentId(),
                 request.getInputTokens(), request.getOutputTokens());
 
             // 1. 幂等性检查
@@ -61,7 +61,7 @@ public class TokenUsageServiceImpl implements TokenUsageService {
         TokenUsageRecordEntity record = new TokenUsageRecordEntity();
         record.setRequestId(request.getRequestId());
         record.setReportId(generateReportId());
-        record.setUserExternalKey(request.getUserExternalKey());
+        record.setUserId(request.getUserId());
         record.setAgentId(request.getAgentId());
         record.setSessionId(request.getSessionId());
         record.setModelName(request.getModelName());

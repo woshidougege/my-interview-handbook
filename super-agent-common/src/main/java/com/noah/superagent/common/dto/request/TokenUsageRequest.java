@@ -21,9 +21,9 @@ public class TokenUsageRequest {
     @Schema(description = "请求ID（幂等键）", example = "req_20240101_agent123_session456_001")
     private String requestId;
 
-    @NotBlank(message = "用户外部键不能为空")
-    @Schema(description = "用户外部键", example = "user_67890")
-    private String userExternalKey;
+    @NotBlank(message = "用户ID不能为空")
+    @Schema(description = "用户ID", example = "user_67890")
+    private String userId;
 
     @NotBlank(message = "智能体ID不能为空")
     @Schema(description = "智能体ID", example = "agent_12345")

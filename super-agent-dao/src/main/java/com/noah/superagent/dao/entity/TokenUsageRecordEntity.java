@@ -31,8 +31,8 @@ public class TokenUsageRecordEntity extends BaseEntity {
     /**
      * 用户外部键
      */
-    @Column(value = "user_external_key")
-    private String userExternalKey;
+    @Column(value = "user_id")
+    private String userId;
 
     /**
      * 智能体ID
