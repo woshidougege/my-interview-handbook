@@ -30,6 +30,11 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
+        <!-- 强制设置文件编码 -->
+        <file.encoding>UTF-8</file.encoding>
+        <sun.jnu.encoding>UTF-8</sun.jnu.encoding>
         
         <!-- Spring Boot版本 -->
         <spring-boot.version>2.7.18</spring-boot.version>
@@ -209,6 +214,8 @@
                     <configuration>
                         <source>11</source>
                         <target>11</target>
+                        <encoding>UTF-8</encoding>
+                        <fork>true</fork>
                         <parameters>true</parameters>  <!-- 保留参数名信息 -->
                         <annotationProcessorPaths>
                             <!-- Lombok -->
@@ -237,6 +244,26 @@
                     <groupId>org.flywaydb</groupId>
                     <artifactId>flyway-maven-plugin</artifactId>
                     <version>${flyway.version}</version>
+                </plugin>
+
+                <!-- Maven Resources Plugin - 资源文件编码配置 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <configuration>
+                        <encoding>UTF-8</encoding>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Surefire Plugin - 测试编码配置 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.1.2</version>
+                    <configuration>
+                        <argLine>-Dfile.encoding=UTF-8 -Duser.language=zh -Duser.country=CN -Dsun.jnu.encoding=UTF-8 -Dconsole.encoding=UTF-8</argLine>
+                    </configuration>
                 </plugin>
 
                 <!-- Maven Versions Plugin - 版本管理 -->
