@@ -5,6 +5,8 @@ import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.request.UserCreateRequest;
 import com.noah.superagent.common.dto.request.UserUpdateRequest;
 import com.noah.superagent.common.dto.response.UserResponse;
+import com.noah.superagent.convert.UserWebConvert;
+import com.noah.superagent.model.UserDTO;
 import com.noah.superagent.service.UserService;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,7 +22,7 @@ import javax.validation.Valid;
 /**
  * 用户管理控制器
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -32,13 +34,18 @@ import javax.validation.Valid;
 public class UserController {
 
     private final UserService userService;
+    private final UserWebConvert userWebConvert;
 
     @PostMapping
     @Operation(summary = "创建用户", description = "注册新用户")
     public ApiResponse<UserResponse> createUser(@Valid @RequestBody UserCreateRequest request) {
         log.info("接收创建用户请求: {}", request.getPhone());
         
-        UserResponse response = userService.createUser(request);
+        // Request -> DTO -> Service -> DTO -> Response
+        UserDTO userDO = userWebConvert.fromCreateRequest(request);
+        UserDTO resultDO = userService.createUser(userDO);
+        UserResponse response = userWebConvert.toResponse(resultDO);
+        
         return ApiResponse.success("用户创建成功", response);
     }
 
@@ -49,7 +56,10 @@ public class UserController {
             @PathVariable("id") Long id) {
         log.info("接收查询用户请求: {}", id);
         
-        UserResponse response = userService.getUserById(id);
+        // Service -> DTO -> Response
+        UserDTO userDO = userService.getUserById(id);
+        UserResponse response = userWebConvert.toResponse(userDO);
+        
         return ApiResponse.success("查询成功", response);
     }
 
@@ -58,7 +68,17 @@ public class UserController {
     public ApiResponse<PageResponse<UserResponse>> getUserPage(@Valid PageRequest request) {
         log.info("接收分页查询用户请求: {}", request);
         
-        PageResponse<UserResponse> response = userService.getUserPage(request);
+        // Service -> PageResponse<DTO> -> PageResponse<Response>
+        PageResponse<UserDTO> doPageResponse = userService.getUserPage(
+                request.getPageNum(), request.getPageSize(), request.getKeyword());
+        
+        PageResponse<UserResponse> response = new PageResponse<>(
+                userWebConvert.toResponseList(doPageResponse.getRecords()),
+                doPageResponse.getTotal(),
+                doPageResponse.getPageNum(),
+                doPageResponse.getPageSize()
+        );
+        
         return ApiResponse.success("查询成功", response);
     }
 
@@ -70,7 +90,12 @@ public class UserController {
             @Valid @RequestBody UserUpdateRequest request) {
         log.info("接收更新用户请求: {}", id);
         
-        UserResponse response = userService.updateUser(id, request);
+        // UpdateRequest -> DTO -> Service -> DTO -> Response
+        UserDTO updateDO = userWebConvert.fromUpdateRequest(request);
+        updateDO.setId(id); // 设置要更新的ID
+        UserDTO resultDO = userService.updateUser(updateDO);
+        UserResponse response = userWebConvert.toResponse(resultDO);
+        
         return ApiResponse.success("更新成功", response);
     }
 

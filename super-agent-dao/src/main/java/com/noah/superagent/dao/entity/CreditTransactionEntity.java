@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 /**
  * 积分交易记录表
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

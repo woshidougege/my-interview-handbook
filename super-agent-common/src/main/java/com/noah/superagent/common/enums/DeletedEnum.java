@@ -7,7 +7,7 @@ import lombok.Getter;
  * 逻辑删除枚举
  * 定义数据的删除状态
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter

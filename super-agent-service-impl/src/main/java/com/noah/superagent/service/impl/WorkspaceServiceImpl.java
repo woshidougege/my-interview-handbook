@@ -2,14 +2,10 @@ package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
 import com.noah.superagent.dao.entity.WorkspaceEntity;
-import com.noah.superagent.convert.WorkspaceConvert;
-import com.noah.superagent.common.dto.request.PageRequest;
+import com.noah.superagent.convert.WorkspacePersistenceConvert;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.dto.request.WorkspaceCreateRequest;
-import com.noah.superagent.common.dto.request.WorkspaceUpdateRequest;
-import com.noah.superagent.common.dto.response.WorkspaceResponse;
-
 import com.noah.superagent.dao.mapper.WorkspaceMapper;
+import com.noah.superagent.model.WorkspaceDTO;
 import com.noah.superagent.service.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +16,7 @@ import org.springframework.util.StringUtils;
 /**
  * 工作空间服务实现
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -29,15 +25,15 @@ import org.springframework.util.StringUtils;
 public class WorkspaceServiceImpl implements WorkspaceService {
 
     private final WorkspaceMapper workspaceMapper;
-    private final WorkspaceConvert workspaceConvert;
+    private final WorkspacePersistenceConvert workspacePersistenceConvert;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public WorkspaceResponse createWorkspace(WorkspaceCreateRequest request) {
-        log.info("开始创建工作空间，名称: {}", request.getName());
+    public WorkspaceDTO createWorkspace(WorkspaceDTO workspaceDO) {
+        log.info("开始创建工作空间，名称: {}", workspaceDO.getName());
         
-        // 转换为实体
-        WorkspaceEntity workspaceEntity = workspaceConvert.toEntity(request);
+        // DTO -> Entity
+        WorkspaceEntity workspaceEntity = workspacePersistenceConvert.toEntity(workspaceDO);
         // ID由MyBatis Flex的雪花算法自动生成
         
         // 保存工作空间
@@ -47,11 +43,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         }
         
         log.info("工作空间创建成功，ID: {}", workspaceEntity.getId());
-        return workspaceConvert.toResponse(workspaceEntity);
+        // Entity -> DTO
+        return workspacePersistenceConvert.fromEntity(workspaceEntity);
     }
 
     @Override
-    public WorkspaceResponse getWorkspaceById(Long id) {
+    public WorkspaceDTO getWorkspaceById(Long id) {
         log.info("查询工作空间信息，ID: {}", id);
         
         WorkspaceEntity workspaceEntity = workspaceMapper.selectOneById(id);
@@ -59,52 +56,53 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             throw new RuntimeException("工作空间不存在: " + id);
         }
         
-        return workspaceConvert.toResponse(workspaceEntity);
+        // Entity -> DTO
+        return workspacePersistenceConvert.fromEntity(workspaceEntity);
     }
 
     @Override
-    public PageResponse<WorkspaceResponse> getWorkspacePage(PageRequest request) {
+    public PageResponse<WorkspaceDTO> getWorkspacePage(Integer pageNum, Integer pageSize, String keyword) {
         log.info("分页查询工作空间，页码: {}, 每页数量: {}, 关键词: {}", 
-                request.getPageNum(), request.getPageSize(), request.getKeyword());
+                pageNum, pageSize, keyword);
         
         // 创建分页对象
-        Page<WorkspaceEntity> page = new Page<>(request.getPageNum(), request.getPageSize());
+        Page<WorkspaceEntity> page = new Page<>(pageNum, pageSize);
         
         // 执行分页查询
         // TODO: 实现具体的分页查询逻辑
-        Page<WorkspaceEntity> workspacePage = workspaceMapper.selectPlanPage(page, request.getKeyword());
+        Page<WorkspaceEntity> workspacePage = workspaceMapper.selectPlanPage(page, keyword);
         
         // 转换结果
         return new PageResponse<>(
-                workspaceConvert.toResponseList(workspacePage.getRecords()),
+                workspacePersistenceConvert.fromEntityList(workspacePage.getRecords()),
                 workspacePage.getTotalRow(),
-                request.getPageNum(),
-                request.getPageSize()
+                pageNum,
+                pageSize
         );
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public WorkspaceResponse updateWorkspace(Long id, WorkspaceUpdateRequest request) {
-        log.info("更新工作空间信息，ID: {}", id);
+    public WorkspaceDTO updateWorkspace(WorkspaceDTO workspaceDO) {
+        log.info("更新工作空间信息，ID: {}", workspaceDO.getId());
         
         // 查询工作空间是否存在
-        WorkspaceEntity existingWorkspaceEntity = workspaceMapper.selectOneById(id);
+        WorkspaceEntity existingWorkspaceEntity = workspaceMapper.selectOneById(workspaceDO.getId());
         if (existingWorkspaceEntity == null) {
-            throw new RuntimeException("工作空间不存在: " + id);
+            throw new RuntimeException("工作空间不存在: " + workspaceDO.getId());
         }
         
         // 更新字段
-        if (StringUtils.hasText(request.getName())) {
-            existingWorkspaceEntity.setName(request.getName());
+        if (StringUtils.hasText(workspaceDO.getName())) {
+            existingWorkspaceEntity.setName(workspaceDO.getName());
         }
         
-        if (StringUtils.hasText(request.getDescription())) {
-            existingWorkspaceEntity.setDescription(request.getDescription());
+        if (StringUtils.hasText(workspaceDO.getDescription())) {
+            existingWorkspaceEntity.setDescription(workspaceDO.getDescription());
         }
         
-        if (request.getStatus() != null) {
-            existingWorkspaceEntity.setStatus(request.getStatus());
+        if (workspaceDO.getStatus() != null) {
+            existingWorkspaceEntity.setStatus(workspaceDO.getStatus());
         }
         
         // 执行更新
@@ -113,8 +111,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             throw new RuntimeException("工作空间更新失败");
         }
         
-        log.info("工作空间更新成功，ID: {}", id);
-        return workspaceConvert.toResponse(existingWorkspaceEntity);
+        log.info("工作空间更新成功，ID: {}", workspaceDO.getId());
+        // Entity -> DTO
+        return workspacePersistenceConvert.fromEntity(existingWorkspaceEntity);
     }
 
     @Override

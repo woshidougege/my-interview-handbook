@@ -2,16 +2,18 @@ package com.noah.superagent.common.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 工作空间更新请求DTO
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(description = "工作空间更新请求")
-public class WorkspaceUpdateRequest {
+public class WorkspaceUpdateRequest extends BaseRequest {
 
     @Schema(description = "工作空间名称", example = "开发工作空间")
     private String name;

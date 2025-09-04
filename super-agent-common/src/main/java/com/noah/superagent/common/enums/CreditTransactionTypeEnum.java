@@ -6,7 +6,7 @@ import lombok.Getter;
 /**
  * 积分交易类型枚举
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter

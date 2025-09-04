@@ -1,39 +1,35 @@
 package com.noah.superagent.convert;
 
 import com.noah.superagent.common.dto.request.UserCreateRequest;
+import com.noah.superagent.common.dto.request.UserUpdateRequest;
 import com.noah.superagent.common.dto.response.UserResponse;
 import com.noah.superagent.common.enums.UserStatusEnum;
-import com.noah.superagent.dao.entity.UserEntity;
+import com.noah.superagent.model.UserDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
-import java.util.List;
-
 /**
- * 用户转换器
+ * 用户Web层转换器
+ * 负责 Request <-> DTO <-> Response 转换
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper(componentModel = "spring")
-public interface UserConvert {
+public interface UserWebConvert extends BaseWebConvert<
+        UserCreateRequest,        // 创建请求类型
+        UserUpdateRequest,        // 更新请求类型
+        UserResponse,            // 响应类型
+        UserDTO                  // 数据传输对象类型
+> {
 
     /**
-     * 创建请求转实体
+     * 重写数据传输对象转响应方法，添加状态描述转换
      */
-    UserEntity toEntity(UserCreateRequest request);
-
-    /**
-     * 实体转响应
-     */
+    @Override
     @Mapping(source = "status", target = "statusDesc", qualifiedByName = "statusToDesc")
-    UserResponse toResponse(UserEntity userEntity);
-
-    /**
-     * 实体列表转响应列表
-     */
-    List<UserResponse> toResponseList(List<UserEntity> userEntities);
+    UserResponse toResponse(UserDTO userDTO);
 
     /**
      * 状态码转描述

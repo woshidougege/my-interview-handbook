@@ -2,21 +2,18 @@ package com.noah.superagent.common.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-
-import java.time.LocalDateTime;
+import lombok.EqualsAndHashCode;
 
 /**
  * 用户响应DTO
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(description = "用户信息响应")
-public class UserResponse {
-
-    @Schema(description = "用户ID", example = "1234567890123456789")
-    private Long id;
+public class UserResponse extends BaseResponse {
 
     @Schema(description = "手机号", example = "13800138000")
     private String phone;
@@ -30,9 +27,4 @@ public class UserResponse {
     @Schema(description = "用户状态描述", example = "正常")
     private String statusDesc;
 
-    @Schema(description = "创建时间", example = "2024-01-01 12:00:00")
-    private LocalDateTime createTime;
-
-    @Schema(description = "更新时间", example = "2024-01-01 12:00:00")
-    private LocalDateTime updateTime;
 }

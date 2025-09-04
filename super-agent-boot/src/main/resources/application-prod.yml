@@ -42,6 +42,19 @@ db-scheduler:
     core-pool-size: 4
     max-pool-size: 8
 
+# 生产环境异步配置优化
+async:
+  token-report:
+    core-pool-size: 8
+    max-pool-size: 16
+    queue-capacity: 1000
+    keep-alive-seconds: 120
+  general:
+    core-pool-size: 4
+    max-pool-size: 12
+    queue-capacity: 500
+    keep-alive-seconds: 120
+
 # 生产环境日志配置
 logging:
   level:

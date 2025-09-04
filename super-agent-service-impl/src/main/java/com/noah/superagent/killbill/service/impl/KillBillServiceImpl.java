@@ -38,6 +38,9 @@ import java.util.UUID;
 public class KillBillServiceImpl implements KillBillService {
 
     private final KillBillHttpClient killBillClient;
+    // 租户凭证常量（避免依赖 boot 配置模块）
+    private static final String TENANT_API_KEY = "admin";      // TODO: 替换为你的真实值
+    private static final String TENANT_API_SECRET = "password"; // TODO: 替换为你的真实值
 
     /**
      * 创建账户并添加积分
@@ -55,10 +58,12 @@ public class KillBillServiceImpl implements KillBillService {
             account.setExternalKey(request.getExternalKey());
             account.setCurrency(Currency.valueOf(request.getCurrency()));
 
-                    RequestOptions requestOptions = RequestOptions.builder()
+            RequestOptions requestOptions = RequestOptions.builder()
                 .withCreatedBy("super-agent")
                 .withReason("Create new user")
                 .withComment("Created via Super Agent platform")
+                .withTenantApiKey(TENANT_API_KEY)
+                .withTenantApiSecret(TENANT_API_SECRET)
                 .build();
 
             Account createdAccount = accountApi.createAccount(account, requestOptions);
@@ -91,19 +96,21 @@ public class KillBillServiceImpl implements KillBillService {
         try {
             log.info("🎯 为账户 {} 添加 {} 积分", accountId, creditAmount);
 
-                    RequestOptions requestOptions = RequestOptions.builder()
+            RequestOptions requestOptions = RequestOptions.builder()
                 .withCreatedBy("super-agent")
                 .withReason("Add credit")
-                .withComment("UserEntity credit purchase: " + creditAmount)
+                .withComment("User credit purchase: " + creditAmount)
+                .withTenantApiKey(TENANT_API_KEY)
+                .withTenantApiSecret(TENANT_API_SECRET)
                 .build();
 
             // 使用官方推荐的InvoiceApi
             InvoiceApi invoiceApi = new InvoiceApi(killBillClient);
             
-            // 创建InvoiceItem用于积分（负数表示信用）
+            // 创建InvoiceItem用于积分（使用正数，Kill Bill内部处理信用逻辑）
             InvoiceItem creditItem = new InvoiceItem();
             creditItem.setAccountId(accountId);
-            creditItem.setAmount(creditAmount.negate()); // 负数表示信用
+            creditItem.setAmount(creditAmount); // 使用正数
             creditItem.setCurrency(Currency.USD); // 默认使用USD
             creditItem.setDescription("Credit top-up: " + creditAmount);
             
@@ -113,8 +120,13 @@ public class KillBillServiceImpl implements KillBillService {
             InvoiceItems invoiceItems = new InvoiceItems();
             invoiceItems.addAll(items);
             
-            // 调用createExternalCharges
-            invoiceApi.createExternalCharges(accountId, invoiceItems, null, Collections.emptyMap(), requestOptions);
+            // 调用createExternalCharges，它会返回一个包含草稿发票信息的InvoiceItems
+            InvoiceItems createdItems = invoiceApi.createExternalCharges(accountId, invoiceItems, null, Collections.emptyMap(), requestOptions);
+
+            // 自动提交发票使其生效
+            if (createdItems != null && !createdItems.isEmpty() && createdItems.get(0).getInvoiceId() != null) {
+                invoiceApi.commitInvoice(createdItems.get(0).getInvoiceId(), requestOptions);
+            }
 
             log.info("✅ 成功为账户 {} 添加 {} 积分", accountId, creditAmount);
 
@@ -134,7 +146,10 @@ public class KillBillServiceImpl implements KillBillService {
         try {
             log.info("🔍 查询账户 {} 余额", accountId);
 
-            RequestOptions requestOptions = RequestOptions.builder().build();
+            RequestOptions requestOptions = RequestOptions.builder()
+                .withTenantApiKey(TENANT_API_KEY)
+                .withTenantApiSecret(TENANT_API_SECRET)
+                .build();
             AccountApi accountApi = new AccountApi(killBillClient);
             
             // 使用getAccount方法并设置accountWithBalance=true来获取余额信息
@@ -162,7 +177,10 @@ public class KillBillServiceImpl implements KillBillService {
         try {
             log.info("🔍 查询账户: {}", externalKey);
 
-            RequestOptions requestOptions = RequestOptions.builder().build();
+            RequestOptions requestOptions = RequestOptions.builder()
+                .withTenantApiKey(TENANT_API_KEY)
+                .withTenantApiSecret(TENANT_API_SECRET)
+                .build();
             AccountApi accountApi = new AccountApi(killBillClient);
             
             // 使用getAccountByKey方法，设置accountWithBalance=true来同时获取余额
@@ -197,10 +215,12 @@ public class KillBillServiceImpl implements KillBillService {
 
             log.info("💰 消费积分 - 账户: {}, 金额: {}, 描述: {}", accountId, amount, description);
 
-                    RequestOptions requestOptions = RequestOptions.builder()
+            RequestOptions requestOptions = RequestOptions.builder()
                 .withCreatedBy("super-agent")
                 .withReason("Credit consumption")
-                .withComment(description)
+                .withComment("Consume credit via API") // 使用固定的英文comment，避免非ASCII字符
+                .withTenantApiKey(TENANT_API_KEY)
+                .withTenantApiSecret(TENANT_API_SECRET)
                 .build();
 
             // 使用官方推荐的InvoiceApi
@@ -219,8 +239,13 @@ public class KillBillServiceImpl implements KillBillService {
             InvoiceItems invoiceItems = new InvoiceItems();
             invoiceItems.addAll(items);
             
-            // 调用createExternalCharges
-            invoiceApi.createExternalCharges(accountId, invoiceItems, null, Collections.emptyMap(), requestOptions);
+            // 调用createExternalCharges，它会返回一个包含草稿发票信息的InvoiceItems
+            InvoiceItems createdItems = invoiceApi.createExternalCharges(accountId, invoiceItems, null, Collections.emptyMap(), requestOptions);
+
+            // 自动提交发票使其生效
+            if (createdItems != null && !createdItems.isEmpty() && createdItems.get(0).getInvoiceId() != null) {
+                invoiceApi.commitInvoice(createdItems.get(0).getInvoiceId(), requestOptions);
+            }
 
             log.info("✅ 成功消费积分");
             return true;

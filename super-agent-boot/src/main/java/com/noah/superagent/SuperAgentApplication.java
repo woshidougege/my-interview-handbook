@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * Super Agent 用户管理和计费平台 - 启动类
  * 
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @SpringBootApplication(scanBasePackages = "com.noah.superagent")
