@@ -5,14 +5,14 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 基础领域对象
+ * 数据传输对象
  * 包含通用的审计字段
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data
-public abstract class BaseDO {
+public abstract class BaseDTO {
 
     /**
      * 主键ID

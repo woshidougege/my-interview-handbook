@@ -6,12 +6,12 @@ import lombok.EqualsAndHashCode;
 /**
  * 用户领域对象
  * 
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class UserDO extends BaseDO {
+public class UserDTO extends BaseDTO {
 
     /**
      * 手机号

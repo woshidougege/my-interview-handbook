@@ -6,7 +6,7 @@ import lombok.Getter;
 /**
  * 用户状态枚举
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter

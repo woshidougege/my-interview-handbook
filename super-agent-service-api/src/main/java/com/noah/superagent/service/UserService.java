@@ -1,13 +1,13 @@
 package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.model.UserDO;
+import com.noah.superagent.model.UserDTO;
 
 /**
  * 用户服务接口
  * 业务层操作DO对象，与前端DTO解耦
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface UserService {
@@ -18,7 +18,7 @@ public interface UserService {
      * @param userDO 用户领域对象
      * @return 创建后的用户信息
      */
-    UserDO createUser(UserDO userDO);
+    UserDTO createUser(UserDTO userDO);
 
     /**
      * 根据ID查询用户
@@ -26,7 +26,7 @@ public interface UserService {
      * @param id 用户ID
      * @return 用户信息
      */
-    UserDO getUserById(Long id);
+    UserDTO getUserById(Long id);
 
     /**
      * 分页查询用户
@@ -36,7 +36,7 @@ public interface UserService {
      * @param keyword 关键词
      * @return 分页结果
      */
-    PageResponse<UserDO> getUserPage(Integer pageNum, Integer pageSize, String keyword);
+    PageResponse<UserDTO> getUserPage(Integer pageNum, Integer pageSize, String keyword);
 
     /**
      * 更新用户信息
@@ -44,7 +44,7 @@ public interface UserService {
      * @param userDO 用户领域对象
      * @return 更新后的用户信息
      */
-    UserDO updateUser(UserDO userDO);
+    UserDTO updateUser(UserDTO userDO);
 
     /**
      * 删除用户

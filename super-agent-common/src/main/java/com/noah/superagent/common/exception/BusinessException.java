@@ -6,7 +6,7 @@ import lombok.Getter;
 /**
  * 业务异常类
  * 
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter

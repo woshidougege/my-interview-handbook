@@ -4,16 +4,16 @@ import com.noah.superagent.common.dto.request.UserCreateRequest;
 import com.noah.superagent.common.dto.request.UserUpdateRequest;
 import com.noah.superagent.common.dto.response.UserResponse;
 import com.noah.superagent.common.enums.UserStatusEnum;
-import com.noah.superagent.model.UserDO;
+import com.noah.superagent.model.UserDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
 /**
  * 用户Web层转换器
- * 负责 Request <-> DO <-> Response 转换
+ * 负责 Request <-> DTO <-> Response 转换
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper(componentModel = "spring")
@@ -21,15 +21,15 @@ public interface UserWebConvert extends BaseWebConvert<
         UserCreateRequest,        // 创建请求类型
         UserUpdateRequest,        // 更新请求类型
         UserResponse,            // 响应类型
-        UserDO                   // 领域对象类型
+        UserDTO                  // 数据传输对象类型
 > {
 
     /**
-     * 重写领域对象转响应方法，添加状态描述转换
+     * 重写数据传输对象转响应方法，添加状态描述转换
      */
     @Override
     @Mapping(source = "status", target = "statusDesc", qualifiedByName = "statusToDesc")
-    UserResponse toResponse(UserDO userDO);
+    UserResponse toResponse(UserDTO userDTO);
 
     /**
      * 状态码转描述

@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Primary;
  * Jackson JSON序列化配置
  * 主要解决前端JavaScript精度丢失问题
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Configuration

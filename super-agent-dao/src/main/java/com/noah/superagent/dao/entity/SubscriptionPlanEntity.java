@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 /**
  * 订阅套餐表
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

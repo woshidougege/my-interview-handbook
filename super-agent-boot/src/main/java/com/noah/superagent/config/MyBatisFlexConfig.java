@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * MyBatis Flex 配置
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Configuration

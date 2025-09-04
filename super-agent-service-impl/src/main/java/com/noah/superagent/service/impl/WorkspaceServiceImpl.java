@@ -5,7 +5,7 @@ import com.noah.superagent.dao.entity.WorkspaceEntity;
 import com.noah.superagent.convert.WorkspacePersistenceConvert;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.dao.mapper.WorkspaceMapper;
-import com.noah.superagent.model.WorkspaceDO;
+import com.noah.superagent.model.WorkspaceDTO;
 import com.noah.superagent.service.WorkspaceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +16,7 @@ import org.springframework.util.StringUtils;
 /**
  * 工作空间服务实现
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -29,10 +29,10 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public WorkspaceDO createWorkspace(WorkspaceDO workspaceDO) {
+    public WorkspaceDTO createWorkspace(WorkspaceDTO workspaceDO) {
         log.info("开始创建工作空间，名称: {}", workspaceDO.getName());
         
-        // DO -> Entity
+        // DTO -> Entity
         WorkspaceEntity workspaceEntity = workspacePersistenceConvert.toEntity(workspaceDO);
         // ID由MyBatis Flex的雪花算法自动生成
         
@@ -43,12 +43,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         }
         
         log.info("工作空间创建成功，ID: {}", workspaceEntity.getId());
-        // Entity -> DO
+        // Entity -> DTO
         return workspacePersistenceConvert.fromEntity(workspaceEntity);
     }
 
     @Override
-    public WorkspaceDO getWorkspaceById(Long id) {
+    public WorkspaceDTO getWorkspaceById(Long id) {
         log.info("查询工作空间信息，ID: {}", id);
         
         WorkspaceEntity workspaceEntity = workspaceMapper.selectOneById(id);
@@ -56,12 +56,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
             throw new RuntimeException("工作空间不存在: " + id);
         }
         
-        // Entity -> DO
+        // Entity -> DTO
         return workspacePersistenceConvert.fromEntity(workspaceEntity);
     }
 
     @Override
-    public PageResponse<WorkspaceDO> getWorkspacePage(Integer pageNum, Integer pageSize, String keyword) {
+    public PageResponse<WorkspaceDTO> getWorkspacePage(Integer pageNum, Integer pageSize, String keyword) {
         log.info("分页查询工作空间，页码: {}, 每页数量: {}, 关键词: {}", 
                 pageNum, pageSize, keyword);
         
@@ -83,7 +83,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public WorkspaceDO updateWorkspace(WorkspaceDO workspaceDO) {
+    public WorkspaceDTO updateWorkspace(WorkspaceDTO workspaceDO) {
         log.info("更新工作空间信息，ID: {}", workspaceDO.getId());
         
         // 查询工作空间是否存在
@@ -112,7 +112,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         }
         
         log.info("工作空间更新成功，ID: {}", workspaceDO.getId());
-        // Entity -> DO
+        // Entity -> DTO
         return workspacePersistenceConvert.fromEntity(existingWorkspaceEntity);
     }
 

@@ -6,12 +6,12 @@ import lombok.EqualsAndHashCode;
 /**
  * 对话任务领域对象
  * 
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class ChatTaskDO extends BaseDO {
+public class ChatTaskDTO extends BaseDTO {
 
     /**
      * 关联工作空间ID

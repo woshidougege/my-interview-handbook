@@ -6,7 +6,7 @@ import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
 import com.noah.superagent.common.dto.request.ChatTaskUpdateRequest;
 import com.noah.superagent.common.dto.response.ChatTaskResponse;
 import com.noah.superagent.convert.ChatTaskWebConvert;
-import com.noah.superagent.model.ChatTaskDO;
+import com.noah.superagent.model.ChatTaskDTO;
 import com.noah.superagent.service.ChatTaskService;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,7 +22,7 @@ import javax.validation.Valid;
 /**
  * 对话任务管理控制器
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -41,9 +41,9 @@ public class ChatTaskController {
     public ApiResponse<ChatTaskResponse> createChatTask(@Valid @RequestBody ChatTaskCreateRequest request) {
         log.info("接收创建对话任务请求: {}", request.getTitle());
         
-        // Request -> DO -> Service -> DO -> Response
-        ChatTaskDO chatTaskDO = chatTaskWebConvert.fromCreateRequest(request);
-        ChatTaskDO resultDO = chatTaskService.createChatTask(chatTaskDO);
+        // Request -> DTO -> Service -> DTO -> Response
+        ChatTaskDTO chatTaskDO = chatTaskWebConvert.fromCreateRequest(request);
+        ChatTaskDTO resultDO = chatTaskService.createChatTask(chatTaskDO);
         ChatTaskResponse response = chatTaskWebConvert.toResponse(resultDO);
         
         return ApiResponse.success("对话任务创建成功", response);
@@ -56,8 +56,8 @@ public class ChatTaskController {
             @PathVariable("id") Long id) {
         log.info("接收查询对话任务请求: {}", id);
         
-        // Service -> DO -> Response
-        ChatTaskDO chatTaskDO = chatTaskService.getChatTaskById(id);
+        // Service -> DTO -> Response
+        ChatTaskDTO chatTaskDO = chatTaskService.getChatTaskById(id);
         ChatTaskResponse response = chatTaskWebConvert.toResponse(chatTaskDO);
         
         return ApiResponse.success("查询成功", response);
@@ -68,8 +68,8 @@ public class ChatTaskController {
     public ApiResponse<PageResponse<ChatTaskResponse>> getChatTaskPage(@Valid PageRequest request) {
         log.info("接收分页查询对话任务请求: {}", request);
         
-        // Service -> PageResponse<DO> -> PageResponse<Response>
-        PageResponse<ChatTaskDO> doPageResponse = chatTaskService.getChatTaskPage(
+        // Service -> PageResponse<DTO> -> PageResponse<Response>
+        PageResponse<ChatTaskDTO> doPageResponse = chatTaskService.getChatTaskPage(
                 request.getPageNum(), request.getPageSize(), request.getKeyword());
         
         PageResponse<ChatTaskResponse> response = new PageResponse<>(
@@ -90,10 +90,10 @@ public class ChatTaskController {
             @Valid @RequestBody ChatTaskUpdateRequest request) {
         log.info("接收更新对话任务请求: {}", id);
         
-        // UpdateRequest -> DO -> Service -> DO -> Response
-        ChatTaskDO updateDO = chatTaskWebConvert.fromUpdateRequest(request);
+        // UpdateRequest -> DTO -> Service -> DTO -> Response
+        ChatTaskDTO updateDO = chatTaskWebConvert.fromUpdateRequest(request);
         updateDO.setId(id); // 设置要更新的ID
-        ChatTaskDO resultDO = chatTaskService.updateChatTask(updateDO);
+        ChatTaskDTO resultDO = chatTaskService.updateChatTask(updateDO);
         ChatTaskResponse response = chatTaskWebConvert.toResponse(resultDO);
         
         return ApiResponse.success("更新成功", response);

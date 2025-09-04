@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * 基础实体类
  * 包含6个公共字段：id、创建时间、更新时间、创建人、更新人、删除标记
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

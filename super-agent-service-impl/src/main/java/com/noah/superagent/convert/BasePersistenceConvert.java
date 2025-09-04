@@ -4,35 +4,35 @@ import java.util.List;
 
 /**
  * 持久化层转换器基接口
- * 负责 DO <-> Entity 转换
+ * 负责 DTO <-> Entity 转换
  * 
- * @param <DO> 领域对象类型
+ * @param <DTO> 数据传输对象类型
  * @param <Entity> 实体类型
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
-public interface BasePersistenceConvert<DO, Entity> {
+public interface BasePersistenceConvert<DTO, Entity> {
 
-    // ==================== DO <-> Entity ====================
+    // ==================== DTO <-> Entity ====================
     
     /**
-     * 领域对象转实体
+     * 数据传输对象转实体
      */
-    Entity toEntity(DO domainObject);
+    Entity toEntity(DTO dataTransferObject);
 
     /**
-     * 实体转领域对象
+     * 实体转数据传输对象
      */
-    DO fromEntity(Entity entity);
+    DTO fromEntity(Entity entity);
 
     /**
-     * 实体列表转领域对象列表
+     * 实体列表转数据传输对象列表
      */
-    List<DO> fromEntityList(List<Entity> entities);
+    List<DTO> fromEntityList(List<Entity> entities);
 
     /**
-     * 领域对象列表转实体列表
+     * 数据传输对象列表转实体列表
      */
-    List<Entity> toEntityList(List<DO> domainObjects);
+    List<Entity> toEntityList(List<DTO> dataTransferObjects);
 }

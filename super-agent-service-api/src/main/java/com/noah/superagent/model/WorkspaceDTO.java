@@ -6,12 +6,12 @@ import lombok.EqualsAndHashCode;
 /**
  * 工作空间领域对象
  * 
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class WorkspaceDO extends BaseDO {
+public class WorkspaceDTO extends BaseDTO {
 
     /**
      * 关联用户ID（所有者ID）

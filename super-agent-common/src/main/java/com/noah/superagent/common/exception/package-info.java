@@ -42,7 +42,7 @@
  * <h4>3. Controller层自动处理：</h4>
  * Controller层不需要try-catch，全局异常处理器会自动处理BusinessException并返回统一格式的ApiResponse。
  * 
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 package com.noah.superagent.common.exception;

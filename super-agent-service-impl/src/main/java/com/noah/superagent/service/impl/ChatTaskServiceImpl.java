@@ -5,7 +5,7 @@ import com.noah.superagent.convert.ChatTaskPersistenceConvert;
 import com.noah.superagent.dao.entity.ChatTaskEntity;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.dao.mapper.ChatTaskMapper;
-import com.noah.superagent.model.ChatTaskDO;
+import com.noah.superagent.model.ChatTaskDTO;
 import com.noah.superagent.service.ChatTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +16,7 @@ import org.springframework.util.StringUtils;
 /**
  * 对话任务服务实现
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -29,10 +29,10 @@ public class ChatTaskServiceImpl implements ChatTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ChatTaskDO createChatTask(ChatTaskDO chatTaskDO) {
+    public ChatTaskDTO createChatTask(ChatTaskDTO chatTaskDO) {
         log.info("开始创建对话任务，标题: {}", chatTaskDO.getTitle());
         
-        // DO -> Entity
+        // DTO -> Entity
         ChatTaskEntity chatTaskEntity = chatTaskPersistenceConvert.toEntity(chatTaskDO);
         // ID由MyBatis Flex的雪花算法自动生成
         
@@ -43,12 +43,12 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         }
         
         log.info("对话任务创建成功，ID: {}", chatTaskEntity.getId());
-        // Entity -> DO
+        // Entity -> DTO
         return chatTaskPersistenceConvert.fromEntity(chatTaskEntity);
     }
 
     @Override
-    public ChatTaskDO getChatTaskById(Long id) {
+    public ChatTaskDTO getChatTaskById(Long id) {
         log.info("查询对话任务信息，ID: {}", id);
         
         ChatTaskEntity chatTaskEntity = chatTaskMapper.selectOneById(id);
@@ -56,12 +56,12 @@ public class ChatTaskServiceImpl implements ChatTaskService {
             throw new RuntimeException("对话任务不存在: " + id);
         }
         
-        // Entity -> DO
+        // Entity -> DTO
         return chatTaskPersistenceConvert.fromEntity(chatTaskEntity);
     }
 
     @Override
-    public PageResponse<ChatTaskDO> getChatTaskPage(Integer pageNum, Integer pageSize, String keyword) {
+    public PageResponse<ChatTaskDTO> getChatTaskPage(Integer pageNum, Integer pageSize, String keyword) {
         log.info("分页查询对话任务，页码: {}, 每页数量: {}, 关键词: {}", 
                 pageNum, pageSize, keyword);
         
@@ -83,7 +83,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ChatTaskDO updateChatTask(ChatTaskDO chatTaskDO) {
+    public ChatTaskDTO updateChatTask(ChatTaskDTO chatTaskDO) {
         log.info("更新对话任务信息，ID: {}", chatTaskDO.getId());
         
         // 查询对话任务是否存在
@@ -112,7 +112,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         }
         
         log.info("对话任务更新成功，ID: {}", chatTaskDO.getId());
-        // Entity -> DO
+        // Entity -> DTO
         return chatTaskPersistenceConvert.fromEntity(existingChatTaskEntity);
     }
 

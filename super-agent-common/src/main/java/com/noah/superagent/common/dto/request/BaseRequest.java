@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 包含系统字段用于解决MapStruct映射问题
  * 这些字段对前端隐藏，仅用于内部转换
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

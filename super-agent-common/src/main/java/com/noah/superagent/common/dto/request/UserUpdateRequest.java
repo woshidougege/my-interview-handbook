@@ -9,7 +9,7 @@ import javax.validation.constraints.Size;
 /**
  * 用户更新请求DTO
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
 /**
  * 用户响应DTO
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

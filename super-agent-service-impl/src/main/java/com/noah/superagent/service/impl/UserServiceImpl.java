@@ -6,7 +6,7 @@ import com.noah.superagent.convert.UserPersistenceConvert;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.enums.UserStatusEnum;
 import com.noah.superagent.dao.mapper.UserMapper;
-import com.noah.superagent.model.UserDO;
+import com.noah.superagent.model.UserDTO;
 import com.noah.superagent.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +17,7 @@ import org.springframework.util.StringUtils;
 /**
  * 用户服务实现
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public UserDO createUser(UserDO userDO) {
+    public UserDTO createUser(UserDTO userDO) {
         log.info("开始创建用户，手机号: {}", userDO.getPhone());
         
         // 检查手机号是否已存在
@@ -39,7 +39,7 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("手机号已存在: " + userDO.getPhone());
         }
         
-        // DO -> Entity
+        // DTO -> Entity
         UserEntity userEntity = userPersistenceConvert.toEntity(userDO);
         userEntity.setStatus(UserStatusEnum.ACTIVE.getCode());
         // ID由MyBatis Flex的雪花算法自动生成
@@ -54,12 +54,12 @@ public class UserServiceImpl implements UserService {
         }
         
         log.info("用户创建成功，ID: {}", userEntity.getId());
-        // Entity -> DO
+        // Entity -> DTO
         return userPersistenceConvert.fromEntity(userEntity);
     }
 
     @Override
-    public UserDO getUserById(Long id) {
+    public UserDTO getUserById(Long id) {
         log.info("查询用户信息，ID: {}", id);
         
         UserEntity userEntity = userMapper.selectOneById(id);
@@ -67,12 +67,12 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("用户不存在: " + id);
         }
         
-        // Entity -> DO
+        // Entity -> DTO
         return userPersistenceConvert.fromEntity(userEntity);
     }
 
     @Override
-    public PageResponse<UserDO> getUserPage(Integer pageNum, Integer pageSize, String keyword) {
+    public PageResponse<UserDTO> getUserPage(Integer pageNum, Integer pageSize, String keyword) {
         log.info("分页查询用户，页码: {}, 每页数量: {}, 关键词: {}", 
                 pageNum, pageSize, keyword);
         
@@ -93,7 +93,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public UserDO updateUser(UserDO userDO) {
+    public UserDTO updateUser(UserDTO userDO) {
         log.info("更新用户信息，ID: {}", userDO.getId());
         
         // 查询用户是否存在
@@ -126,7 +126,7 @@ public class UserServiceImpl implements UserService {
         }
         
         log.info("用户更新成功，ID: {}", userDO.getId());
-        // Entity -> DO
+        // Entity -> DTO
         return userPersistenceConvert.fromEntity(existingUserEntity);
     }
 
