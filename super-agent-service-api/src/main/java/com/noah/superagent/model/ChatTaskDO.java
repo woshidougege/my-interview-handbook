@@ -14,6 +14,16 @@ import lombok.EqualsAndHashCode;
 public class ChatTaskDO extends BaseDO {
 
     /**
+     * 关联工作空间ID
+     */
+    private Long workspaceId;
+
+    /**
+     * 会话ID，用于与下游平台通信
+     */
+    private String sessionId;
+
+    /**
      * 任务标题
      */
     private String title;
@@ -24,7 +34,12 @@ public class ChatTaskDO extends BaseDO {
     private String content;
 
     /**
-     * 任务状态：0-待处理，1-处理中，2-已完成，3-已取消
+     * 是否收藏：1是 0否
+     */
+    private Integer isFavorite;
+
+    /**
+     * 任务状态：1进行中 2已完成 3已归档
      */
     private Integer status;
 

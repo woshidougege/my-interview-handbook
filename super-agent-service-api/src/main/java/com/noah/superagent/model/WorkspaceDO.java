@@ -14,6 +14,11 @@ import lombok.EqualsAndHashCode;
 public class WorkspaceDO extends BaseDO {
 
     /**
+     * 关联用户ID（所有者ID）
+     */
+    private Long userId;
+
+    /**
      * 工作空间名称
      */
     private String name;
@@ -24,12 +29,12 @@ public class WorkspaceDO extends BaseDO {
     private String description;
 
     /**
-     * 所有者ID
+     * 是否默认工作空间：1是 0否
      */
-    private Long ownerId;
+    private Integer isDefault;
 
     /**
-     * 状态：0-正常，1-禁用
+     * 状态：1-正常，2-禁用
      */
     private Integer status;
 

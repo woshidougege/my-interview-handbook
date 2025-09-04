@@ -2,6 +2,7 @@ package com.noah.superagent.common.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
@@ -14,8 +15,9 @@ import javax.validation.constraints.Size;
  * @since 1.0.0
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(description = "用户创建请求")
-public class UserCreateRequest {
+public class UserCreateRequest extends BaseRequest {
 
     @NotBlank(message = "手机号不能为空")
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")

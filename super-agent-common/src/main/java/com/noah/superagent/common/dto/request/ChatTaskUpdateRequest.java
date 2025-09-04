@@ -2,6 +2,7 @@ package com.noah.superagent.common.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 对话任务更新请求DTO
@@ -10,8 +11,9 @@ import lombok.Data;
  * @since 1.0.0
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(description = "对话任务更新请求")
-public class ChatTaskUpdateRequest {
+public class ChatTaskUpdateRequest extends BaseRequest {
 
     @Schema(description = "会话ID，用于与下游平台通信", example = "session_001")
     private String sessionId;

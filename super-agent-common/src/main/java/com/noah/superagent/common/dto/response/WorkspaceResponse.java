@@ -2,8 +2,7 @@ package com.noah.superagent.common.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-
-import java.time.LocalDateTime;
+import lombok.EqualsAndHashCode;
 
 /**
  * 工作空间响应DTO
@@ -12,11 +11,9 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(description = "工作空间信息响应")
-public class WorkspaceResponse {
-
-    @Schema(description = "工作空间ID", example = "1234567890123456789")
-    private Long id;
+public class WorkspaceResponse extends BaseResponse {
 
     @Schema(description = "关联用户ID", example = "1234567890123456789")
     private Long userId;
@@ -33,9 +30,4 @@ public class WorkspaceResponse {
     @Schema(description = "状态: 1正常 2禁用", example = "1")
     private Integer status;
 
-    @Schema(description = "创建时间", example = "2024-01-01 12:00:00")
-    private LocalDateTime createTime;
-
-    @Schema(description = "更新时间", example = "2024-01-01 12:00:00")
-    private LocalDateTime updateTime;
 }

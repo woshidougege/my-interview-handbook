@@ -2,6 +2,7 @@ package com.noah.superagent.common.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -13,8 +14,9 @@ import javax.validation.constraints.NotNull;
  * @since 1.0.0
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @Schema(description = "对话任务创建请求")
-public class ChatTaskCreateRequest {
+public class ChatTaskCreateRequest extends BaseRequest {
 
     @NotNull(message = "关联工作空间ID不能为空")
     @Schema(description = "关联工作空间ID", example = "1234567890123456789")
