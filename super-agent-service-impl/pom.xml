@@ -35,6 +35,18 @@
 
         <!-- Lombok - 通过 common 模块传递依赖获得 -->
 
+        <!-- MapStruct -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
+
+        <!-- MyBatis-Flex 注解处理器 -->
+        <dependency>
+            <groupId>com.mybatis-flex</groupId>
+            <artifactId>mybatis-flex-processor</artifactId>
+        </dependency>
+
         <!-- Kill Bill Java客户端 -->
         <dependency>
             <groupId>org.kill-bill.billing</groupId>

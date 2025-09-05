@@ -2,3 +2,11 @@
 /*/target/
 /logs/
 /superagent原型/
+/super-agent.iml
+/super-agent-boot/super-agent-boot.iml
+/super-agent-common/super-agent-common.iml
+/super-agent-dao/super-agent-dao.iml
+/super-agent-schedule/super-agent-schedule.iml
+/super-agent-service-api/super-agent-service-api.iml
+/super-agent-service-impl/super-agent-service-impl.iml
+/super-agent-web/super-agent-web.iml

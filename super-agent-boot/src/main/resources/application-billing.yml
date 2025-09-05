@@ -1,0 +1,136 @@
+# 计费系统配置文件
+# 包含所有与计费相关的配置项
+
+# 计费引擎配置
+super-agent:
+  billing:
+    # 是否启用计费
+    enabled: true
+    
+    # 模型计费价格配置（单位：元）
+    pricing:
+      # Token计费价格（每千个Token）
+      input-token: 0.0024    # 输入Token价格
+      output-token: 0.0096   # 输出Token价格
+      
+      # 媒体生成价格
+      image-generation: 0.25  # 图片生成价格（元/张）
+      video-generation: 0.24  # 视频生成价格（元/秒）
+      
+    # 功能计费价格配置（单位：元）
+    functions:
+      # 搜索类功能
+      deepsearch: 0.001        # 深度搜索（元/次）
+      browseruse: 0.001        # 浏览器使用（元/次）
+      
+      # 生成类功能
+      ppt-generation: 0.001    # PPT生成（元/页）
+      meeting-minutes: 0.001   # 会议纪要（元/次）
+      document-writing: 0.001  # 文档编写（元/次）
+      coding: 0.001           # 编码（元/次）
+      translation: 0.001      # 翻译（元/次）
+      mind-map: 0.001         # 思维导图（元/次）
+      
+      # 分析类功能
+      database-analysis: 0.001 # 数据库分析（元/次）
+      excel-analysis: 0.001    # Excel分析（元/次）
+      software-operation: 0.001 # 软件操作（元/次）
+      
+    # 积分系统配置
+    credits:
+      # 积分兑换比例
+      exchange-rate: 0.01      # 1积分 = 0.01元
+      
+      # 免费积分配置
+      free-credits:
+        new-user-amount: 1000   # 新用户赠送积分
+        new-user-validity: 90   # 有效期（天）
+        
+      # 活动积分配置  
+      activity-credits:
+        daily-signin: 300       # 每日签到积分
+        daily-validity: 1       # 当日有效
+        share-reward: 500       # 分享奖励积分
+        share-validity: 30      # 分享积分有效期（天）
+        
+      # 积分扣费优先级（数字越小优先级越高）
+      deduction-priority:
+        daily: 1               # 当日积分
+        activity: 2            # 活动积分  
+        free: 3                # 免费积分
+        paid: 4                # 付费积分
+
+# Kill Bill 计费系统配置
+killbill:
+  # 服务器配置
+  server:
+    url: ${KILLBILL_SERVER_URL:http://localhost:8080}
+    username: ${KILLBILL_USERNAME:admin}
+    password: ${KILLBILL_PASSWORD:password}
+    
+  # API配置
+  api:
+    key: ${KILLBILL_API_KEY:super-agent-key}
+    secret: ${KILLBILL_API_SECRET:super-agent-secret}
+    timeout: ${KILLBILL_TIMEOUT:30000}  # 超时时间（毫秒）
+    
+  # 计费相关配置
+  billing:
+    currency: CNY              # 计费货币
+    account-timezone: Asia/Shanghai  # 账户时区
+    
+    # 发票配置
+    invoice:
+      template: "default"      # 发票模板
+      auto-generate: true      # 自动生成发票
+      
+    # 付款配置
+    payment:
+      retry-attempts: 3        # 支付重试次数
+      retry-interval: 300      # 重试间隔（秒）
+
+# 异步处理配置
+async:
+  # 资源上报专用线程池配置
+  resource-report:
+    core-pool-size: ${ASYNC_RESOURCE_CORE_POOL_SIZE:4}
+    max-pool-size: ${ASYNC_RESOURCE_MAX_POOL_SIZE:8}
+    queue-capacity: ${ASYNC_RESOURCE_QUEUE_CAPACITY:500}
+    keep-alive-seconds: ${ASYNC_RESOURCE_KEEP_ALIVE:60}
+    thread-name-prefix: "resource-report-"
+    
+  # 计费处理专用线程池
+  billing-process:
+    core-pool-size: ${ASYNC_BILLING_CORE_POOL_SIZE:2}
+    max-pool-size: ${ASYNC_BILLING_MAX_POOL_SIZE:4}
+    queue-capacity: ${ASYNC_BILLING_QUEUE_CAPACITY:200}
+    keep-alive-seconds: ${ASYNC_BILLING_KEEP_ALIVE:60}
+    thread-name-prefix: "billing-process-"
+
+# 缓存配置
+cache:
+  # 计费缓存配置
+  billing:
+    # 价格缓存（避免频繁读取配置）
+    pricing-cache-ttl: 3600    # 价格缓存过期时间（秒）
+    
+    # 用户积分缓存
+    user-credits-cache-ttl: 300 # 用户积分缓存过期时间（秒）
+    
+    # 计费规则缓存
+    billing-rules-cache-ttl: 1800 # 计费规则缓存过期时间（秒）
+
+# 监控和告警配置
+monitoring:
+  billing:
+    # 计费异常告警
+    alert:
+      enabled: true
+      threshold:
+        billing-failure-rate: 0.05   # 计费失败率阈值（5%）
+        credit-insufficient-rate: 0.1 # 积分不足率阈值（10%）
+        
+    # 统计配置
+    metrics:
+      enabled: true
+      collection-interval: 60        # 指标收集间隔（秒）

@@ -112,6 +112,13 @@
                 <artifactId>mybatis-flex-spring-boot-starter</artifactId>
                 <version>${mybatis-flex.version}</version>
             </dependency>
+            <!-- MyBatis Flex 注解处理器 -->
+            <dependency>
+                <groupId>com.mybatis-flex</groupId>
+                <artifactId>mybatis-flex-processor</artifactId>
+                <version>${mybatis-flex.version}</version>
+                <scope>provided</scope>
+            </dependency>
 
             <!-- 数据库驱动 -->
             <dependency>
