@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
+
 /**
  * 工作空间服务实现
  *
@@ -134,5 +136,16 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         }
         
         log.info("工作空间删除成功，ID: {}", id);
+    }
+
+    @Override
+    public List<WorkspaceDTO> getWorkspacesByUserId(Long userId) {
+        log.info("根据用户ID查询工作空间列表，用户ID: {}", userId);
+        
+        // 根据用户ID查询工作空间列表
+        List<WorkspaceEntity> workspaceEntities = workspaceMapper.selectByUserId(userId);
+        
+        // 转换结果
+        return workspacePersistenceConvert.fromEntityList(workspaceEntities);
     }
 }

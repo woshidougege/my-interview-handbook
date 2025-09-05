@@ -18,6 +18,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 /**
  * 工作空间管理控制器
@@ -92,7 +93,7 @@ public class WorkspaceController {
         
         // UpdateRequest -> DTO -> Service -> DTO -> Response
         WorkspaceDTO updateDO = workspaceWebConvert.fromUpdateRequest(request);
-        updateDO.setId(id); // 设置要更新的ID
+        updateDO.setId(id);
         WorkspaceDTO resultDO = workspaceService.updateWorkspace(updateDO);
         WorkspaceResponse response = workspaceWebConvert.toResponse(resultDO);
         
@@ -108,5 +109,18 @@ public class WorkspaceController {
         
         workspaceService.deleteWorkspace(id);
         return ApiResponse.success("删除成功");
+    }
+
+    @GetMapping("/user/{userId}")
+    @Operation(summary = "根据用户ID查询工作空间", description = "根据用户ID查询工作空间列表，第一版用户默认只有一个工作空间")
+    public ApiResponse<List<WorkspaceResponse>> getWorkspacesByUserId(
+            @Parameter(description = "用户ID", example = "1234567890123456789")
+            @PathVariable("userId") Long userId) {
+        log.info("接收根据用户ID查询工作空间请求: {}", userId);
+        
+        List<WorkspaceDTO> workspaceDOs = workspaceService.getWorkspacesByUserId(userId);
+        List<WorkspaceResponse> responses = workspaceWebConvert.toResponseList(workspaceDOs);
+        
+        return ApiResponse.success("查询成功", responses);
     }
 }

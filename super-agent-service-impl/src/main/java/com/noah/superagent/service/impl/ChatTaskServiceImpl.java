@@ -135,4 +135,85 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         
         log.info("对话任务删除成功，ID: {}", id);
     }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void favoriteChatTask(Long id) {
+        log.info("收藏对话任务，ID: {}", id);
+        
+        // 检查对话任务是否存在
+        ChatTaskEntity chatTaskEntity = chatTaskMapper.selectOneById(id);
+        if (chatTaskEntity == null) {
+            throw new RuntimeException("对话任务不存在: " + id);
+        }
+        
+        // 更新收藏状态为已收藏(1)
+        chatTaskEntity.setIsFavorite(1);
+        int result = chatTaskMapper.update(chatTaskEntity);
+        if (result <= 0) {
+            throw new RuntimeException("对话任务收藏失败");
+        }
+        
+        log.info("对话任务收藏成功，ID: {}", id);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unfavoriteChatTask(Long id) {
+        log.info("取消收藏对话任务，ID: {}", id);
+        
+        // 检查对话任务是否存在
+        ChatTaskEntity chatTaskEntity = chatTaskMapper.selectOneById(id);
+        if (chatTaskEntity == null) {
+            throw new RuntimeException("对话任务不存在: " + id);
+        }
+        
+        // 更新收藏状态为未收藏(0)
+        chatTaskEntity.setIsFavorite(0);
+        int result = chatTaskMapper.update(chatTaskEntity);
+        if (result <= 0) {
+            throw new RuntimeException("对话任务取消收藏失败");
+        }
+        
+        log.info("对话任务取消收藏成功，ID: {}", id);
+    }
+    
+    @Override
+    public PageResponse<ChatTaskDTO> getFavoriteChatTasks(Long workspaceId, Integer pageNum, Integer pageSize) {
+        log.info("查询收藏的对话任务列表，工作空间ID: {}, 页码: {}, 每页数量: {}", workspaceId, pageNum, pageSize);
+        
+        // 创建分页对象
+        Page<ChatTaskEntity> page = new Page<>(pageNum, pageSize);
+        
+        // 直接查询收藏的对话任务，避免在内存中过滤
+        Page<ChatTaskEntity> favoriteTasksPage = (Page<ChatTaskEntity>) chatTaskMapper.selectByFavoriteStatus(workspaceId, 1);
+        
+        // 转换结果
+        return new PageResponse<>(
+                chatTaskPersistenceConvert.fromEntityList(favoriteTasksPage.getRecords()),
+                favoriteTasksPage.getTotalRow(),
+                pageNum,
+                pageSize
+        );
+    }
+    
+    @Override
+    public PageResponse<ChatTaskDTO> getChatTaskPageByWorkspaceId(Long workspaceId, Integer pageNum, Integer pageSize, String keyword) {
+        log.info("分页查询工作空间下的对话任务，工作空间ID: {}, 页码: {}, 每页数量: {}, 关键词: {}", 
+                workspaceId, pageNum, pageSize, keyword);
+        
+        // 创建分页对象
+        Page<ChatTaskEntity> page = new Page<>(pageNum, pageSize);
+        
+        // 执行分页查询
+        Page<ChatTaskEntity> chatTaskPage = chatTaskMapper.selectChatTaskPage(page, workspaceId, keyword);
+        
+        // 转换结果
+        return new PageResponse<>(
+                chatTaskPersistenceConvert.fromEntityList(chatTaskPage.getRecords()),
+                chatTaskPage.getTotalRow(),
+                pageNum,
+                pageSize
+        );
+    }
 }

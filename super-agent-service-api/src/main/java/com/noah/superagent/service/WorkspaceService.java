@@ -3,6 +3,8 @@ package com.noah.superagent.service;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.model.WorkspaceDTO;
 
+import java.util.List;
+
 /**
  * 工作空间服务接口
  * 业务层操作DO对象，与前端DTO解耦
@@ -52,4 +54,12 @@ public interface WorkspaceService {
      * @param id 工作空间ID
      */
     void deleteWorkspace(Long id);
+    
+    /**
+     * 根据用户ID查询工作空间列表
+     *
+     * @param userId 用户ID
+     * @return 工作空间列表
+     */
+    List<WorkspaceDTO> getWorkspacesByUserId(Long userId);
 }
