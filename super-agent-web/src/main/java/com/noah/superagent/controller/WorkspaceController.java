@@ -38,7 +38,7 @@ public class WorkspaceController {
     private final WorkspaceWebConvert workspaceWebConvert;
 
     @PostMapping
-    @Operation(summary = "创建工作空间", description = "创建新工作空间")
+    @Operation(summary = "创建工作空间", description = "创建新的工作空间")
     public ApiResponse<WorkspaceResponse> createWorkspace(@Valid @RequestBody WorkspaceCreateRequest request) {
         log.info("接收创建工作空间请求: {}", request.getName());
         
@@ -51,7 +51,7 @@ public class WorkspaceController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "查询工作空间", description = "根据ID查询工作空间详情")
+    @Operation(summary = "查询工作空间详情", description = "根据ID查询工作空间详细信息")
     public ApiResponse<WorkspaceResponse> getWorkspaceById(
             @Parameter(description = "工作空间ID", example = "1234567890123456789") 
             @PathVariable("id") Long id) {
@@ -84,7 +84,7 @@ public class WorkspaceController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "更新工作空间", description = "更新工作空间信息")
+    @Operation(summary = "更新工作空间", description = "根据ID更新工作空间信息")
     public ApiResponse<WorkspaceResponse> updateWorkspace(
             @Parameter(description = "工作空间ID", example = "1234567890123456789") 
             @PathVariable("id") Long id,
@@ -112,7 +112,7 @@ public class WorkspaceController {
     }
 
     @GetMapping("/user/{userId}")
-    @Operation(summary = "根据用户ID查询工作空间", description = "根据用户ID查询工作空间列表，第一版用户默认只有一个工作空间")
+    @Operation(summary = "根据用户ID查询工作空间", description = "根据用户ID查询该用户下的所有工作空间列表")
     public ApiResponse<List<WorkspaceResponse>> getWorkspacesByUserId(
             @Parameter(description = "用户ID", example = "1234567890123456789")
             @PathVariable("userId") Long userId) {
