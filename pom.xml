@@ -195,11 +195,11 @@
             </dependency>
 
             <!-- SSO客户端 -->
-            <dependency>
+<!--            <dependency>
                 <groupId>com.norinrd</groupId>
                 <artifactId>gt-sso-client-starter</artifactId>
                 <version>${gt-sso-client.version}</version>
-            </dependency>
+            </dependency>-->
         </dependencies>
     </dependencyManagement>
 

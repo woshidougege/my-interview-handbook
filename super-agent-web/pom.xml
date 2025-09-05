@@ -33,10 +33,10 @@
 
         <!-- SSO客户端 -->
 
-        <dependency>
+<!--        <dependency>
             <groupId>com.norinrd</groupId>
             <artifactId>gt-sso-client-starter</artifactId>
-        </dependency>
+        </dependency>-->
 
         <!-- Spring Boot Validation、Knife4j API文档、Lombok - 通过 service-impl -> common 模块传递依赖获得 -->
     </dependencies>
