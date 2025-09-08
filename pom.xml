@@ -67,6 +67,7 @@
         <maven-deploy-plugin.version>3.1.2</maven-deploy-plugin.version>
         <maven-site-plugin.version>4.0.0-M13</maven-site-plugin.version>
         <versions-maven-plugin.version>2.16.2</versions-maven-plugin.version>
+        <flatten-maven-plugin.version>1.5.0</flatten-maven-plugin.version>
         
         <!-- SSO客户端版本 -->
         <gt-sso-client.version>3.2.15-SNAPSHOT</gt-sso-client.version>
@@ -424,6 +425,33 @@
                     </configuration>
                 </plugin>
 
+                <!-- Flatten Maven Plugin - CI Friendly Versions 支持 -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>flatten-maven-plugin</artifactId>
+                    <version>${flatten-maven-plugin.version}</version>
+                    <configuration>
+                        <updatePomFile>true</updatePomFile>
+                        <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>flatten</id>
+                            <phase>process-resources</phase>
+                            <goals>
+                                <goal>flatten</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>flatten.clean</id>
+                            <phase>clean</phase>
+                            <goals>
+                                <goal>clean</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
                 <!-- Maven核心插件版本声明 - 确保构建稳定性 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -464,6 +492,12 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>versions-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- 启用flatten插件 - 支持 ${revision} 等CI友好属性 -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
