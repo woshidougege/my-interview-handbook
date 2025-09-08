@@ -3,6 +3,8 @@ package com.noah.superagent.service.impl;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.json.JSONUtil;
 import com.noah.superagent.common.dto.request.ResourceUsageRequest;
+import com.noah.superagent.common.enums.ResourceTypeEnum;
+import com.noah.superagent.common.enums.TaskTypeEnum;
 import com.noah.superagent.common.dto.response.ResourceUsageResponse;
 import com.noah.superagent.dao.entity.ResourceUsageRecordEntity;
 import com.noah.superagent.dao.mapper.ResourceUsageRecordMapper;
@@ -58,6 +60,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
 
     /**
      * 异步记录资源使用量
+     * 子智能体每次任务完成后上报真实消耗数据
      */
     @Override
     @Async("resourceReportExecutor")
@@ -78,46 +81,16 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
 
             // 2. 处理资源使用记录
             String reportId = generateReportId();
-            List<ResourceUsageRecordEntity> records = new ArrayList<>();
-            BigDecimal totalBillingAmount = BigDecimal.ZERO;
+            ResourceUsageRecordEntity record = buildResourceUsageRecord(request, reportId);
+            
+            // 3. 保存记录
+            resourceUsageRecordMapper.insert(record);
 
-            // 处理模型使用记录
-            if (request.getModelUsages() != null) {
-                for (ResourceUsageRequest.ModelUsage modelUsage : request.getModelUsages()) {
-                    ResourceUsageRecordEntity record = buildModelUsageRecord(request, modelUsage, reportId);
-                    records.add(record);
-                    totalBillingAmount = totalBillingAmount.add(record.getBillingAmount());
-                }
-            }
-
-            // 处理功能使用记录
-            if (request.getFunctionUsages() != null) {
-                for (ResourceUsageRequest.FunctionUsage functionUsage : request.getFunctionUsages()) {
-                    ResourceUsageRecordEntity record = buildFunctionUsageRecord(request, functionUsage, reportId);
-                    records.add(record);
-                    totalBillingAmount = totalBillingAmount.add(record.getBillingAmount());
-                }
-            }
-
-            // 处理媒体使用记录
-            if (request.getMediaUsages() != null) {
-                for (ResourceUsageRequest.MediaUsage mediaUsage : request.getMediaUsages()) {
-                    ResourceUsageRecordEntity record = buildMediaUsageRecord(request, mediaUsage, reportId);
-                    records.add(record);
-                    totalBillingAmount = totalBillingAmount.add(record.getBillingAmount());
-                }
-            }
-
-            // 3. 批量保存记录
-            for (ResourceUsageRecordEntity record : records) {
-                resourceUsageRecordMapper.insert(record);
-            }
-
-            log.info("资源使用量记录成功 - reportId: {}, 总计费金额: {}, 记录数: {}", 
-                reportId, totalBillingAmount, records.size());
+            log.info("资源使用量记录成功 - reportId: {}, 计费金额: {}, taskType: {}", 
+                reportId, record.getBillingAmount(), request.getTaskType());
 
             return CompletableFuture.completedFuture(
-                ResourceUsageResponse.success(reportId, totalBillingAmount, BigDecimal.ZERO, BigDecimal.ZERO)
+                ResourceUsageResponse.success(reportId, record.getBillingAmount(), BigDecimal.ZERO, BigDecimal.ZERO)
             );
 
         } catch (Exception e) {
@@ -127,110 +100,179 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         }
     }
 
-    /**
-     * 构建模型使用记录
+/**
+     * 构建资源使用记录
      */
-    private ResourceUsageRecordEntity buildModelUsageRecord(ResourceUsageRequest request, 
-            ResourceUsageRequest.ModelUsage modelUsage, String reportId) {
+    private ResourceUsageRecordEntity buildResourceUsageRecord(ResourceUsageRequest request, String reportId) {
         ResourceUsageRecordEntity record = new ResourceUsageRecordEntity();
+        ResourceUsageRequest.ResourceUsageDetail usageDetail = request.getUsageDetail();
         
         // 基础信息
         setBaseFields(record, request, reportId);
         
-        // 资源信息
+        // 根据任务类型和资源类型构建记录
+        TaskTypeEnum taskType = request.getTaskType();
+        switch (taskType) {
+            case TEXT_GENERATION:
+                buildTextGenerationRecord(record, usageDetail);
+                break;
+            case IMAGE_GENERATION:
+                buildImageGenerationRecord(record, usageDetail);
+                break;
+            case VIDEO_GENERATION:
+                buildVideoGenerationRecord(record, usageDetail);
+                break;
+            case PPT_GENERATION:
+                buildPptGenerationRecord(record, usageDetail);
+                break;
+            case MEETING_MINUTES:
+            case DOCUMENT_WRITING:
+            case CODING:
+            case TRANSLATION:
+            case MIND_MAP:
+            case DATABASE_ANALYSIS:
+            case EXCEL_ANALYSIS:
+            case BROWSERUSE:
+            case DEEPSEARCH:
+            case SOFTWARE_OPERATION:
+                buildFunctionRecord(record, usageDetail, taskType.getCode());
+                break;
+            default:
+                buildDefaultRecord(record, usageDetail);
+        }
+        
+        return record;
+    }
+
+    /**
+     * 构建文本生成记录
+     */
+    private void buildTextGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
         record.setResourceType("MODEL");
-        record.setResourceName(modelUsage.getModelName());
-        record.setResourceSubtype(modelUsage.getModelType());
-        record.setDescription(modelUsage.getDescription());
+        record.setResourceName("TEXT_MODEL");
+        record.setResourceSubtype("TEXT_GENERATION");
+        record.setDescription(usageDetail.getDescription());
         
         // 使用量数据
         Map<String, Object> usageData = new HashMap<>();
-        usageData.put("inputTokens", modelUsage.getInputTokens());
-        usageData.put("outputTokens", modelUsage.getOutputTokens());
-        usageData.put("modelType", modelUsage.getModelType());
+        usageData.put("inputTokens", usageDetail.getInputTokens());
+        usageData.put("outputTokens", usageDetail.getOutputTokens());
+        usageData.put("totalTokens", (usageDetail.getInputTokens() != null ? usageDetail.getInputTokens() : 0) + 
+                                    (usageDetail.getOutputTokens() != null ? usageDetail.getOutputTokens() : 0));
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 计费计算
-        BigDecimal inputCost = calculateTokenCost(modelUsage.getInputTokens(), inputTokenPrice);
-        BigDecimal outputCost = calculateTokenCost(modelUsage.getOutputTokens(), outputTokenPrice);
-        BigDecimal totalCost = inputCost.add(outputCost);
-        
+        // 计费计算 - 暂时按0计费，后续计费系统处理
         record.setBillingUnit("TOKEN");
-        record.setUsageAmount(new BigDecimal(modelUsage.getInputTokens() + modelUsage.getOutputTokens()));
-        record.setUnitPrice(inputTokenPrice); // 简化，实际应该是加权平均
-        record.setBillingAmount(totalCost);
+        record.setUsageAmount(new BigDecimal((usageDetail.getInputTokens() != null ? usageDetail.getInputTokens() : 0) + 
+                                           (usageDetail.getOutputTokens() != null ? usageDetail.getOutputTokens() : 0)));
+        record.setUnitPrice(BigDecimal.ZERO);
+        record.setBillingAmount(BigDecimal.ZERO);
+    }
+
+    /**
+     * 构建图片生成记录
+     */
+    private void buildImageGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
+        record.setResourceType("MEDIA");
+        record.setResourceName("IMAGE");
+        record.setResourceSubtype("IMAGE_GENERATION");
+        record.setDescription(usageDetail.getDescription());
         
-        return record;
+        // 使用量数据
+        Map<String, Object> usageData = new HashMap<>();
+        usageData.put("imageCount", usageDetail.getImageCount());
+        record.setUsageData(JSONUtil.toJsonStr(usageData));
+        
+        // 计费计算 - 暂时按0计费，后续计费系统处理
+        record.setBillingUnit("COUNT");
+        record.setUsageAmount(new BigDecimal(usageDetail.getImageCount() != null ? usageDetail.getImageCount() : 0));
+        record.setUnitPrice(BigDecimal.ZERO);
+        record.setBillingAmount(BigDecimal.ZERO);
+    }
+
+    /**
+     * 构建视频生成记录
+     */
+    private void buildVideoGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
+        record.setResourceType("MEDIA");
+        record.setResourceName("VIDEO");
+        record.setResourceSubtype("VIDEO_GENERATION");
+        record.setDescription(usageDetail.getDescription());
+        
+        // 使用量数据
+        Map<String, Object> usageData = new HashMap<>();
+        usageData.put("videoDuration", usageDetail.getVideoDuration());
+        record.setUsageData(JSONUtil.toJsonStr(usageData));
+        
+        // 计费计算 - 暂时按0计费，后续计费系统处理
+        record.setBillingUnit("SECONDS");
+        record.setUsageAmount(new BigDecimal(usageDetail.getVideoDuration() != null ? usageDetail.getVideoDuration() : 0));
+        record.setUnitPrice(BigDecimal.ZERO);
+        record.setBillingAmount(BigDecimal.ZERO);
+    }
+
+    /**
+     * 构建PPT生成记录
+     */
+    private void buildPptGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
+        record.setResourceType("FUNCTION");
+        record.setResourceName("PPT_GENERATION");
+        record.setResourceSubtype("PPT_PAGES");
+        record.setDescription(usageDetail.getDescription());
+        
+        // 使用量数据
+        Map<String, Object> usageData = new HashMap<>();
+        usageData.put("pptPages", usageDetail.getPptPages());
+        record.setUsageData(JSONUtil.toJsonStr(usageData));
+        
+        // 计费计算 - 暂时按0计费，后续计费系统处理
+        record.setBillingUnit("PAGES");
+        record.setUsageAmount(new BigDecimal(usageDetail.getPptPages() != null ? usageDetail.getPptPages() : 0));
+        record.setUnitPrice(BigDecimal.ZERO);
+        record.setBillingAmount(BigDecimal.ZERO);
     }
 
     /**
      * 构建功能使用记录
      */
-    private ResourceUsageRecordEntity buildFunctionUsageRecord(ResourceUsageRequest request, 
-            ResourceUsageRequest.FunctionUsage functionUsage, String reportId) {
-        ResourceUsageRecordEntity record = new ResourceUsageRecordEntity();
-        
-        // 基础信息
-        setBaseFields(record, request, reportId);
-        
-        // 资源信息
+    private void buildFunctionRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail, String taskType) {
         record.setResourceType("FUNCTION");
-        record.setResourceName(functionUsage.getFunctionType());
-        record.setResourceSubtype(functionUsage.getBillingUnit());
-        record.setDescription(functionUsage.getDescription());
+        record.setResourceName(taskType);
+        record.setResourceSubtype("FUNCTION_TIMES");
+        record.setDescription(usageDetail.getDescription());
         
         // 使用量数据
         Map<String, Object> usageData = new HashMap<>();
-        usageData.put("functionType", functionUsage.getFunctionType());
-        usageData.put("usageCount", functionUsage.getUsageCount());
-        usageData.put("billingUnit", functionUsage.getBillingUnit());
+        usageData.put("functionTimes", usageDetail.getFunctionTimes());
+        usageData.put("taskType", taskType);
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 计费计算
-        BigDecimal unitPrice = getFunctionPrice(functionUsage.getFunctionType());
-        BigDecimal totalCost = unitPrice.multiply(new BigDecimal(functionUsage.getUsageCount()));
-        
-        record.setBillingUnit(functionUsage.getBillingUnit());
-        record.setUsageAmount(new BigDecimal(functionUsage.getUsageCount()));
-        record.setUnitPrice(unitPrice);
-        record.setBillingAmount(totalCost);
-        
-        return record;
+        // 计费计算 - 暂时按0计费，后续计费系统处理
+        record.setBillingUnit("TIMES");
+        record.setUsageAmount(new BigDecimal(usageDetail.getFunctionTimes() != null ? usageDetail.getFunctionTimes() : 1));
+        record.setUnitPrice(BigDecimal.ZERO);
+        record.setBillingAmount(BigDecimal.ZERO);
     }
 
     /**
-     * 构建媒体使用记录
+     * 构建默认记录
      */
-    private ResourceUsageRecordEntity buildMediaUsageRecord(ResourceUsageRequest request, 
-            ResourceUsageRequest.MediaUsage mediaUsage, String reportId) {
-        ResourceUsageRecordEntity record = new ResourceUsageRecordEntity();
-        
-        // 基础信息
-        setBaseFields(record, request, reportId);
-        
-        // 资源信息
-        record.setResourceType("MEDIA");
-        record.setResourceName(mediaUsage.getMediaType());
-        record.setResourceSubtype(mediaUsage.getBillingUnit());
-        record.setDescription(mediaUsage.getDescription());
+    private void buildDefaultRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
+        record.setResourceType("UNKNOWN");
+        record.setResourceName("UNKNOWN");
+        record.setResourceSubtype("UNKNOWN");
+        record.setDescription(usageDetail.getDescription());
         
         // 使用量数据
         Map<String, Object> usageData = new HashMap<>();
-        usageData.put("mediaType", mediaUsage.getMediaType());
-        usageData.put("usageAmount", mediaUsage.getUsageAmount());
-        usageData.put("billingUnit", mediaUsage.getBillingUnit());
+        usageData.put("rawData", usageDetail);
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 计费计算
-        BigDecimal unitPrice = getMediaPrice(mediaUsage.getMediaType());
-        BigDecimal totalCost = unitPrice.multiply(new BigDecimal(mediaUsage.getUsageAmount()));
-        
-        record.setBillingUnit(mediaUsage.getBillingUnit());
-        record.setUsageAmount(new BigDecimal(mediaUsage.getUsageAmount()));
-        record.setUnitPrice(unitPrice);
-        record.setBillingAmount(totalCost);
-        
-        return record;
+        // 计费计算 - 暂时按0计费，后续计费系统处理
+        record.setBillingUnit("UNKNOWN");
+        record.setUsageAmount(BigDecimal.ZERO);
+        record.setUnitPrice(BigDecimal.ZERO);
+        record.setBillingAmount(BigDecimal.ZERO);
     }
 
     /**
@@ -242,49 +284,8 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         record.setUserId(request.getUserId());
         record.setAgentId(request.getAgentId());
         record.setContextId(request.getContextId());
-        record.setTaskType(request.getTaskType());
+        record.setTaskType(request.getTaskType() != null ? request.getTaskType().getCode() : null);
         record.setTaskDescription(request.getTaskDescription());
-    }
-
-    /**
-     * 计算Token费用
-     */
-    private BigDecimal calculateTokenCost(Long tokens, BigDecimal pricePerThousand) {
-        if (tokens == null || tokens == 0) {
-            return BigDecimal.ZERO;
-        }
-        return new BigDecimal(tokens).divide(new BigDecimal(1000), 6, BigDecimal.ROUND_HALF_UP)
-                .multiply(pricePerThousand);
-    }
-
-    /**
-     * 获取功能价格
-     */
-    private BigDecimal getFunctionPrice(String functionType) {
-        switch (functionType) {
-            case "DEEPSEARCH":
-                return deepsearchPrice;
-            case "BROWSERUSE":
-                return browserusePrice;
-            case "PPT_GENERATION":
-                return pptGenerationPrice;
-            default:
-                return BigDecimal.valueOf(0.001); // 默认价格
-        }
-    }
-
-    /**
-     * 获取媒体价格
-     */
-    private BigDecimal getMediaPrice(String mediaType) {
-        switch (mediaType) {
-            case "IMAGE":
-                return imageGenerationPrice;
-            case "VIDEO":
-                return videoGenerationPrice;
-            default:
-                return BigDecimal.valueOf(0.1); // 默认价格
-        }
     }
 
     /**

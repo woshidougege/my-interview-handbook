@@ -1,5 +1,7 @@
 package com.noah.superagent.common.dto.request;
 
+import com.noah.superagent.common.enums.ResourceTypeEnum;
+import com.noah.superagent.common.enums.TaskTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -7,11 +9,10 @@ import javax.validation.Valid;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import java.math.BigDecimal;
-import java.util.List;
 
 /**
  * 资源使用量上报请求
+ * 子智能体每次任务完成后上报真实消耗数据
  *
  * @author Noah
  * @since 1.0.0
@@ -21,7 +22,12 @@ import java.util.List;
 public class ResourceUsageRequest {
 
     @NotBlank(message = "请求ID不能为空")
-    @Schema(description = "请求ID（幂等键）", example = "req_20240101_agent123_context456_001")
+    @Schema(description = "请求ID（幂等键）\n" +
+            "生成规则：必须保证同一个任务重试时requestId相同，不同任务requestId不同\n" +
+            "推荐格式：{前缀}_{用户ID}_{会话ID}_{任务序号}_{时间戳}\n" +
+            "示例：req_user123_context789_001_1704701234567\n" +
+            "注意：这是幂等性控制的关键，重复上报相同requestId会被系统识别并忽略", 
+            example = "req_user123_context789_001_1704701234567")
     private String requestId;
 
     @NotBlank(message = "用户ID不能为空")
@@ -35,100 +41,46 @@ public class ResourceUsageRequest {
     @Schema(description = "会话ID", example = "context_12345")
     private String contextId;
 
-    @NotBlank(message = "任务类型不能为空")
-    @Schema(description = "任务类型", example = "INDUSTRY_RESEARCH_REPORT", 
-            allowableValues = {"INDUSTRY_RESEARCH_REPORT", "PPT_GENERATION", "CODE_GENERATION", "IMAGE_GENERATION", "VIDEO_GENERATION", "TRANSLATION", "DOCUMENT_WRITING"})
-    private String taskType;
+    @NotNull(message = "任务类型不能为空")
+    @Schema(description = "任务类型", example = "TEXT_GENERATION")
+    private TaskTypeEnum taskType;
 
     @Schema(description = "任务描述", example = "生成某行业调研报告任务")
     private String taskDescription;
 
     @Valid
-    @Schema(description = "模型使用记录列表")
-    private List<ModelUsage> modelUsages;
-
-    @Valid
-    @Schema(description = "功能使用记录列表")
-    private List<FunctionUsage> functionUsages;
-
-    @Valid
-    @Schema(description = "媒体生成记录列表")
-    private List<MediaUsage> mediaUsages;
+    @Schema(description = "资源使用详情")
+    private ResourceUsageDetail usageDetail;
 
     /**
-     * 模型使用记录
+     * 资源使用详情
      */
     @Data
-    @Schema(description = "模型使用记录")
-    public static class ModelUsage {
-        @NotBlank(message = "模型名称不能为空")
-        @Schema(description = "模型名称", example = "gpt-4")
-        private String modelName;
-
-        @NotBlank(message = "模型类型不能为空")
-        @Schema(description = "模型类型", example = "TEXT_GENERATION", 
-                allowableValues = {"TEXT_GENERATION", "IMAGE_GENERATION", "VIDEO_GENERATION"})
-        private String modelType;
-
-        @Min(value = 0, message = "输入Token数不能为负数")
-        @Schema(description = "输入Token数量", example = "3000")
+    @Schema(description = "资源使用详情")
+    public static class ResourceUsageDetail {
+        
+        @Schema(description = "资源类型", example = "TOKEN")
+        private ResourceTypeEnum resourceType;
+        
+        @Schema(description = "输入Token数量（仅文本生成时使用）", example = "3000")
         private Long inputTokens;
-
-        @Min(value = 0, message = "输出Token数不能为负数")
-        @Schema(description = "输出Token数量", example = "1000000")
+        
+        @Schema(description = "输出Token数量（仅文本生成时使用）", example = "1000")
         private Long outputTokens;
-
-        @Schema(description = "使用描述", example = "深度搜索执行")
-        private String description;
-    }
-
-    /**
-     * 功能使用记录
-     */
-    @Data
-    @Schema(description = "功能使用记录")
-    public static class FunctionUsage {
-        @NotBlank(message = "功能类型不能为空")
-        @Schema(description = "功能类型", example = "DEEPSEARCH", 
-                allowableValues = {"DEEPSEARCH", "BROWSERUSE", "SOFTWARE_OPERATION", "PPT_GENERATION", 
-                                 "MEETING_MINUTES", "DOCUMENT_WRITING", "CODING", "TRANSLATION", 
-                                 "MIND_MAP", "DATABASE_ANALYSIS", "EXCEL_ANALYSIS"})
-        private String functionType;
-
-        @NotNull(message = "使用次数不能为空")
-        @Min(value = 1, message = "使用次数至少为1")
-        @Schema(description = "使用次数", example = "1")
-        private Integer usageCount;
-
-        @Schema(description = "计费单位", example = "TIMES", 
-                allowableValues = {"TIMES", "PAGES", "SECONDS"})
-        private String billingUnit;
-
-        @Schema(description = "功能描述", example = "执行深度搜索")
-        private String description;
-    }
-
-    /**
-     * 媒体使用记录
-     */
-    @Data
-    @Schema(description = "媒体使用记录")
-    public static class MediaUsage {
-        @NotBlank(message = "媒体类型不能为空")
-        @Schema(description = "媒体类型", example = "IMAGE", 
-                allowableValues = {"IMAGE", "VIDEO"})
-        private String mediaType;
-
-        @NotNull(message = "使用量不能为空")
-        @Min(value = 1, message = "使用量至少为1")
-        @Schema(description = "使用量（图片：张数，视频：秒数）", example = "4")
-        private Integer usageAmount;
-
-        @Schema(description = "计费单位", example = "COUNT", 
-                allowableValues = {"COUNT", "SECONDS"})
-        private String billingUnit;
-
-        @Schema(description = "媒体描述", example = "补充图片生成，粘入PPT中")
+        
+        @Schema(description = "图片数量（仅图片生成时使用）", example = "2")
+        private Integer imageCount;
+        
+        @Schema(description = "视频时长秒数（仅视频生成时使用）", example = "30")
+        private Integer videoDuration;
+        
+        @Schema(description = "PPT页数（仅PPT生成时使用）", example = "10")
+        private Integer pptPages;
+        
+        @Schema(description = "功能使用次数（所有功能类任务）", example = "1")
+        private Integer functionTimes;
+        
+        @Schema(description = "资源使用描述", example = "生成行业调研报告内容")
         private String description;
     }
 }

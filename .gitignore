@@ -10,3 +10,6 @@
 /super-agent-service-api/super-agent-service-api.iml
 /super-agent-service-impl/super-agent-service-impl.iml
 /super-agent-web/super-agent-web.iml
+
+# Claude本地配置文件
+.claude/settings.local.json

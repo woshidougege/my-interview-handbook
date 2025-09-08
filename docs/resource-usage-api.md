@@ -1,0 +1,487 @@
+# 子智能体资源使用量上报接口文档
+
+## 🎯 概述
+
+**接口名称**: 资源使用量上报接口  
+**接口路径**: `POST /api/v1/resource-usage/report`  
+**接口作用**: 子智能体每次任务完成后，上报本次任务的真实资源消耗量（Token、图片数量、视频时长、功能调用次数等）  
+**处理模式**: 异步处理，快速响应  
+**核心特性**: 支持幂等性，防止重复计费  
+
+---
+
+## ⚠️ 极其重要 - requestId生成规则
+
+### 🔑 requestId是幂等性控制的关键
+
+**必须严格遵守的规则**:
+1. **同一个任务重试时必须使用相同的requestId** ❗
+2. **不同任务必须使用不同的requestId** ❗
+3. **一旦生成并上报成功，不可更改** ❗
+
+### 📋 推荐生成格式
+```
+{前缀}_{用户ID}_{会话ID}_{任务序号}_{时间戳}
+```
+
+### ✅ 正确示例
+```
+req_user123_context789_001_1704701234567  # ✅ 推荐格式
+req_user123_context789_002_1704701235567  # ✅ 同一用户同一会话的任务序号递增
+```
+
+### ❌ 错误示例（切勿这样实现）
+```
+random_123_456                            # ❌ 无法追踪，无规律
+guid_abc123                               # ❌ 完全随机，无法调试
+req_123                                   # ❌ 信息太少，容易冲突
+```
+
+---
+
+## 🔧 requestId生成实战代码
+
+### Java实现（推荐）
+```java
+public class RequestIdGenerator {
+    
+    // 每个会话维护一个任务序号
+    private final Map<String, AtomicInteger> contextSequences = new ConcurrentHashMap<>();
+    
+    /**
+     * 生成requestId - 推荐方案
+     */
+    public String generateRequestId(String userId, String contextId) {
+        // 获取当前会话的任务序号
+        AtomicInteger sequence = contextSequences.computeIfAbsent(contextId, k -> new AtomicInteger(0));
+        int taskNumber = sequence.incrementAndGet();
+        
+        // 生成requestId
+        return String.format("req_%s_%s_%03d_%d", 
+            userId, contextId, taskNumber, System.currentTimeMillis());
+    }
+    
+    /**
+     * 会话结束时清理（可选）
+     */
+    public void clearContext(String contextId) {
+        contextSequences.remove(contextId);
+    }
+}
+```
+
+### Python实现
+```python
+import time
+import hashlib
+from collections import defaultdict
+
+class RequestIdGenerator:
+    def __init__(self):
+        self.context_sequences = defaultdict(int)
+    
+    def generate_request_id(self, user_id, context_id):
+        """生成requestId - 推荐方案"""
+        self.context_sequences[context_id] += 1
+        task_sequence = self.context_sequences[context_id]
+        timestamp = int(time.time() * 1000)
+        
+        return f"req_{user_id}_{context_id}_{task_sequence:03d}_{timestamp}"
+    
+    def clear_context(self, context_id):
+        """清理会话数据"""
+        if context_id in self.context_sequences:
+            del self.context_sequences[context_id]
+```
+
+### JavaScript实现
+```javascript
+class RequestIdGenerator {
+    constructor() {
+        this.contextSequences = new Map();
+    }
+    
+    generateRequestId(userId, contextId) {
+        // 获取当前序列号
+        const currentSeq = this.contextSequences.get(contextId) || 0;
+        const newSeq = currentSeq + 1;
+        this.contextSequences.set(contextId, newSeq);
+        
+        const timestamp = Date.now();
+        return `req_${userId}_${contextId}_${String(newSeq).padStart(3, '0')}_${timestamp}`;
+    }
+}
+```
+
+---
+
+## 📋 子智能体完整调用示例
+
+### Python子智能体完整实现
+```python
+import requests
+import time
+import logging
+
+class SubAgentClient:
+    def __init__(self, user_id, context_id, agent_id, api_base_url):
+        self.user_id = user_id
+        self.context_id = context_id
+        self.agent_id = agent_id
+        self.api_base_url = api_base_url
+        self.task_sequence = 0
+        
+    def generate_request_id(self, task_type):
+        """生成符合规则的requestId"""
+        self.task_sequence += 1
+        timestamp = int(time.time() * 1000)
+        return f"req_{self.user_id}_{self.context_id}_{self.task_sequence:03d}_{timestamp}"
+    
+    def execute_text_generation(self, prompt, model_name="gpt-4"):
+        """执行文本生成任务并上报消耗"""
+        # 生成requestId（关键点：任务开始前先生成）
+        request_id = self.generate_request_id("TEXT_GENERATION")
+        
+        try:
+            logging.info(f"开始执行任务: {request_id}")
+            
+            # 1. 调用大模型
+            result = self.call_llm_api(prompt, model_name)
+            
+            # 2. 计算Token消耗
+            input_tokens = self.count_tokens(prompt)
+            output_tokens = self.count_tokens(result)
+            
+            # 3. 上报资源使用
+            success = self.report_text_usage(request_id, input_tokens, output_tokens, 
+                                           f"使用{model_name}生成文本")
+            
+            if success:
+                logging.info(f"任务完成并成功上报: {request_id}")
+                return result
+            else:
+                raise Exception("资源使用上报失败")
+                
+        except Exception as e:
+            logging.error(f"任务执行失败: {request_id}, 错误: {str(e)}")
+            # ⚠️ 重试时必须使用相同的requestId
+            raise Exception(f"任务执行失败，建议重试: {request_id}")
+    
+    def report_text_usage(self, request_id, input_tokens, output_tokens, description):
+        """上报文本生成资源使用"""
+        payload = {
+            "requestId": request_id,  # ⚠️ 关键：使用相同的requestId
+            "userId": self.user_id,
+            "agentId": self.agent_id,
+            "contextId": self.context_id,
+            "taskType": "TEXT_GENERATION",
+            "taskDescription": description,
+            "usageDetail": {
+                "resourceType": "TOKEN",
+                "inputTokens": input_tokens,
+                "outputTokens": output_tokens,
+                "description": description
+            }
+        }
+        
+        try:
+            response = requests.post(
+                f"{self.api_base_url}/api/v1/resource-usage/report",
+                json=payload,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("success"):
+                    logging.info(f"上报成功: {request_id}")
+                    return True
+                else:
+                    logging.warning(f"上报失败: {result.get('message')}")
+            else:
+                logging.error(f"HTTP错误: {response.status_code}")
+                
+        except requests.exceptions.Timeout:
+            logging.error("上报超时")
+        except Exception as e:
+            logging.error(f"上报异常: {str(e)}")
+        
+        return False
+    
+    # 其他任务类型的上报方法
+    def report_image_usage(self, request_id, image_count, description):
+        """上报图片生成资源使用"""
+        payload = {
+            "requestId": request_id,
+            "userId": self.user_id,
+            "agentId": self.agent_id,
+            "contextId": self.context_id,
+            "taskType": "IMAGE_GENERATION",
+            "taskDescription": description,
+            "usageDetail": {
+                "resourceType": "IMAGE_COUNT",
+                "imageCount": image_count,
+                "description": description
+            }
+        }
+        return self._report_usage(payload)
+    
+    def report_function_usage(self, request_id, function_type, times, description):
+        """上报功能调用资源使用"""
+        payload = {
+            "requestId": request_id,
+            "userId": self.user_id,
+            "agentId": self.agent_id,
+            "contextId": self.context_id,
+            "taskType": function_type,  # 如: DEEPSEARCH, BROWSERUSE等
+            "taskDescription": description,
+            "usageDetail": {
+                "resourceType": "FUNCTION_TIMES",
+                "functionTimes": times,
+                "description": description
+            }
+        }
+        return self._report_usage(payload)
+
+# 使用示例
+if __name__ == "__main__":
+    client = SubAgentClient(
+        user_id="user_123",
+        context_id="context_789", 
+        agent_id="text_agent_001",
+        api_base_url="http://localhost:8081/super-agent"
+    )
+    
+    # 执行任务
+    result = client.execute_text_generation("请生成一份AI行业调研报告")
+    print(f"生成结果: {result}")
+```
+
+---
+
+## 📊 请求参数详细说明
+
+### Header参数
+| 参数名 | 类型 | 是否必须 | 描述 |
+|--------|------|----------|------|
+| Content-Type | string | 是 | 必须设置为 `application/json` |
+
+### Body参数结构
+```json
+{
+  "requestId": "req_user123_context789_001_1704701234567",
+  "userId": "user_123",
+  "agentId": "agent_456",
+  "contextId": "context_789",
+  "taskType": "TEXT_GENERATION",
+  "taskDescription": "生成行业调研报告",
+  "usageDetail": {
+    "resourceType": "TOKEN",
+    "inputTokens": 1500,
+    "outputTokens": 2800,
+    "description": "生成某行业深度分析报告"
+  }
+}
+```
+
+### 参数详解
+
+| 参数名 | 类型 | 是否必须 | 描述 |
+|--------|------|----------|------|
+| requestId | string | ✅ 是 | **极其重要**：请求ID，幂等性控制的关键。详见上方的生成规则 |
+| userId | string | ✅ 是 | 用户ID |
+| agentId | string | ✅ 是 | 智能体ID（子智能体的唯一标识） |
+| contextId | string | ❌ 否 | 会话ID（建议提供，便于追踪） |
+| taskType | string | ✅ 是 | 任务类型，详见支持的任务类型 |
+| taskDescription | string | ❌ 否 | 任务描述 |
+| usageDetail | object | ✅ 是 | 资源使用详情 |
+
+### usageDetail对象
+
+| 参数名 | 类型 | 是否必须 | 描述 |
+|--------|------|----------|------|
+| resourceType | string | ✅ 是 | 资源类型：TOKEN、IMAGE_COUNT、VIDEO_DURATION、PPT_PAGES、FUNCTION_TIMES |
+| inputTokens | number | ❌ 否 | 输入Token数量（resourceType为TOKEN时必填） |
+| outputTokens | number | ❌ 否 | 输出Token数量（resourceType为TOKEN时必填） |
+| imageCount | number | ❌ 否 | 图片数量（resourceType为IMAGE_COUNT时必填） |
+| videoDuration | number | ❌ 否 | 视频时长秒数（resourceType为VIDEO_DURATION时必填） |
+| pptPages | number | ❌ 否 | PPT页数（resourceType为PPT_PAGES时必填） |
+| functionTimes | number | ❌ 否 | 功能使用次数（resourceType为FUNCTION_TIMES时必填，默认为1） |
+| description | string | ❌ 否 | 资源使用描述 |
+
+---
+
+## 📋 支持的任务类型和资源类型
+
+| 任务类型 | 描述 | 对应的resourceType | 主要参数 |
+|----------|------|-------------------|----------|
+| TEXT_GENERATION | 文本生成 | TOKEN | inputTokens, outputTokens |
+| IMAGE_GENERATION | 文生图 | IMAGE_COUNT | imageCount |
+| VIDEO_GENERATION | 文生视频 | VIDEO_DURATION | videoDuration（秒） |
+| PPT_GENERATION | PPT生成 | PPT_PAGES | pptPages |
+| MEETING_MINUTES | 会议纪要 | FUNCTION_TIMES | functionTimes（默认为1） |
+| DOCUMENT_WRITING | 文档编写 | FUNCTION_TIMES | functionTimes（默认为1） |
+| CODING | 编码 | FUNCTION_TIMES | functionTimes（默认为1） |
+| TRANSLATION | 翻译 | FUNCTION_TIMES | functionTimes（默认为1） |
+| MIND_MAP | 思维导图 | FUNCTION_TIMES | functionTimes（默认为1） |
+| DATABASE_ANALYSIS | 数据库分析 | FUNCTION_TIMES | functionTimes（默认为1） |
+| EXCEL_ANALYSIS | Excel分析 | FUNCTION_TIMES | functionTimes（默认为1） |
+| BROWSERUSE | 浏览器使用 | FUNCTION_TIMES | functionTimes（默认为1） |
+| DEEPSEARCH | 深度搜索 | FUNCTION_TIMES | functionTimes（默认为1） |
+| SOFTWARE_OPERATION | 软件操作 | FUNCTION_TIMES | functionTimes（默认为1） |
+
+---
+
+## 🧪 接口测试示例
+
+### 1. 文本生成（Token消耗）
+```bash
+curl -X POST http://localhost:8081/super-agent/api/v1/resource-usage/report \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requestId": "req_user123_context789_001_1704701234567",
+    "userId": "user_123",
+    "agentId": "text_agent_001",
+    "contextId": "context_789",
+    "taskType": "TEXT_GENERATION",
+    "taskDescription": "生成行业调研报告",
+    "usageDetail": {
+      "resourceType": "TOKEN",
+      "inputTokens": 1500,
+      "outputTokens": 2800,
+      "description": "生成某行业深度分析报告"
+    }
+  }'
+```
+
+### 2. 图片生成（数量）
+```bash
+curl -X POST http://localhost:8081/super-agent/api/v1/resource-usage/report \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requestId": "req_user123_context789_002_1704701235567",
+    "userId": "user_123",
+    "agentId": "image_agent_001",
+    "contextId": "context_789",
+    "taskType": "IMAGE_GENERATION",
+    "taskDescription": "生成配图",
+    "usageDetail": {
+      "resourceType": "IMAGE_COUNT",
+      "imageCount": 3,
+      "description": "为PPT生成配图"
+    }
+  }'
+```
+
+### 3. 功能调用（次数）
+```bash
+curl -X POST http://localhost:8081/super-agent/api/v1/resource-usage/report \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requestId": "req_user123_context789_003_1704701236567",
+    "userId": "user_123",
+    "agentId": "deepsearch_agent_001",
+    "contextId": "context_789",
+    "taskType": "DEEPSEARCH",
+    "taskDescription": "深度搜索",
+    "usageDetail": {
+      "resourceType": "FUNCTION_TIMES",
+      "functionTimes": 1,
+      "description": "执行深度搜索获取信息"
+    }
+  }'
+```
+
+---
+
+## 📊 响应结果
+
+### 成功响应
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "操作成功",
+  "data": "req_user123_context789_001_1704701234567"
+}
+```
+
+### 重复请求响应（幂等性正常）
+```json
+{
+  "success": true,
+  "code": "DUPLICATE_REQUEST",
+  "message": "重复请求，已处理",
+  "data": "req_user123_context789_001_1704701234567"
+}
+```
+
+### 错误响应
+```json
+{
+  "success": false,
+  "code": "VALIDATION_ERROR",
+  "message": "请求ID不能为空",
+  "data": null
+}
+```
+
+---
+
+## ⚠️ 常见错误和注意事项
+
+### ❌ 致命错误：requestId生成不正确
+```python
+# ❌ 错误：每次调用都生成新的requestId
+def execute_task_wrong():
+    request_id = str(uuid.uuid4())  # 每次重试都不同！
+    report_usage(request_id, ...)
+
+# ❌ 错误：完全随机，无法调试
+def execute_task_wrong2():
+    request_id = f"req_{random.randint(1000, 9999)}"  # 无规律可循
+    report_usage(request_id, ...)
+```
+
+### ✅ 正确做法
+```python
+# ✅ 正确：同一个任务保持相同的requestId
+def execute_task_correct():
+    request_id = generate_request_id_with_retry_logic()  # 重试时保持不变
+    
+    try:
+        result = perform_task()
+        report_usage(request_id, ...)
+    except Exception:
+        # 重试时使用相同的requestId
+        retry_task(same_request_id=request_id)
+```
+
+### 🔍 调试建议
+1. **在requestId中包含用户ID、会话ID、任务类型等信息**，便于问题排查
+2. **记录每次上报的requestId**，便于追踪任务执行流程
+3. **建议添加任务序号**，确保同一会话内requestId的顺序性
+4. **日志中务必记录requestId**，方便定位问题
+
+### 🚨 幂等性警告
+- **同一个任务重试时，必须使用相同的requestId**
+- **不同任务必须使用不同的requestId**
+- **系统会忽略重复requestId的上报，返回成功但不会重复计费**
+- **第一次上报的数据会被系统记录为最终结果**
+
+---
+
+## 📞 技术支持和联系方式
+
+如有疑问，请联系后端开发团队：
+- **API文档地址**: http://localhost:8081/super-agent/doc.html
+- **接口路径**: `/api/v1/resource-usage/report`
+- **响应码**: 200（成功），其他（失败）
+
+**重要提醒**: 请严格按照本文档的requestId生成规则实现，这是保证系统正确计费的关键。不正确的requestId生成可能导致重复计费或任务丢失。 
+
+---
+
+**文档版本**: v1.0  
+**更新日期**: 2025-09-08  
+**适用对象**: 下游子智能体开发者
