@@ -18,6 +18,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 /**
  * 工作空间管理控制器
@@ -37,7 +38,7 @@ public class WorkspaceController {
     private final WorkspaceWebConvert workspaceWebConvert;
 
     @PostMapping
-    @Operation(summary = "创建工作空间", description = "创建新工作空间")
+    @Operation(summary = "创建工作空间", description = "创建新的工作空间")
     public ApiResponse<WorkspaceResponse> createWorkspace(@Valid @RequestBody WorkspaceCreateRequest request) {
         log.info("接收创建工作空间请求: {}", request.getName());
         
@@ -50,7 +51,7 @@ public class WorkspaceController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "查询工作空间", description = "根据ID查询工作空间详情")
+    @Operation(summary = "查询工作空间详情", description = "根据ID查询工作空间详细信息")
     public ApiResponse<WorkspaceResponse> getWorkspaceById(
             @Parameter(description = "工作空间ID", example = "1234567890123456789") 
             @PathVariable("id") Long id) {
@@ -83,7 +84,7 @@ public class WorkspaceController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "更新工作空间", description = "更新工作空间信息")
+    @Operation(summary = "更新工作空间", description = "根据ID更新工作空间信息")
     public ApiResponse<WorkspaceResponse> updateWorkspace(
             @Parameter(description = "工作空间ID", example = "1234567890123456789") 
             @PathVariable("id") Long id,
@@ -92,7 +93,7 @@ public class WorkspaceController {
         
         // UpdateRequest -> DTO -> Service -> DTO -> Response
         WorkspaceDTO updateDO = workspaceWebConvert.fromUpdateRequest(request);
-        updateDO.setId(id); // 设置要更新的ID
+        updateDO.setId(id);
         WorkspaceDTO resultDO = workspaceService.updateWorkspace(updateDO);
         WorkspaceResponse response = workspaceWebConvert.toResponse(resultDO);
         
@@ -108,5 +109,18 @@ public class WorkspaceController {
         
         workspaceService.deleteWorkspace(id);
         return ApiResponse.success("删除成功");
+    }
+
+    @GetMapping("/user/{userId}")
+    @Operation(summary = "根据用户ID查询工作空间", description = "根据用户ID查询该用户下的所有工作空间列表")
+    public ApiResponse<List<WorkspaceResponse>> getWorkspacesByUserId(
+            @Parameter(description = "用户ID", example = "1234567890123456789")
+            @PathVariable("userId") Long userId) {
+        log.info("接收根据用户ID查询工作空间请求: {}", userId);
+        
+        List<WorkspaceDTO> workspaceDOs = workspaceService.getWorkspacesByUserId(userId);
+        List<WorkspaceResponse> responses = workspaceWebConvert.toResponseList(workspaceDOs);
+        
+        return ApiResponse.success("查询成功", responses);
     }
 }

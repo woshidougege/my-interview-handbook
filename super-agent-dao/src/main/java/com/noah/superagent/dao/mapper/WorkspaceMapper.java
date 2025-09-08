@@ -27,10 +27,10 @@ public interface WorkspaceMapper extends BaseMapper<WorkspaceEntity> {
     }
 
     /**
-     * 根据用户ID查询默认工作空间
+     * 根据用户ID查询默认工作空间列表
      */
-    default WorkspaceEntity selectDefaultByUserId(Long userId) {
-        return selectOneByQuery(QueryWrapper.create()
+    default List<WorkspaceEntity> selectDefaultByUserId(Long userId) {
+        return selectListByQuery(QueryWrapper.create()
                 .where(WorkspaceEntity::getUserId).eq(userId)
                 .and(WorkspaceEntity::getIsDefault).eq(1));
     }

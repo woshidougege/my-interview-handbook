@@ -12,7 +12,7 @@ sa-token:
     # 业务系统公钥 注：需登录认证中心-基础管理系统-权限管理-系统管理-（页签）单点登录-右侧按钮（详情）公钥
     public-key: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCVawc26t6JxZnnn5yhAYfbrlNcx4lq/oB5Wy6SKdKDcj2Cfk2L/cPeo7+fNtZAtJBnOU3jUp3aQ+RPdSh8X+NU4zH50655Ey7bH73QJbfTnUtquIVbX/1E2/VTV0wOuFrq/pQ2UVDWcAluJtiZkp+cdNqJqEN3JPm0dQ/X2U/n9QIDAQAB
     # 业务系统不需要认证的地址路径
-    exclude-urls: ["/sso/*","favicon.ico","/**/*.css","/**/*.html","/**/*.js","swagger-resource","/v3/api-docs**","/doc.html**","/webjars/**","/swagger-ui/**","/swagger-resources/**"]
+    exclude-urls: ["/sso/*","favicon.ico","/**/*.css","/**/*.html","/**/*.js","swagger-resource","/v3/api-docs**","/doc.html**","/webjars/**","/swagger-ui/**","/swagger-resources/**", "/chat.html","/static/**","/ws/**","/v2/api-docs"]
     isHttp: true
   # 是否打印启动成功标志
   is-print: true

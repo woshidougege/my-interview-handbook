@@ -25,7 +25,7 @@ public class ChatTaskCreateRequest extends BaseRequest {
     @Schema(description = "会话ID，用于与下游平台通信", example = "session_001")
     private String sessionId;
 
-    @NotBlank(message = "对话任务标题不能为空")
+    //@NotBlank(message = "对话任务标题不能为空")
     @Schema(description = "对话任务标题", example = "技术问题咨询")
     private String title;
 

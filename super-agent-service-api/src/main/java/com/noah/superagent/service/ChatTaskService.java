@@ -52,4 +52,39 @@ public interface ChatTaskService {
      * @param id 对话任务ID
      */
     void deleteChatTask(Long id);
+    
+    /**
+     * 收藏对话任务
+     *
+     * @param id 对话任务ID
+     */
+    void favoriteChatTask(Long id);
+    
+    /**
+     * 取消收藏对话任务
+     *
+     * @param id 对话任务ID
+     */
+    void unfavoriteChatTask(Long id);
+    
+    /**
+     * 查询收藏的对话任务列表
+     *
+     * @param workspaceId 工作空间ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @return 收藏的对话任务分页列表
+     */
+    PageResponse<ChatTaskDTO> getFavoriteChatTasks(Long workspaceId, Integer pageNum, Integer pageSize);
+    
+    /**
+     * 查询工作空间下的所有对话任务
+     *
+     * @param workspaceId 工作空间ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param keyword 关键词
+     * @return 对话任务分页列表
+     */
+    PageResponse<ChatTaskDTO> getChatTaskPageByWorkspaceId(Long workspaceId, Integer pageNum, Integer pageSize, String keyword);
 }
