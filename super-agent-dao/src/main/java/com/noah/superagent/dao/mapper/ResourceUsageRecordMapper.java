@@ -2,6 +2,7 @@ package com.noah.superagent.dao.mapper;
 
 import com.mybatisflex.core.BaseMapper;
 import com.mybatisflex.core.query.QueryWrapper;
+import com.noah.superagent.common.enums.TaskTypeEnum;
 import com.noah.superagent.dao.entity.ResourceUsageRecordEntity;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -32,7 +33,7 @@ public interface ResourceUsageRecordMapper extends BaseMapper<ResourceUsageRecor
     /**
      * 根据用户ID和时间范围查询使用记录
      */
-    default List<ResourceUsageRecordEntity> findByUserIdAndTimeRange(String userId, 
+    default List<ResourceUsageRecordEntity> findByUserIdAndTimeRange(Long userId, 
             String startTime, String endTime) {
         return selectListByQuery(QueryWrapper.create()
                 .select()
@@ -46,7 +47,7 @@ public interface ResourceUsageRecordMapper extends BaseMapper<ResourceUsageRecor
     /**
      * 根据任务类型统计使用量
      */
-    default List<ResourceUsageRecordEntity> findByTaskType(String taskType) {
+    default List<ResourceUsageRecordEntity> findByTaskType(TaskTypeEnum taskType) {
         return selectListByQuery(QueryWrapper.create()
                 .select()
                 .where(RESOURCE_USAGE_RECORD_ENTITY.TASK_TYPE.eq(taskType))
