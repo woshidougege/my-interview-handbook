@@ -1,5 +1,8 @@
 package com.noah.superagent.common.enums;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.mybatisflex.annotation.EnumValue;
 import lombok.Getter;
 
 /**
@@ -9,7 +12,7 @@ import lombok.Getter;
  * @since 1.0.0
  */
 @Getter
-public enum ResourceTypeEnum {
+public enum ResourceTypeEnum implements BaseEnum<String> {
 
     TOKEN("TOKEN", "Token", "千token"),
     IMAGE_COUNT("IMAGE_COUNT", "图片数量", "张"),
@@ -17,6 +20,8 @@ public enum ResourceTypeEnum {
     PPT_PAGES("PPT_PAGES", "PPT页数", "页"),
     FUNCTION_TIMES("FUNCTION_TIMES", "功能次数", "次");
 
+    @EnumValue
+    @JsonValue
     private final String code;
     private final String name;
     private final String unit;
@@ -27,12 +32,12 @@ public enum ResourceTypeEnum {
         this.unit = unit;
     }
 
-    public static ResourceTypeEnum of(String code) {
-        for (ResourceTypeEnum value : values()) {
-            if (value.getCode().equals(code)) {
-                return value;
-            }
-        }
-        return null;
+    @JsonCreator
+    public static ResourceTypeEnum getByCode(String code) {
+        return BaseEnum.getByCode(ResourceTypeEnum.class, code);
+    }
+
+    public String getDesc() {
+        return name;
     }
 }

@@ -2,6 +2,7 @@ package com.noah.superagent.common.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.mybatisflex.annotation.EnumValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -13,7 +14,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum WorkspaceStatusEnum {
+public enum WorkspaceStatusEnum implements BaseEnum<Integer> {
 
     /**
      * 正常
@@ -25,20 +26,13 @@ public enum WorkspaceStatusEnum {
      */
     DISABLED(2, "禁用");
 
+    @EnumValue
     @JsonValue
     private final Integer code;
     private final String desc;
 
     @JsonCreator
     public static WorkspaceStatusEnum getByCode(Integer code) {
-        if (code == null) {
-            return null;
-        }
-        for (WorkspaceStatusEnum status : values()) {
-            if (status.getCode().equals(code)) {
-                return status;
-            }
-        }
-        return null;
+        return BaseEnum.getByCode(WorkspaceStatusEnum.class, code);
     }
 }

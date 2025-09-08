@@ -129,6 +129,12 @@
                 <version>${mybatis-flex.version}</version>
                 <scope>provided</scope>
             </dependency>
+            <!-- MyBatis Flex 注解 -->
+            <dependency>
+                <groupId>com.mybatis-flex</groupId>
+                <artifactId>mybatis-flex-annotation</artifactId>
+                <version>${mybatis-flex.version}</version>
+            </dependency>
 
             <!-- 数据库驱动 -->
             <dependency>

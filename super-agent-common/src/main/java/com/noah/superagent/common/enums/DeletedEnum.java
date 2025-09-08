@@ -1,5 +1,8 @@
 package com.noah.superagent.common.enums;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.mybatisflex.annotation.EnumValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -12,7 +15,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum DeletedEnum {
+public enum DeletedEnum implements BaseEnum<Integer> {
 
     /**
      * 未删除
@@ -27,48 +30,43 @@ public enum DeletedEnum {
     /**
      * 状态值
      */
-    private final Integer value;
+    @EnumValue
+    @JsonValue
+    private final Integer code;
 
     /**
      * 状态描述
      */
-    private final String description;
+    private final String desc;
 
     /**
-     * 根据值获取枚举
+     * 根据编码获取枚举
      *
-     * @param value 状态值
+     * @param code 编码值
      * @return 对应的枚举，未找到则返回null
      */
-    public static DeletedEnum valueOf(Integer value) {
-        if (value == null) {
-            return null;
-        }
-        for (DeletedEnum deleted : values()) {
-            if (deleted.getValue().equals(value)) {
-                return deleted;
-            }
-        }
-        return null;
+    @JsonCreator
+    public static DeletedEnum getByCode(Integer code) {
+        return BaseEnum.getByCode(DeletedEnum.class, code);
     }
 
     /**
      * 判断是否已删除
      *
-     * @param value 状态值
+     * @param code 编码值
      * @return true-已删除，false-未删除
      */
-    public static boolean isDeleted(Integer value) {
-        return DELETED.getValue().equals(value);
+    public static boolean isDeleted(Integer code) {
+        return DELETED.getCode().equals(code);
     }
 
     /**
      * 判断是否未删除
      *
-     * @param value 状态值
+     * @param code 编码值
      * @return true-未删除，false-已删除
      */
-    public static boolean isNotDeleted(Integer value) {
-        return NOT_DELETED.getValue().equals(value);
+    public static boolean isNotDeleted(Integer code) {
+        return NOT_DELETED.getCode().equals(code);
     }
 }

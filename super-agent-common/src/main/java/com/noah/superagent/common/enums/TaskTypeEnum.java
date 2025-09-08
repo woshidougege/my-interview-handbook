@@ -1,5 +1,8 @@
 package com.noah.superagent.common.enums;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.mybatisflex.annotation.EnumValue;
 import lombok.Getter;
 
 /**
@@ -9,7 +12,7 @@ import lombok.Getter;
  * @since 1.0.0
  */
 @Getter
-public enum TaskTypeEnum {
+public enum TaskTypeEnum implements BaseEnum<String> {
 
     TEXT_GENERATION("TEXT_GENERATION", "文本生成"),
     IMAGE_GENERATION("IMAGE_GENERATION", "文生图"),
@@ -26,6 +29,8 @@ public enum TaskTypeEnum {
     DEEPSEARCH("DEEPSEARCH", "深度搜索"),
     SOFTWARE_OPERATION("SOFTWARE_OPERATION", "软件操作");
 
+    @EnumValue
+    @JsonValue
     private final String code;
     private final String description;
 
@@ -34,12 +39,12 @@ public enum TaskTypeEnum {
         this.description = description;
     }
 
-    public static TaskTypeEnum of(String code) {
-        for (TaskTypeEnum value : values()) {
-            if (value.getCode().equals(code)) {
-                return value;
-            }
-        }
-        return null;
+    @JsonCreator
+    public static TaskTypeEnum getByCode(String code) {
+        return BaseEnum.getByCode(TaskTypeEnum.class, code);
+    }
+
+    public String getDesc() {
+        return description;
     }
 }

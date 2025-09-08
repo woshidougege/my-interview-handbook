@@ -1,5 +1,8 @@
 package com.noah.superagent.common.enums;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.mybatisflex.annotation.EnumValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -11,7 +14,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum CreditTransactionTypeEnum {
+public enum CreditTransactionTypeEnum implements BaseEnum<Integer> {
 
     /**
      * 收入 - 包月赠送
@@ -33,19 +36,14 @@ public enum CreditTransactionTypeEnum {
      */
     EXPENSE_EXPIRED_CLEAR(4, "过期清零");
 
+    @EnumValue
+    @JsonValue
     private final Integer code;
     private final String desc;
 
+    @JsonCreator
     public static CreditTransactionTypeEnum getByCode(Integer code) {
-        if (code == null) {
-            return null;
-        }
-        for (CreditTransactionTypeEnum type : values()) {
-            if (type.getCode().equals(code)) {
-                return type;
-            }
-        }
-        return null;
+        return BaseEnum.getByCode(CreditTransactionTypeEnum.class, code);
     }
 
     /**

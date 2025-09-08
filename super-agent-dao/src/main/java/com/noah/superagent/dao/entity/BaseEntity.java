@@ -52,8 +52,8 @@ public abstract class BaseEntity {
      * 删除标记：NOT_DELETED-未删除，DELETED-已删除
      * 使用逻辑删除，不实际删除数据
      */
-    @Column(isLogicDelete = true, onInsertValue = "0")
-    private DeletedEnum deleted;
+    @Column(isLogicDelete = true)
+    private DeletedEnum deleted = DeletedEnum.NOT_DELETED;
 
 
 }

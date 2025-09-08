@@ -2,6 +2,7 @@ package com.noah.superagent.common.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.mybatisflex.annotation.EnumValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -13,7 +14,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum ChatTaskStatusEnum {
+public enum ChatTaskStatusEnum implements BaseEnum<Integer> {
 
     /**
      * 进行中
@@ -30,20 +31,13 @@ public enum ChatTaskStatusEnum {
      */
     ARCHIVED(3, "已归档");
 
+    @EnumValue
     @JsonValue
     private final Integer code;
     private final String desc;
 
     @JsonCreator
     public static ChatTaskStatusEnum getByCode(Integer code) {
-        if (code == null) {
-            return null;
-        }
-        for (ChatTaskStatusEnum status : values()) {
-            if (status.getCode().equals(code)) {
-                return status;
-            }
-        }
-        return null;
+        return BaseEnum.getByCode(ChatTaskStatusEnum.class, code);
     }
 }

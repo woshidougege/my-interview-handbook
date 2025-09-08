@@ -1,5 +1,8 @@
 package com.noah.superagent.common.enums;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.mybatisflex.annotation.EnumValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -11,7 +14,7 @@ import lombok.Getter;
  */
 @Getter
 @AllArgsConstructor
-public enum SubscriptionStatusEnum {
+public enum SubscriptionStatusEnum implements BaseEnum<Integer> {
 
     /**
      * 生效中
@@ -28,18 +31,13 @@ public enum SubscriptionStatusEnum {
      */
     CANCELLED(3, "已取消");
 
+    @EnumValue
+    @JsonValue
     private final Integer code;
     private final String desc;
 
+    @JsonCreator
     public static SubscriptionStatusEnum getByCode(Integer code) {
-        if (code == null) {
-            return null;
-        }
-        for (SubscriptionStatusEnum status : values()) {
-            if (status.getCode().equals(code)) {
-                return status;
-            }
-        }
-        return null;
+        return BaseEnum.getByCode(SubscriptionStatusEnum.class, code);
     }
 }
