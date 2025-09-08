@@ -45,7 +45,7 @@ public class ResourceUsageRecordEntity extends BaseEntity {
     /**
      * 会话ID
      */
-    @Column(value = "session_id")
+    @Column(value = "context_id")
     private String sessionId;
 
     /**

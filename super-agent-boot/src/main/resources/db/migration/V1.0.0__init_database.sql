@@ -144,7 +144,7 @@ CREATE TABLE `t_user_workspace` (
 CREATE TABLE `t_workspace_chat_task` (
     `id` BIGINT NOT NULL COMMENT '主键ID',
     `workspace_id` BIGINT NOT NULL COMMENT '工作空间ID（逻辑外键->t_user_workspace.id）',
-    `session_id` VARCHAR(100) NOT NULL COMMENT '会话ID，用于与下游平台通信',
+    `context_id` VARCHAR(100) NOT NULL COMMENT '会话上下文ID，用于与下游平台通信',
     `title` VARCHAR(200) NOT NULL COMMENT '对话任务标题',
     `content` TEXT COMMENT '对话任务内容',
     `is_favorite` TINYINT NOT NULL DEFAULT 0 COMMENT '是否收藏：1是 0否',
@@ -156,7 +156,7 @@ CREATE TABLE `t_workspace_chat_task` (
     `update_by` BIGINT COMMENT '更新人ID',
     PRIMARY KEY (`id`),
     INDEX `idx_workspace_id` (`workspace_id`),
-    INDEX `idx_session_id` (`session_id`),
+    INDEX `idx_context_id` (`context_id`),
     INDEX `idx_status` (`status`),
     INDEX `idx_deleted` (`deleted`),
     INDEX `idx_workspace_deleted_status` (`workspace_id`, `deleted`, `status`),
