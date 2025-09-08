@@ -23,7 +23,7 @@ public class ChatTaskEntity extends BaseEntity {
     /**
      * 会话ID，用于与下游平台通信
      */
-    private String sessionId;
+    private String contextId;
 
     /**
      * 对话任务标题

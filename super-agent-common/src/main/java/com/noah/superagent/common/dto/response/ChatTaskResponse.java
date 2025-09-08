@@ -18,8 +18,8 @@ public class ChatTaskResponse extends BaseResponse {
     @Schema(description = "关联工作空间ID", example = "1234567890123456789")
     private Long workspaceId;
 
-    @Schema(description = "会话ID，用于与下游平台通信", example = "session_001")
-    private String sessionId;
+    @Schema(description = "会话ID，用于与下游平台通信", example = "context_001")
+    private String contextId;
 
     @Schema(description = "对话任务标题", example = "技术问题咨询")
     private String title;

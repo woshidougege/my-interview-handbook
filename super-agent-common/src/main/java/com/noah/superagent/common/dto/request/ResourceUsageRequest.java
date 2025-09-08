@@ -21,7 +21,7 @@ import java.util.List;
 public class ResourceUsageRequest {
 
     @NotBlank(message = "请求ID不能为空")
-    @Schema(description = "请求ID（幂等键）", example = "req_20240101_agent123_session456_001")
+    @Schema(description = "请求ID（幂等键）", example = "req_20240101_agent123_context456_001")
     private String requestId;
 
     @NotBlank(message = "用户ID不能为空")
@@ -32,8 +32,8 @@ public class ResourceUsageRequest {
     @Schema(description = "智能体ID", example = "agent_12345")
     private String agentId;
 
-    @Schema(description = "会话ID", example = "session_12345")
-    private String sessionId;
+    @Schema(description = "会话ID", example = "context_12345")
+    private String contextId;
 
     @NotBlank(message = "任务类型不能为空")
     @Schema(description = "任务类型", example = "INDUSTRY_RESEARCH_REPORT", 
