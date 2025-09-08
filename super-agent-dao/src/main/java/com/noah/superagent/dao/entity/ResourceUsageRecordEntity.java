@@ -2,6 +2,8 @@ package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Table;
+import com.noah.superagent.common.enums.ResourceTypeEnum;
+import com.noah.superagent.common.enums.TaskTypeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -31,10 +33,10 @@ public class ResourceUsageRecordEntity extends BaseEntity {
     private String reportId;
 
     /**
-     * 用户外部键
+     * 用户外部键（雪花算法生成的Long类型）
      */
     @Column(value = "user_id")
-    private String userId;
+    private Long userId;
 
     /**
      * 智能体ID
@@ -52,7 +54,7 @@ public class ResourceUsageRecordEntity extends BaseEntity {
      * 任务类型
      */
     @Column(value = "task_type")
-    private String taskType;
+    private TaskTypeEnum taskType;
 
     /**
      * 任务描述
@@ -61,11 +63,10 @@ public class ResourceUsageRecordEntity extends BaseEntity {
     private String taskDescription;
 
     /**
-     * 资源类型
-     * MODEL, FUNCTION, MEDIA
+     * 资源类型：TOKEN, IMAGE_COUNT, VIDEO_DURATION, PPT_PAGES, FUNCTION_TIMES
      */
     @Column(value = "resource_type")
-    private String resourceType;
+    private ResourceTypeEnum resourceType;
 
     /**
      * 具体资源

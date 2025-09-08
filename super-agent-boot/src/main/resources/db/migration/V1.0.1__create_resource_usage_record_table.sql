@@ -3,7 +3,7 @@ CREATE TABLE t_resource_usage_record (
     id BIGINT PRIMARY KEY COMMENT '主键ID',
     request_id VARCHAR(100) NOT NULL COMMENT '请求ID（幂等键）',
     report_id VARCHAR(50) NOT NULL COMMENT '报告ID',
-    user_id VARCHAR(100) NOT NULL COMMENT '用户ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID（雪花算法生成）',
     agent_id VARCHAR(100) NOT NULL COMMENT '智能体ID',
     context_id VARCHAR(100) COMMENT '会话ID',
     

@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import javax.validation.Valid;
-import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
@@ -30,9 +29,9 @@ public class ResourceUsageRequest {
             example = "req_user123_context789_001_1704701234567")
     private String requestId;
 
-    @NotBlank(message = "用户ID不能为空")
-    @Schema(description = "用户ID", example = "user_67890")
-    private String userId;
+    @NotNull(message = "用户ID不能为空")
+    @Schema(description = "用户ID（雪花算法生成的Long类型）", example = "1234567890123456789")
+    private Long userId;
 
     @NotBlank(message = "智能体ID不能为空")
     @Schema(description = "智能体ID", example = "agent_12345")
