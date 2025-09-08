@@ -241,7 +241,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         record.setReportId(reportId);
         record.setUserId(request.getUserId());
         record.setAgentId(request.getAgentId());
-        record.setSessionId(request.getSessionId());
+        record.setContextId(request.getContextId());
         record.setTaskType(request.getTaskType());
         record.setTaskDescription(request.getTaskDescription());
     }

@@ -5,7 +5,7 @@ CREATE TABLE t_resource_usage_record (
     report_id VARCHAR(50) NOT NULL COMMENT '报告ID',
     user_id VARCHAR(100) NOT NULL COMMENT '用户ID',
     agent_id VARCHAR(100) NOT NULL COMMENT '智能体ID',
-    session_id VARCHAR(100) COMMENT '会话ID',
+    context_id VARCHAR(100) COMMENT '会话ID',
     
     task_type VARCHAR(50) NOT NULL COMMENT '任务类型：INDUSTRY_RESEARCH_REPORT, PPT_GENERATION等',
     task_description VARCHAR(500) COMMENT '任务描述',
@@ -32,7 +32,7 @@ CREATE TABLE t_resource_usage_record (
 CREATE INDEX idx_resource_usage_request_id ON t_resource_usage_record(request_id);
 CREATE INDEX idx_resource_usage_user_id ON t_resource_usage_record(user_id);
 CREATE INDEX idx_resource_usage_agent_id ON t_resource_usage_record(agent_id);
-CREATE INDEX idx_resource_usage_session_id ON t_resource_usage_record(session_id);
+CREATE INDEX idx_resource_usage_context_id ON t_resource_usage_record(context_id);
 CREATE INDEX idx_resource_usage_report_id ON t_resource_usage_record(report_id);
 CREATE INDEX idx_resource_usage_task_type ON t_resource_usage_record(task_type);
 CREATE INDEX idx_resource_usage_resource_type ON t_resource_usage_record(resource_type);

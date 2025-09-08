@@ -40,9 +40,9 @@ public interface ChatTaskMapper extends BaseMapper<ChatTaskEntity> {
     /**
      * 根据会话ID查询对话任务
      */
-    default ChatTaskEntity selectBySessionId(String sessionId) {
+    default ChatTaskEntity selectByContextId(String contextId) {
         return selectOneByQuery(QueryWrapper.create()
-                .where(ChatTaskEntity::getSessionId).eq(sessionId));
+                .where(ChatTaskEntity::getContextId).eq(contextId));
     }
 
     /**
@@ -77,12 +77,12 @@ public interface ChatTaskMapper extends BaseMapper<ChatTaskEntity> {
     /**
      * 更新对话任务状态
      */
-    default int updateStatusBySessionId(String sessionId, Integer status) {
+    default int updateStatusByContextId(String contextId, Integer status) {
         // 创建仅包含状态字段的更新对象
         ChatTaskEntity updateTask = new ChatTaskEntity();
         updateTask.setStatus(status);
         return updateByQuery(updateTask, 
-                QueryWrapper.create().where(ChatTaskEntity::getSessionId).eq(sessionId));
+                QueryWrapper.create().where(ChatTaskEntity::getContextId).eq(contextId));
     }
 
     /**
@@ -109,23 +109,23 @@ public interface ChatTaskMapper extends BaseMapper<ChatTaskEntity> {
     /**
      * 更新对话任务收藏状态
      */
-    default int updateFavoriteStatus(String sessionId, Integer isFavorite) {
+    default int updateFavoriteStatus(String contextId, Integer isFavorite) {
         // 创建仅包含收藏状态字段的更新对象
         ChatTaskEntity updateTask = new ChatTaskEntity();
         updateTask.setIsFavorite(isFavorite);
         return updateByQuery(updateTask,
-                QueryWrapper.create().where(ChatTaskEntity::getSessionId).eq(sessionId));
+                QueryWrapper.create().where(ChatTaskEntity::getContextId).eq(contextId));
     }
 
     /**
      * 批量更新对话任务状态
      */
-    default int batchUpdateStatus(List<String> sessionIds, Integer status) {
+    default int batchUpdateStatus(List<String> contextIds, Integer status) {
         // 创建仅包含状态字段的更新对象
         ChatTaskEntity updateTask = new ChatTaskEntity();
         updateTask.setStatus(status);
         return updateByQuery(updateTask,
-                QueryWrapper.create().where(ChatTaskEntity::getSessionId).in(sessionIds));
+                QueryWrapper.create().where(ChatTaskEntity::getContextId).in(contextIds));
     }
     
     /**

@@ -21,7 +21,7 @@ public class ChatTaskDTO extends BaseDTO {
     /**
      * 会话ID，用于与下游平台通信
      */
-    private String sessionId;
+    private String contextId;
 
     /**
      * 任务标题

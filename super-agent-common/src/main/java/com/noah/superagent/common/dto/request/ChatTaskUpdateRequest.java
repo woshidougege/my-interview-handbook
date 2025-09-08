@@ -15,8 +15,8 @@ import lombok.EqualsAndHashCode;
 @Schema(description = "对话任务更新请求")
 public class ChatTaskUpdateRequest extends BaseRequest {
 
-    @Schema(description = "会话ID，用于与下游平台通信", example = "session_001")
-    private String sessionId;
+    @Schema(description = "会话ID，用于与下游平台通信", example = "context_001")
+    private String contextId;
 
     @Schema(description = "对话任务标题", example = "技术问题咨询")
     private String title;
