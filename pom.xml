@@ -43,7 +43,7 @@
         <mybatis-flex.version>1.7.8</mybatis-flex.version>
         <mysql.version>8.0.33</mysql.version>
         <druid.version>1.2.18</druid.version>
-        <flyway.version>9.22.3</flyway.version>
+        <flyway.version>8.5.13</flyway.version>
         
         <!-- 工具类版本 -->
         <mapstruct.version>1.5.5.Final</mapstruct.version>
@@ -223,6 +223,13 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
                 <version>${slf4j.version}</version>
+            </dependency>
+
+            <!-- 🔧 依赖冲突解决 - 统一Gson版本 (如有需要) -->
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>2.10.1</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
