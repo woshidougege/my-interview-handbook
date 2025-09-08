@@ -39,4 +39,12 @@ public class PageResponse<T> {
         this.pageSize = pageSize;
         this.pages = (int) Math.ceil((double) total / pageSize);
     }
+
+    public PageResponse(List<T> records, Integer total, Integer pageNum, Integer pageSize) {
+        this.records = records;
+        this.total = total.longValue();
+        this.pageNum = pageNum;
+        this.pageSize = pageSize;
+        this.pages = (int) Math.ceil((double) total / pageSize);
+    }
 }

@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 对话任务服务实现
  *
@@ -183,16 +186,22 @@ public class ChatTaskServiceImpl implements ChatTaskService {
     public PageResponse<ChatTaskDTO> getFavoriteChatTasks(Long workspaceId, Integer pageNum, Integer pageSize) {
         log.info("查询收藏的对话任务列表，工作空间ID: {}, 页码: {}, 每页数量: {}", workspaceId, pageNum, pageSize);
         
-        // 创建分页对象
-        Page<ChatTaskEntity> page = new Page<>(pageNum, pageSize);
+        // 查询收藏的对话任务
+        List<ChatTaskEntity> favoriteTasksList = chatTaskMapper.selectByFavoriteStatus(workspaceId, FavoriteEnum.FAVORITE);
         
-        // 直接查询收藏的对话任务，避免在内存中过滤
-        Page<ChatTaskEntity> favoriteTasksPage = (Page<ChatTaskEntity>) chatTaskMapper.selectByFavoriteStatus(workspaceId, 1);
+        // 手动分页处理
+        int totalCount = favoriteTasksList.size();
+        int startIndex = (pageNum - 1) * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, totalCount);
+        
+        List<ChatTaskEntity> pagedList = startIndex < totalCount ? 
+            favoriteTasksList.subList(startIndex, endIndex) : 
+            new ArrayList<>();
         
         // 转换结果
         return new PageResponse<>(
-                chatTaskPersistenceConvert.fromEntityList(favoriteTasksPage.getRecords()),
-                favoriteTasksPage.getTotalRow(),
+                chatTaskPersistenceConvert.fromEntityList(pagedList),
+                (long) totalCount,
                 pageNum,
                 pageSize
         );

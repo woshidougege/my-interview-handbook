@@ -69,7 +69,7 @@ public interface ChatTaskMapper extends BaseMapper<ChatTaskEntity> {
     /**
      * 根据收藏状态查询对话任务列表
      */
-    default List<ChatTaskEntity> selectByFavoriteStatus(Long workspaceId, Integer isFavorite) {
+    default List<ChatTaskEntity> selectByFavoriteStatus(Long workspaceId, FavoriteEnum isFavorite) {
         return selectListByQuery(QueryWrapper.create()
                 .where(ChatTaskEntity::getWorkspaceId).eq(workspaceId)
                 .and(ChatTaskEntity::getIsFavorite).eq(isFavorite)
