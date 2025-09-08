@@ -17,24 +17,29 @@ import lombok.Getter;
 public enum CreditTransactionTypeEnum implements BaseEnum<Integer> {
 
     /**
-     * 收入 - 包月赠送
+     * 收入 - 免费套餐每日赠送
      */
-    INCOME_SUBSCRIPTION(1, "包月赠送"),
+    INCOME_FREE_PLAN_DAILY(1, "免费套餐每日赠送"),
 
     /**
-     * 收入 - 每日免费
+     * 收入 - PRO套餐赠送
      */
-    INCOME_DAILY_FREE(2, "每日免费"),
+    INCOME_PRO_PLAN(2, "PRO套餐赠送"),
+
+    /**
+     * 收入 - PRO+套餐赠送
+     */
+    INCOME_PRO_PLUS_PLAN(3, "PRO+套餐赠送"),
 
     /**
      * 支出 - Token消费
      */
-    EXPENSE_TOKEN_USAGE(3, "Token消费"),
+    EXPENSE_TOKEN_USAGE(4, "Token消费"),
 
     /**
      * 支出 - 积分过期清零
      */
-    EXPENSE_EXPIRED_CLEAR(4, "过期清零");
+    EXPENSE_EXPIRED_CLEAR(5, "过期清零");
 
     @EnumValue
     @JsonValue
@@ -50,7 +55,7 @@ public enum CreditTransactionTypeEnum implements BaseEnum<Integer> {
      * 是否为收入类型
      */
     public boolean isIncome() {
-        return this == INCOME_SUBSCRIPTION || this == INCOME_DAILY_FREE;
+        return this == INCOME_FREE_PLAN_DAILY || this == INCOME_PRO_PLAN || this == INCOME_PRO_PLUS_PLAN;
     }
 
     /**

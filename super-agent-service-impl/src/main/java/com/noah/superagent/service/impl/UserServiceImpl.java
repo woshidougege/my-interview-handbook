@@ -8,6 +8,7 @@ import com.noah.superagent.common.enums.UserStatusEnum;
 import com.noah.superagent.dao.mapper.UserMapper;
 import com.noah.superagent.model.UserDTO;
 import com.noah.superagent.service.UserService;
+import com.noah.superagent.service.UserCreditService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
     private final UserPersistenceConvert userPersistenceConvert;
+    private final UserCreditService userCreditService;
 
 
     @Override
@@ -54,6 +56,17 @@ public class UserServiceImpl implements UserService {
         }
         
         log.info("用户创建成功，ID: {}", userEntity.getId());
+        
+        // 为新用户初始化免费套餐积分账户
+        try {
+            userCreditService.initFreePlanForUser(userEntity.getId());
+            log.info("用户免费套餐积分账户初始化成功 - userId: {}", userEntity.getId());
+        } catch (Exception e) {
+            log.error("用户免费套餐积分账户初始化失败 - userId: {}, 错误: {}", 
+                    userEntity.getId(), e.getMessage(), e);
+            // 不抛出异常，避免影响用户注册流程
+        }
+        
         // Entity -> DTO
         return userPersistenceConvert.fromEntity(userEntity);
     }

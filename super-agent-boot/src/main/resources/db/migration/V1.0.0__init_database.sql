@@ -163,24 +163,9 @@ CREATE TABLE `t_workspace_chat_task` (
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作空间对话任务表';
 
--- 8. 定时任务调度表
-CREATE TABLE `t_scheduled_task` (
-    `task_name` VARCHAR(40) NOT NULL,
-    `task_instance` VARCHAR(40) NOT NULL,
-    `task_data` BLOB,
-    `execution_time` TIMESTAMP(6) NOT NULL,
-    `picked` TINYINT(1) NOT NULL,
-    `picked_by` VARCHAR(50),
-    `last_success` TIMESTAMP(6) NULL,
-    `last_failure` TIMESTAMP(6) NULL,
-    `consecutive_failures` INT,
-    `last_heartbeat` TIMESTAMP(6) NULL,
-    `version` BIGINT NOT NULL,
-    PRIMARY KEY (`task_name`, `task_instance`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='定时任务调度表';
 
 -- 初始化数据：创建默认套餐
 INSERT INTO `t_subscription_plan` (`id`, `plan_name`, `description`, `price`, `credit_amount`, `validity_days`, `enabled`, `sort_order`) VALUES 
-(1, '基础套餐', '每月基础积分套餐', 29.90, 1000.00, 30, 1, 1),
-(2, '标准套餐', '每月标准积分套餐', 99.90, 5000.00, 30, 1, 2),
-(3, '高级套餐', '每月高级积分套餐', 199.90, 12000.00, 30, 1, 3);
+(1, '免费体验套餐', '免费套餐，每日赠送30积分', 0.00, 0.00, 30, 1, 1),
+(2, 'PRO套餐', 'PRO会员套餐，每月更多积分额度', 20.00, 3000.00, 30, 1, 2),
+(3, 'PRO+套餐', 'PRO+高级会员套餐，无限制使用', 40.00, 8000.00, 30, 1, 3);
