@@ -1,5 +1,7 @@
 package com.noah.superagent.common.dto.request;
 
+import com.noah.superagent.common.enums.ChatTaskStatusEnum;
+import com.noah.superagent.common.enums.FavoriteEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -32,9 +34,9 @@ public class ChatTaskCreateRequest extends BaseRequest {
     @Schema(description = "对话任务内容", example = "如何使用Spring Boot开发Web应用？")
     private String content;
 
-    @Schema(description = "是否收藏：1是 0否", example = "1")
-    private Integer isFavorite;
+    @Schema(description = "是否收藏：FAVORITE-已收藏 NOT_FAVORITE-未收藏", example = "NOT_FAVORITE")
+    private FavoriteEnum isFavorite;
 
-    @Schema(description = "状态: 1进行中 2已完成 3已归档", example = "1")
-    private Integer status;
+    @Schema(description = "状态: IN_PROGRESS-进行中 COMPLETED-已完成 ARCHIVED-已归档", example = "IN_PROGRESS")
+    private ChatTaskStatusEnum status;
 }

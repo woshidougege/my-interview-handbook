@@ -1,5 +1,6 @@
 package com.noah.superagent.model;
 
+import com.noah.superagent.common.enums.UserStatusEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -31,6 +32,6 @@ public class UserDTO extends BaseDTO {
     /**
      * 用户状态 1-正常 0-禁用
      */
-    private Integer status;
+    private UserStatusEnum status;
 
 }

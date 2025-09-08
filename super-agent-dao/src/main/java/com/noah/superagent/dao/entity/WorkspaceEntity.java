@@ -1,6 +1,8 @@
 package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Table;
+import com.noah.superagent.common.enums.DefaultEnum;
+import com.noah.superagent.common.enums.WorkspaceStatusEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -31,12 +33,12 @@ public class WorkspaceEntity extends BaseEntity {
     private String description;
 
     /**
-     * 是否默认工作空间：1是 0否
+     * 是否默认工作空间：DEFAULT-默认 NOT_DEFAULT-非默认
      */
-    private Integer isDefault;
+    private DefaultEnum isDefault;
 
     /**
-     * 状态: 1正常 2禁用
+     * 状态: NORMAL-正常 DISABLED-禁用
      */
-    private Integer status;
+    private WorkspaceStatusEnum status;
 }

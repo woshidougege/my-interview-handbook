@@ -1,5 +1,6 @@
 package com.noah.superagent.common.dto.request;
 
+import com.noah.superagent.common.enums.UserStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -25,6 +26,6 @@ public class UserUpdateRequest extends BaseRequest {
     @Schema(description = "密码", example = "newpassword")
     private String password;
 
-    @Schema(description = "用户状态 1-正常 0-禁用", example = "1")
-    private Integer status;
+    @Schema(description = "用户状态 ACTIVE-正常 DISABLED-禁用", example = "ACTIVE")
+    private UserStatusEnum status;
 }

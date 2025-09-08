@@ -3,6 +3,7 @@ package com.noah.superagent.dao.mapper;
 import com.mybatisflex.core.BaseMapper;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
+import com.noah.superagent.common.enums.WorkspaceStatusEnum;
 import com.noah.superagent.dao.entity.WorkspaceEntity;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -56,7 +57,7 @@ public interface WorkspaceMapper extends BaseMapper<WorkspaceEntity> {
     /**
      * 更新工作空间状态
      */
-    default int updateStatusById(Long id, Integer status) {
+    default int updateStatusById(Long id, WorkspaceStatusEnum status) {
         // 创建仅包含状态字段的更新对象
         WorkspaceEntity updateWorkspaceEntity = new WorkspaceEntity();
         updateWorkspaceEntity.setStatus(status);

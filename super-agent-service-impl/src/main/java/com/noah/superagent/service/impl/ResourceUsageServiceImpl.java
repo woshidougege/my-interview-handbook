@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -148,7 +147,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
      * 构建文本生成记录
      */
     private void buildTextGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
-        record.setResourceType("MODEL");
+        record.setResourceType(ResourceTypeEnum.TOKEN);
         record.setResourceName("TEXT_MODEL");
         record.setResourceSubtype("TEXT_GENERATION");
         record.setDescription(usageDetail.getDescription());
@@ -173,7 +172,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
      * 构建图片生成记录
      */
     private void buildImageGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
-        record.setResourceType("MEDIA");
+        record.setResourceType(ResourceTypeEnum.IMAGE_COUNT);
         record.setResourceName("IMAGE");
         record.setResourceSubtype("IMAGE_GENERATION");
         record.setDescription(usageDetail.getDescription());
@@ -194,7 +193,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
      * 构建视频生成记录
      */
     private void buildVideoGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
-        record.setResourceType("MEDIA");
+        record.setResourceType(ResourceTypeEnum.VIDEO_DURATION);
         record.setResourceName("VIDEO");
         record.setResourceSubtype("VIDEO_GENERATION");
         record.setDescription(usageDetail.getDescription());
@@ -215,7 +214,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
      * 构建PPT生成记录
      */
     private void buildPptGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
-        record.setResourceType("FUNCTION");
+        record.setResourceType(ResourceTypeEnum.PPT_PAGES);
         record.setResourceName("PPT_GENERATION");
         record.setResourceSubtype("PPT_PAGES");
         record.setDescription(usageDetail.getDescription());
@@ -236,7 +235,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
      * 构建功能使用记录
      */
     private void buildFunctionRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail, String taskType) {
-        record.setResourceType("FUNCTION");
+        record.setResourceType(ResourceTypeEnum.FUNCTION_TIMES);
         record.setResourceName(taskType);
         record.setResourceSubtype("FUNCTION_TIMES");
         record.setDescription(usageDetail.getDescription());
@@ -258,7 +257,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
      * 构建默认记录
      */
     private void buildDefaultRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
-        record.setResourceType("UNKNOWN");
+        record.setResourceType(ResourceTypeEnum.TOKEN); // 默认使用TOKEN类型
         record.setResourceName("UNKNOWN");
         record.setResourceSubtype("UNKNOWN");
         record.setDescription(usageDetail.getDescription());
@@ -284,7 +283,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         record.setUserId(request.getUserId());
         record.setAgentId(request.getAgentId());
         record.setContextId(request.getContextId());
-        record.setTaskType(request.getTaskType() != null ? request.getTaskType().getCode() : null);
+        record.setTaskType(request.getTaskType() != null ? request.getTaskType() : null);
         record.setTaskDescription(request.getTaskDescription());
     }
 

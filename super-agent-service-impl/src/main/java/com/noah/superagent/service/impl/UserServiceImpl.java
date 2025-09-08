@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
         
         // DTO -> Entity
         UserEntity userEntity = userPersistenceConvert.toEntity(userDO);
-        userEntity.setStatus(UserStatusEnum.ACTIVE.getCode());
+        userEntity.setStatus(UserStatusEnum.ACTIVE);
         // ID由MyBatis Flex的雪花算法自动生成
         
         // TODO: 密码加密处理

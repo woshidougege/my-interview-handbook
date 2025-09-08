@@ -1,5 +1,7 @@
 package com.noah.superagent.common.dto.response;
 
+import com.noah.superagent.common.enums.DefaultEnum;
+import com.noah.superagent.common.enums.WorkspaceStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -24,10 +26,10 @@ public class WorkspaceResponse extends BaseResponse {
     @Schema(description = "工作空间描述", example = "用于日常开发的工作空间")
     private String description;
 
-    @Schema(description = "是否默认工作空间：1是 0否", example = "1")
-    private Integer isDefault;
+    @Schema(description = "是否默认工作空间：DEFAULT-默认 NOT_DEFAULT-非默认", example = "DEFAULT")
+    private DefaultEnum isDefault;
 
-    @Schema(description = "状态: 1正常 2禁用", example = "1")
-    private Integer status;
+    @Schema(description = "状态: NORMAL-正常 DISABLED-禁用", example = "NORMAL")
+    private WorkspaceStatusEnum status;
 
 }

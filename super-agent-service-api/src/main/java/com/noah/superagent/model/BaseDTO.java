@@ -1,5 +1,6 @@
 package com.noah.superagent.model;
 
+import com.noah.superagent.common.enums.DeletedEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -40,9 +41,9 @@ public abstract class BaseDTO {
     private Long updateBy;
 
     /**
-     * 删除标记：0-未删除，1-已删除
+     * 删除标记：NOT_DELETED-未删除，DELETED-已删除
      */
-    private Integer deleted;
+    private DeletedEnum deleted;
 
     // 通用业务方法
 

@@ -1,5 +1,6 @@
 package com.noah.superagent.model;
 
+import com.noah.superagent.common.enums.ChatTaskStatusEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -41,6 +42,6 @@ public class ChatTaskDTO extends BaseDTO {
     /**
      * 任务状态：1进行中 2已完成 3已归档
      */
-    private Integer status;
+    private ChatTaskStatusEnum status;
 
 }

@@ -6,35 +6,40 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 用户状态枚举
+ * 对话任务状态枚举
  *
  * @author 任相鹏
  * @since 1.0.0
  */
 @Getter
 @AllArgsConstructor
-public enum UserStatusEnum {
+public enum ChatTaskStatusEnum {
 
     /**
-     * 正常
+     * 进行中
      */
-    ACTIVE(1, "正常"),
+    IN_PROGRESS(1, "进行中"),
 
     /**
-     * 禁用
+     * 已完成
      */
-    DISABLED(0, "禁用");
+    COMPLETED(2, "已完成"),
+
+    /**
+     * 已归档
+     */
+    ARCHIVED(3, "已归档");
 
     @JsonValue
     private final Integer code;
     private final String desc;
 
     @JsonCreator
-    public static UserStatusEnum getByCode(Integer code) {
+    public static ChatTaskStatusEnum getByCode(Integer code) {
         if (code == null) {
             return null;
         }
-        for (UserStatusEnum status : values()) {
+        for (ChatTaskStatusEnum status : values()) {
             if (status.getCode().equals(code)) {
                 return status;
             }

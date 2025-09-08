@@ -25,6 +25,14 @@ public interface UserWebConvert extends BaseWebConvert<
 > {
 
     /**
+     * 重写创建请求转DTO方法，忽略ID字段映射
+     * 创建操作时ID应该由雪花算法自动生成，不从请求中获取
+     */
+    @Override
+    @Mapping(target = "id", ignore = true)
+    UserDTO fromCreateRequest(UserCreateRequest createRequest);
+
+    /**
      * 重写数据传输对象转响应方法，添加状态描述转换
      */
     @Override
@@ -35,8 +43,7 @@ public interface UserWebConvert extends BaseWebConvert<
      * 状态码转描述
      */
     @Named("statusToDesc")
-    default String statusToDesc(Integer status) {
-        UserStatusEnum statusEnum = UserStatusEnum.getByCode(status);
-        return statusEnum != null ? statusEnum.getDesc() : "未知";
+    default String statusToDesc(UserStatusEnum status) {
+        return status != null ? status.getDesc() : "未知";
     }
 }

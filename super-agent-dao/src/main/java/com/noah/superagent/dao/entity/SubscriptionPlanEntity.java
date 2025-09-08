@@ -1,6 +1,7 @@
 package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Table;
+import com.noah.superagent.common.enums.EnabledEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -43,9 +44,9 @@ public class SubscriptionPlanEntity extends BaseEntity {
     private Integer validityDays;
 
     /**
-     * 是否启用 1-启用 0-禁用
+     * 是否启用 ENABLED-启用 DISABLED-禁用
      */
-    private Integer enabled;
+    private EnabledEnum enabled;
 
     /**
      * 排序值

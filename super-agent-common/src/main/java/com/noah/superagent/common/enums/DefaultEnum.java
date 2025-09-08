@@ -6,35 +6,35 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 用户状态枚举
+ * 默认状态枚举
  *
  * @author 任相鹏
  * @since 1.0.0
  */
 @Getter
 @AllArgsConstructor
-public enum UserStatusEnum {
+public enum DefaultEnum {
 
     /**
-     * 正常
+     * 非默认
      */
-    ACTIVE(1, "正常"),
+    NOT_DEFAULT(0, "非默认"),
 
     /**
-     * 禁用
+     * 默认
      */
-    DISABLED(0, "禁用");
+    DEFAULT(1, "默认");
 
     @JsonValue
     private final Integer code;
     private final String desc;
 
     @JsonCreator
-    public static UserStatusEnum getByCode(Integer code) {
+    public static DefaultEnum getByCode(Integer code) {
         if (code == null) {
             return null;
         }
-        for (UserStatusEnum status : values()) {
+        for (DefaultEnum status : values()) {
             if (status.getCode().equals(code)) {
                 return status;
             }

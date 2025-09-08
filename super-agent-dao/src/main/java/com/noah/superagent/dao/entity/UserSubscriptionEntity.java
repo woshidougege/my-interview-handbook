@@ -1,6 +1,7 @@
 package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Table;
+import com.noah.superagent.common.enums.SubscriptionStatusEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -49,9 +50,9 @@ public class UserSubscriptionEntity extends BaseEntity {
     private BigDecimal creditAmount;
 
     /**
-     * 订阅状态 1-生效中 2-已过期 3-已取消
+     * 订阅状态 ACTIVE-生效中 EXPIRED-已过期 CANCELLED-已取消
      */
-    private Integer status;
+    private SubscriptionStatusEnum status;
 
     /**
      * 支付订单号

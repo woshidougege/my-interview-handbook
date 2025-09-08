@@ -3,6 +3,7 @@ package com.noah.superagent.dao.entity;
 import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
+import com.noah.superagent.common.enums.DeletedEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -48,11 +49,11 @@ public abstract class BaseEntity {
     private Long updateBy;
 
     /**
-     * 删除标记：0-未删除，1-已删除
+     * 删除标记：NOT_DELETED-未删除，DELETED-已删除
      * 使用逻辑删除，不实际删除数据
      */
     @Column(isLogicDelete = true, onInsertValue = "0")
-    private Integer deleted;
+    private DeletedEnum deleted;
 
 
 }

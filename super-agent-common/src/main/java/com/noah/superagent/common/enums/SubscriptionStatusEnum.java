@@ -1,40 +1,41 @@
 package com.noah.superagent.common.enums;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 用户状态枚举
+ * 订阅状态枚举
  *
  * @author 任相鹏
  * @since 1.0.0
  */
 @Getter
 @AllArgsConstructor
-public enum UserStatusEnum {
+public enum SubscriptionStatusEnum {
 
     /**
-     * 正常
+     * 生效中
      */
-    ACTIVE(1, "正常"),
+    ACTIVE(1, "生效中"),
 
     /**
-     * 禁用
+     * 已过期
      */
-    DISABLED(0, "禁用");
+    EXPIRED(2, "已过期"),
 
-    @JsonValue
+    /**
+     * 已取消
+     */
+    CANCELLED(3, "已取消");
+
     private final Integer code;
     private final String desc;
 
-    @JsonCreator
-    public static UserStatusEnum getByCode(Integer code) {
+    public static SubscriptionStatusEnum getByCode(Integer code) {
         if (code == null) {
             return null;
         }
-        for (UserStatusEnum status : values()) {
+        for (SubscriptionStatusEnum status : values()) {
             if (status.getCode().equals(code)) {
                 return status;
             }

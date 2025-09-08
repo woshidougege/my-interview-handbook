@@ -3,6 +3,8 @@ package com.noah.superagent.dao.mapper;
 import com.mybatisflex.core.BaseMapper;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
+import com.noah.superagent.common.enums.ChatTaskStatusEnum;
+import com.noah.superagent.common.enums.FavoriteEnum;
 import com.noah.superagent.dao.entity.ChatTaskEntity;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -77,7 +79,7 @@ public interface ChatTaskMapper extends BaseMapper<ChatTaskEntity> {
     /**
      * 更新对话任务状态
      */
-    default int updateStatusByContextId(String contextId, Integer status) {
+    default int updateStatusByContextId(String contextId, ChatTaskStatusEnum status) {
         // 创建仅包含状态字段的更新对象
         ChatTaskEntity updateTask = new ChatTaskEntity();
         updateTask.setStatus(status);
@@ -109,7 +111,7 @@ public interface ChatTaskMapper extends BaseMapper<ChatTaskEntity> {
     /**
      * 更新对话任务收藏状态
      */
-    default int updateFavoriteStatus(String contextId, Integer isFavorite) {
+    default int updateFavoriteStatus(String contextId, FavoriteEnum isFavorite) {
         // 创建仅包含收藏状态字段的更新对象
         ChatTaskEntity updateTask = new ChatTaskEntity();
         updateTask.setIsFavorite(isFavorite);
@@ -120,7 +122,7 @@ public interface ChatTaskMapper extends BaseMapper<ChatTaskEntity> {
     /**
      * 批量更新对话任务状态
      */
-    default int batchUpdateStatus(List<String> contextIds, Integer status) {
+    default int batchUpdateStatus(List<String> contextIds, ChatTaskStatusEnum status) {
         // 创建仅包含状态字段的更新对象
         ChatTaskEntity updateTask = new ChatTaskEntity();
         updateTask.setStatus(status);

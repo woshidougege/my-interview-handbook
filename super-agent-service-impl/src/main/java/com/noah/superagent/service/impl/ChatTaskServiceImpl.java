@@ -1,6 +1,7 @@
 package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
+import com.noah.superagent.common.enums.FavoriteEnum;
 import com.noah.superagent.convert.ChatTaskPersistenceConvert;
 import com.noah.superagent.dao.entity.ChatTaskEntity;
 import com.noah.superagent.common.dto.response.PageResponse;
@@ -148,7 +149,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         }
         
         // 更新收藏状态为已收藏(1)
-        chatTaskEntity.setIsFavorite(1);
+        chatTaskEntity.setIsFavorite(FavoriteEnum.FAVORITE);
         int result = chatTaskMapper.update(chatTaskEntity);
         if (result <= 0) {
             throw new RuntimeException("对话任务收藏失败");
@@ -169,7 +170,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         }
         
         // 更新收藏状态为未收藏(0)
-        chatTaskEntity.setIsFavorite(0);
+        chatTaskEntity.setIsFavorite(FavoriteEnum.NOT_FAVORITE);
         int result = chatTaskMapper.update(chatTaskEntity);
         if (result <= 0) {
             throw new RuntimeException("对话任务取消收藏失败");

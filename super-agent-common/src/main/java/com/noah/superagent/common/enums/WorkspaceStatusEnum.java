@@ -6,35 +6,35 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 用户状态枚举
+ * 工作空间状态枚举
  *
  * @author 任相鹏
  * @since 1.0.0
  */
 @Getter
 @AllArgsConstructor
-public enum UserStatusEnum {
+public enum WorkspaceStatusEnum {
 
     /**
      * 正常
      */
-    ACTIVE(1, "正常"),
+    NORMAL(1, "正常"),
 
     /**
      * 禁用
      */
-    DISABLED(0, "禁用");
+    DISABLED(2, "禁用");
 
     @JsonValue
     private final Integer code;
     private final String desc;
 
     @JsonCreator
-    public static UserStatusEnum getByCode(Integer code) {
+    public static WorkspaceStatusEnum getByCode(Integer code) {
         if (code == null) {
             return null;
         }
-        for (UserStatusEnum status : values()) {
+        for (WorkspaceStatusEnum status : values()) {
             if (status.getCode().equals(code)) {
                 return status;
             }

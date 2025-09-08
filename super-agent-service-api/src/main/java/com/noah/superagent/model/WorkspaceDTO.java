@@ -1,5 +1,6 @@
 package com.noah.superagent.model;
 
+import com.noah.superagent.common.enums.WorkspaceStatusEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -36,6 +37,6 @@ public class WorkspaceDTO extends BaseDTO {
     /**
      * 状态：1-正常，2-禁用
      */
-    private Integer status;
+    private WorkspaceStatusEnum status;
 
 }

@@ -1,6 +1,7 @@
 package com.noah.superagent.common.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.noah.superagent.common.enums.DeletedEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -55,6 +56,6 @@ public abstract class BaseResponse {
      */
     @Schema(hidden = true)
     @JsonIgnore
-    private Integer deleted;
+    private DeletedEnum deleted;
 
 }

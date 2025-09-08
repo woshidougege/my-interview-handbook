@@ -1,40 +1,36 @@
 package com.noah.superagent.common.enums;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 用户状态枚举
+ * 启用/禁用状态枚举
  *
  * @author 任相鹏
  * @since 1.0.0
  */
 @Getter
 @AllArgsConstructor
-public enum UserStatusEnum {
-
-    /**
-     * 正常
-     */
-    ACTIVE(1, "正常"),
+public enum EnabledEnum {
 
     /**
      * 禁用
      */
-    DISABLED(0, "禁用");
+    DISABLED(0, "禁用"),
 
-    @JsonValue
+    /**
+     * 启用
+     */
+    ENABLED(1, "启用");
+
     private final Integer code;
     private final String desc;
 
-    @JsonCreator
-    public static UserStatusEnum getByCode(Integer code) {
+    public static EnabledEnum getByCode(Integer code) {
         if (code == null) {
             return null;
         }
-        for (UserStatusEnum status : values()) {
+        for (EnabledEnum status : values()) {
             if (status.getCode().equals(code)) {
                 return status;
             }

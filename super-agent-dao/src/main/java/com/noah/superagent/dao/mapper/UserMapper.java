@@ -3,6 +3,7 @@ package com.noah.superagent.dao.mapper;
 import com.mybatisflex.core.BaseMapper;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
+import com.noah.superagent.common.enums.UserStatusEnum;
 import com.noah.superagent.dao.entity.UserEntity;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -58,7 +59,7 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     /**
      * 更新用户状态
      */
-    default int updateStatusByPhone(String phone, Integer status) {
+    default int updateStatusByPhone(String phone, UserStatusEnum status) {
         // 创建仅包含状态字段的更新对象
         UserEntity updateUserEntity = new UserEntity();
         updateUserEntity.setStatus(status);

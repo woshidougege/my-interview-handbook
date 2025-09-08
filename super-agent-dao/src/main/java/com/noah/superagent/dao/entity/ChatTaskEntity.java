@@ -1,6 +1,8 @@
 package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Table;
+import com.noah.superagent.common.enums.ChatTaskStatusEnum;
+import com.noah.superagent.common.enums.FavoriteEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -36,12 +38,12 @@ public class ChatTaskEntity extends BaseEntity {
     private String content;
 
     /**
-     * 是否收藏：1是 0否
+     * 是否收藏：FAVORITE-已收藏 NOT_FAVORITE-未收藏
      */
-    private Integer isFavorite;
+    private FavoriteEnum isFavorite;
 
     /**
-     * 状态: 1进行中 2已完成 3已归档
+     * 状态: IN_PROGRESS-进行中 COMPLETED-已完成 ARCHIVED-已归档
      */
-    private Integer status;
+    private ChatTaskStatusEnum status;
 }

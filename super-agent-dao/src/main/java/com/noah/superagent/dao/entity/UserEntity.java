@@ -1,6 +1,7 @@
 package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Table;
+import com.noah.superagent.common.enums.UserStatusEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -31,7 +32,7 @@ public class UserEntity extends BaseEntity {
     private String password;
 
     /**
-     * 用户状态 1-正常 0-禁用
+     * 用户状态 ACTIVE-正常 DISABLED-禁用
      */
-    private Integer status;
+    private UserStatusEnum status;
 }
