@@ -38,8 +38,7 @@
         </dependency>
         -->
 
-        <!-- Flyway 数据库迁移 - 如果不使用可以移除 -->
-        <!--
+        <!-- Flyway 数据库迁移 -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
@@ -49,7 +48,6 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
-        -->
 
         <!-- Test -->
         <dependency>
