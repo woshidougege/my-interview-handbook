@@ -54,9 +54,19 @@
         <!-- 调度和文档版本 -->
         <db-scheduler.version>12.1.0</db-scheduler.version>
         <knife4j.version>3.0.3</knife4j.version>
+        <swagger-annotations.version>1.5.22</swagger-annotations.version>
+        <snakeyaml.version>1.33</snakeyaml.version>
+        <joda-time.version>2.12.5</joda-time.version>
+        <slf4j.version>1.7.36</slf4j.version>
         
         <!-- Maven插件版本 -->
         <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+        <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
+        <maven-clean-plugin.version>3.3.2</maven-clean-plugin.version>
+        <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+        <maven-install-plugin.version>3.1.2</maven-install-plugin.version>
+        <maven-deploy-plugin.version>3.1.2</maven-deploy-plugin.version>
+        <maven-site-plugin.version>4.0.0-M13</maven-site-plugin.version>
         <versions-maven-plugin.version>2.16.2</versions-maven-plugin.version>
         
         <!-- SSO客户端版本 -->
@@ -200,6 +210,34 @@
                 <artifactId>gt-sso-client-starter</artifactId>
                 <version>${gt-sso-client.version}</version>
             </dependency>
+
+            <!-- 🔧 依赖冲突解决 - 统一Swagger注解版本 -->
+            <dependency>
+                <groupId>io.swagger</groupId>
+                <artifactId>swagger-annotations</artifactId>
+                <version>${swagger-annotations.version}</version>
+            </dependency>
+
+            <!-- 🔧 依赖冲突解决 - 统一YAML解析器版本 -->
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
+            </dependency>
+
+            <!-- 🔧 依赖冲突解决 - 统一时间库版本 -->
+            <dependency>
+                <groupId>joda-time</groupId>
+                <artifactId>joda-time</artifactId>
+                <version>${joda-time.version}</version>
+            </dependency>
+
+            <!-- 🔧 依赖冲突解决 - 统一日志API版本 (关键!) -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -273,6 +311,93 @@
                     </configuration>
                 </plugin>
 
+                <!-- Maven Enforcer Plugin - 严格依赖和构建规则校验 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven-enforcer-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>enforce-strict-rules</id>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                            <phase>validate</phase>
+                            <configuration>
+                                <rules>
+                                    <!-- 🔥 强制依赖收敛 - 检测版本冲突 -->
+                                    <dependencyConvergence/>
+                                    
+                                    <!-- 🔥 禁止重复依赖声明 -->
+                                    <banDuplicatePomDependencyVersions/>
+                                    
+                                    <!-- 🔥 强制Maven版本要求 -->
+                                    <requireMavenVersion>
+                                        <version>[3.6.0,)</version>
+                                        <message>💥 Maven版本必须 >= 3.6.0 以确保构建稳定性</message>
+                                    </requireMavenVersion>
+                                    
+                                    <!-- 🔥 强制Java版本要求 -->
+                                    <requireJavaVersion>
+                                        <version>[11,)</version>
+                                        <message>💥 Java版本必须 >= 11</message>
+                                    </requireJavaVersion>
+                                    
+                                    <!-- 🔥 禁止危险的依赖组合 -->
+                                    <bannedDependencies>
+                                        <excludes>
+                                            <!-- 禁止不安全的日志实现 -->
+                                            <exclude>commons-logging:commons-logging</exclude>
+                                            <exclude>log4j:log4j</exclude>
+                                            <exclude>org.apache.logging.log4j:log4j-core:[2.0,2.17.0)</exclude>
+                                            
+                                            <!-- 禁止过时的HTTP客户端 -->
+                                            <exclude>commons-httpclient:commons-httpclient</exclude>
+                                            
+                                            <!-- 禁止不安全的XML解析器 -->
+                                            <exclude>xerces:xmlParserAPIs</exclude>
+                                            <exclude>xml-apis:xml-apis</exclude>
+                                            
+                                            <!-- 禁止Servlet API直接依赖 -->
+                                            <exclude>javax.servlet:servlet-api</exclude>
+                                            <exclude>javax.servlet:javax.servlet-api</exclude>
+                                        </excludes>
+                                        <message>💥 检测到被禁止的不安全依赖，请使用安全的替代方案</message>
+                                    </bannedDependencies>
+                                    
+                                    <!-- 🔥 要求显式声明依赖版本 -->
+                                    <requireUpperBoundDeps>
+                                        <message>💥 发现传递依赖版本冲突，请在dependencyManagement中显式声明版本</message>
+                                    </requireUpperBoundDeps>
+                                    
+                                    <!-- 🔥 禁止SNAPSHOT依赖在生产环境 -->
+                                    <requireReleaseDeps>
+                                        <onlyWhenRelease>true</onlyWhenRelease>
+                                        <message>💥 生产环境禁止使用SNAPSHOT依赖</message>
+                                    </requireReleaseDeps>
+                                    
+                                    <!-- 🔥 强制属性存在 -->
+                                    <requireProperty>
+                                        <property>project.build.sourceEncoding</property>
+                                        <message>💥 必须设置项目编码属性 project.build.sourceEncoding</message>
+                                    </requireProperty>
+                                    
+                                    <!-- 🔥 强制插件版本声明 -->
+                                    <requirePluginVersions>
+                                        <message>💥 所有插件必须声明版本号以确保构建稳定性</message>
+                                        <banLatest>true</banLatest>
+                                        <banRelease>true</banRelease>
+                                        <banSnapshots>true</banSnapshots>
+                                    </requirePluginVersions>
+                                    
+                                </rules>
+                                <fail>true</fail>
+                                <failFast>true</failFast>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
                 <!-- Maven Versions Plugin - 版本管理 -->
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -282,10 +407,43 @@
                         <generateBackupPoms>false</generateBackupPoms>
                     </configuration>
                 </plugin>
+
+                <!-- Maven核心插件版本声明 - 确保构建稳定性 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>${maven-clean-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>${maven-install-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>${maven-deploy-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>${maven-site-plugin.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
 
         <plugins>
+            <!-- 默认启用enforcer插件 - 全项目严格校验 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+            </plugin>
+            
             <!-- 默认启用versions插件 -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
