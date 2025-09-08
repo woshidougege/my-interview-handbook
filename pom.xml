@@ -56,7 +56,6 @@
         <knife4j.version>3.0.3</knife4j.version>
         <swagger-annotations.version>1.5.22</swagger-annotations.version>
         <snakeyaml.version>1.33</snakeyaml.version>
-        <joda-time.version>2.12.5</joda-time.version>
         <slf4j.version>1.7.36</slf4j.version>
         
         <!-- Maven插件版本 -->
@@ -197,12 +196,6 @@
                 <optional>true</optional>
             </dependency>
 
-            <!-- Kill Bill Java客户端 -->
-            <dependency>
-                <groupId>org.kill-bill.billing</groupId>
-                <artifactId>killbill-client-java</artifactId>
-                <version>1.3.10</version>
-            </dependency>
 
             <!-- SSO客户端 -->
             <dependency>
@@ -223,13 +216,6 @@
                 <groupId>org.yaml</groupId>
                 <artifactId>snakeyaml</artifactId>
                 <version>${snakeyaml.version}</version>
-            </dependency>
-
-            <!-- 🔧 依赖冲突解决 - 统一时间库版本 -->
-            <dependency>
-                <groupId>joda-time</groupId>
-                <artifactId>joda-time</artifactId>
-                <version>${joda-time.version}</version>
             </dependency>
 
             <!-- 🔧 依赖冲突解决 - 统一日志API版本 (关键!) -->

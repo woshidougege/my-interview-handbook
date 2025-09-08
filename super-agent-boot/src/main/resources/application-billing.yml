@@ -60,35 +60,6 @@ super-agent:
         free: 3                # 免费积分
         paid: 4                # 付费积分
 
-# Kill Bill 计费系统配置
-killbill:
-  # 服务器配置
-  server:
-    url: ${KILLBILL_SERVER_URL:http://localhost:8080}
-    username: ${KILLBILL_USERNAME:admin}
-    password: ${KILLBILL_PASSWORD:password}
-    
-  # API配置
-  api:
-    key: ${KILLBILL_API_KEY:super-agent-key}
-    secret: ${KILLBILL_API_SECRET:super-agent-secret}
-    timeout: ${KILLBILL_TIMEOUT:30000}  # 超时时间（毫秒）
-    
-  # 计费相关配置
-  billing:
-    currency: CNY              # 计费货币
-    account-timezone: Asia/Shanghai  # 账户时区
-    
-    # 发票配置
-    invoice:
-      template: "default"      # 发票模板
-      auto-generate: true      # 自动生成发票
-      
-    # 付款配置
-    payment:
-      retry-attempts: 3        # 支付重试次数
-      retry-interval: 300      # 重试间隔（秒）
-
 # 异步处理配置
 async:
   # 资源上报专用线程池配置

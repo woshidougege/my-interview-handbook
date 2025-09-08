@@ -47,11 +47,6 @@
             <artifactId>mybatis-flex-processor</artifactId>
         </dependency>
 
-        <!-- Kill Bill Java客户端 -->
-        <dependency>
-            <groupId>org.kill-bill.billing</groupId>
-            <artifactId>killbill-client-java</artifactId>
-        </dependency>
     </dependencies>
 
     <build>
