@@ -189,15 +189,6 @@
                 <version>${hutool.version}</version>
             </dependency>
 
-            <!-- Lombok -->
-            <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${lombok.version}</version>
-                <optional>true</optional>
-            </dependency>
-
-
             <!-- SSO客户端 -->
 <!--            <dependency>
                 <groupId>com.norinrd</groupId>
@@ -245,7 +236,16 @@
         </dependencies>
     </dependencyManagement>
 
-
+    <!-- 全局依赖 - 所有子模块都需要的依赖 -->
+    <dependencies>
+        <!-- Lombok - 编译时工具，所有模块都使用 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <pluginManagement>
@@ -280,11 +280,11 @@
                         <meminitial>256m</meminitial>
                         <maxmem>1024m</maxmem>
                         <annotationProcessorPaths>
-                            <!-- Lombok -->
+                            <!-- MyBatis Flex 编译处理器 -->
                             <path>
-                                <groupId>org.projectlombok</groupId>
-                                <artifactId>lombok</artifactId>
-                                <version>${lombok.version}</version>
+                                <groupId>com.mybatis-flex</groupId>
+                                <artifactId>mybatis-flex-processor</artifactId>
+                                <version>${mybatis-flex.version}</version>
                             </path>
                             <!-- MapStruct 编译处理器 -->
                             <path>
@@ -292,11 +292,11 @@
                                 <artifactId>mapstruct-processor</artifactId>
                                 <version>${mapstruct.version}</version>
                             </path>
-                            <!-- MyBatis Flex 编译处理器 -->
+                            <!-- Lombok - 编译处理器 -->
                             <path>
-                                <groupId>com.mybatis-flex</groupId>
-                                <artifactId>mybatis-flex-processor</artifactId>
-                                <version>${mybatis-flex.version}</version>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
                             </path>
                         </annotationProcessorPaths>
                     </configuration>

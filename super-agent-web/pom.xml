@@ -44,7 +44,7 @@
             <artifactId>mapstruct</artifactId>
         </dependency>
 
-        <!-- Spring Boot Validation、Knife4j API文档、Lombok - 通过 service-impl -> common 模块传递依赖获得 -->
+        <!-- Spring Boot Validation、Knife4j API文档 - 通过 service-impl -> common 模块传递依赖获得 -->
     </dependencies>
 
     <build>
