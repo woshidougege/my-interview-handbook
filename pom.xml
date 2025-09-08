@@ -265,6 +265,19 @@
                         <encoding>UTF-8</encoding>
                         <fork>true</fork>
                         <parameters>true</parameters>  <!-- 保留参数名信息 -->
+                        <!-- 强制指定编译器编码和JVM参数 -->
+                        <compilerArgs>
+                            <arg>-J-Dfile.encoding=UTF-8</arg>
+                            <arg>-J-Duser.language=zh</arg>
+                            <arg>-J-Duser.country=CN</arg>
+                            <arg>-J-Dsun.jnu.encoding=UTF-8</arg>
+                            <arg>-J-Dconsole.encoding=UTF-8</arg>
+                            <arg>-J-Dsun.stderr.encoding=UTF-8</arg>
+                            <arg>-J-Dsun.stdout.encoding=UTF-8</arg>
+                            <arg>-Xlint:unchecked</arg>
+                        </compilerArgs>
+                        <meminitial>256m</meminitial>
+                        <maxmem>1024m</maxmem>
                         <annotationProcessorPaths>
                             <!-- Lombok -->
                             <path>
