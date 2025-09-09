@@ -77,10 +77,17 @@ CREATE TABLE `t_subscription_plan` (
     `id` BIGINT NOT NULL COMMENT '主键ID',
     `plan_name` VARCHAR(100) NOT NULL COMMENT '套餐名称',
     `description` VARCHAR(500) COMMENT '套餐描述',
-    `price` DECIMAL(10,2) NOT NULL COMMENT '套餐价格',
-    `credit_amount` DECIMAL(15,2) NOT NULL COMMENT '赠送积分数量',
+    `features` TEXT COMMENT '套餐特性描述（JSON格式）',
+    `price` DECIMAL(10,2) NOT NULL COMMENT '套餐价格（兼容字段）',
+    `monthly_price` DECIMAL(10,2) DEFAULT 0.00 COMMENT '按月价格',
+    `yearly_price` DECIMAL(10,2) DEFAULT 0.00 COMMENT '按年价格',
+    `credit_amount` DECIMAL(15,2) NOT NULL COMMENT '赠送积分数量（兼容字段）',
+    `monthly_credit_amount` DECIMAL(15,2) DEFAULT 0.00 COMMENT '按月赠送积分数量',
+    `yearly_credit_amount` DECIMAL(15,2) DEFAULT 0.00 COMMENT '按年赠送积分数量',
+    `daily_refresh_credit` INT NOT NULL DEFAULT 0 COMMENT '每日刷新积分数量',
     `validity_days` INT NOT NULL COMMENT '套餐有效期（天）',
     `enabled` TINYINT NOT NULL DEFAULT 1 COMMENT '是否启用 1-启用 0-禁用',
+    `is_recommended` TINYINT NOT NULL DEFAULT 0 COMMENT '是否推荐套餐 1-推荐 0-普通',
     `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序值',
     `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -165,7 +172,79 @@ CREATE TABLE `t_workspace_chat_task` (
 
 
 -- 初始化数据：创建默认套餐
-INSERT INTO `t_subscription_plan` (`id`, `plan_name`, `description`, `price`, `credit_amount`, `validity_days`, `enabled`, `sort_order`) VALUES 
-(1, '免费体验套餐', '免费套餐，每日赠送30积分', 0.00, 0.00, 30, 1, 1),
-(2, 'PRO套餐', 'PRO会员套餐，每月更多积分额度', 20.00, 3000.00, 30, 1, 2),
-(3, 'PRO+套餐', 'PRO+高级会员套餐，无限制使用', 40.00, 8000.00, 30, 1, 3);
+INSERT INTO `t_subscription_plan` (
+    `id`, `plan_name`, `description`, `features`, `price`, `monthly_price`, `yearly_price`, 
+    `credit_amount`, `monthly_credit_amount`, `yearly_credit_amount`, `daily_refresh_credit`,
+    `validity_days`, `enabled`, `is_recommended`, `sort_order`
+) VALUES 
+(1, '免费版', '适合轻度使用的个人用户', 
+ '["每日30刷新积分","基础AI功能","社区支持","约分析1-2个表格"]', 
+ 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 30, 30, 1, 0, 1),
+
+(2, 'PRO版', '适合中度使用的专业用户', 
+ '["每日30刷新积分","所有AI功能","优先客服支持","更多模型选择","约分析3-5个表格"]', 
+ 29.00, 29.00, 323.40, 1000.00, 1000.00, 12000.00, 30, 30, 1, 1, 2),
+
+(3, 'PRO+版', '适合重度使用的企业用户', 
+ '["每日30刷新积分","所有AI功能","专属客服支持","所有模型","API访问权限","高级分析功能","约分析4-7个表格"]', 
+ 59.00, 59.00, 658.80, 2500.00, 2500.00, 30000.00, 30, 30, 1, 0, 3);
+
+-- 8. 订阅订单表
+CREATE TABLE `t_subscription_order` (
+    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `order_no` varchar(64) NOT NULL COMMENT '订单号',
+    `user_id` bigint NOT NULL COMMENT '用户ID',
+    `plan_id` bigint NOT NULL COMMENT '套餐ID',
+    `plan_name` varchar(100) NOT NULL COMMENT '套餐名称',
+    `amount` decimal(10,2) NOT NULL COMMENT '订单金额',
+    `billing_cycle` varchar(20) NOT NULL DEFAULT 'monthly' COMMENT '计费周期',
+    `status` varchar(20) NOT NULL DEFAULT 'pending' COMMENT '订单状态',
+    `payment_method` varchar(20) DEFAULT NULL COMMENT '支付方式',
+    `third_party_order_no` varchar(100) DEFAULT NULL COMMENT '第三方支付订单号',
+    `paid_at` datetime DEFAULT NULL COMMENT '支付时间',
+    `expired_at` datetime NOT NULL COMMENT '过期时间',
+    `effective_start_time` datetime DEFAULT NULL COMMENT '套餐生效开始时间',
+    `effective_end_time` datetime DEFAULT NULL COMMENT '套餐生效结束时间',
+    `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+    `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
+    `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_order_no` (`order_no`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_plan_id` (`plan_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_created_time` (`created_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订阅订单表';
+
+-- 9. 支付记录表
+CREATE TABLE `t_payment_record` (
+    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `order_id` bigint NOT NULL COMMENT '订单ID',
+    `order_no` varchar(64) NOT NULL COMMENT '订单号',
+    `user_id` bigint NOT NULL COMMENT '用户ID',
+    `amount` decimal(10,2) NOT NULL COMMENT '支付金额',
+    `payment_method` varchar(20) NOT NULL COMMENT '支付方式',
+    `third_party_order_no` varchar(100) DEFAULT NULL COMMENT '第三方支付订单号',
+    `third_party_transaction_no` varchar(100) DEFAULT NULL COMMENT '第三方交易流水号',
+    `status` varchar(20) NOT NULL DEFAULT 'pending' COMMENT '支付状态',
+    `qr_code` text DEFAULT NULL COMMENT '支付二维码',
+    `payment_url` varchar(500) DEFAULT NULL COMMENT '支付链接',
+    `paid_at` datetime DEFAULT NULL COMMENT '支付时间',
+    `callback_data` text DEFAULT NULL COMMENT '第三方回调数据',
+    `failure_reason` varchar(500) DEFAULT NULL COMMENT '失败原因',
+    `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+    `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
+    `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+    PRIMARY KEY (`id`),
+    KEY `idx_order_id` (`order_id`),
+    KEY `idx_order_no` (`order_no`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_payment_method` (`payment_method`),
+    KEY `idx_status` (`status`),
+    KEY `idx_third_party_order_no` (`third_party_order_no`),
+    KEY `idx_created_time` (`created_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付记录表';

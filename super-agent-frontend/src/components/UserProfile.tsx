@@ -14,12 +14,14 @@ import {
 import { UserInfo, UserCredit } from '@/types/user';
 import { userApi, creditApi } from '@/services/api';
 import UserSettings from './UserSettings';
+import SubscriptionModal from './SubscriptionModal';
 
 
 const UserProfile: React.FC = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [creditInfo, setCreditInfo] = useState<UserCredit | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [subscriptionVisible, setSubscriptionVisible] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -143,7 +145,7 @@ const UserProfile: React.FC = () => {
   }
 
   const handleUpgrade = () => {
-    message.info('升级功能开发中');
+    setSubscriptionVisible(true);
   };
 
   return (
@@ -204,6 +206,12 @@ const UserProfile: React.FC = () => {
       <UserSettings
         visible={settingsVisible}
         onClose={() => setSettingsVisible(false)}
+      />
+
+      {/* 订阅弹窗 */}
+      <SubscriptionModal
+        visible={subscriptionVisible}
+        onClose={() => setSubscriptionVisible(false)}
       />
     </>
   );

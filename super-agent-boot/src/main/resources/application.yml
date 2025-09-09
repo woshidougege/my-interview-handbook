@@ -13,7 +13,7 @@ spring:
     name: super-agent
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}  # 默认使用开发环境
-    include: sso,scheduler  # 引入SSO配置和调度器配置
+    include: sso,scheduler,payment  # 引入SSO配置、调度器配置和支付配置
   
   # 修复Spring Boot 2.7.x与Knife4j兼容性问题
   mvc:

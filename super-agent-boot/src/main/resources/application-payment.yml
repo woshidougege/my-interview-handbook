@@ -1,0 +1,21 @@
+# 支付配置
+payment:
+  # 微信支付配置
+  wechat:
+    app-id: ${WECHAT_APP_ID:your_wechat_app_id}
+    mch-id: ${WECHAT_MCH_ID:your_merchant_id}
+    private-key-path: ${WECHAT_PRIVATE_KEY_PATH:classpath:cert/wechat_private_key.pem}
+    merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER:your_serial_number}
+    api-v3-key: ${WECHAT_API_V3_KEY:your_api_v3_key}
+    notify-url: ${WECHAT_NOTIFY_URL:http://localhost:8081/super-agent/api/v1/payment/wechat/notify}
+    
+  # 支付宝配置
+  alipay:
+    app-id: ${ALIPAY_APP_ID:your_alipay_app_id}
+    private-key: ${ALIPAY_PRIVATE_KEY:your_private_key}
+    public-key: ${ALIPAY_PUBLIC_KEY:your_public_key}
+    notify-url: ${ALIPAY_NOTIFY_URL:http://localhost:8081/super-agent/api/v1/payment/alipay/notify}
+    
+  # 订单配置
+  order:
+    expire-minutes: 15  # 订单过期时间（分钟）

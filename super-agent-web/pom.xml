@@ -15,6 +15,18 @@
     <description>Web接口模块 - Controller层</description>
 
     <dependencies>
+        <!-- 依赖通用模块 -->
+        <dependency>
+            <groupId>com.noah</groupId>
+            <artifactId>super-agent-common</artifactId>
+        </dependency>
+        
+        <!-- 依赖服务接口模块 -->
+        <dependency>
+            <groupId>com.noah</groupId>
+            <artifactId>super-agent-service-api</artifactId>
+        </dependency>
+        
         <!-- 依赖服务实现模块 -->
         <dependency>
             <groupId>com.noah</groupId>

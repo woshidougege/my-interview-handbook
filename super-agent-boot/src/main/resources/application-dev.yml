@@ -43,3 +43,19 @@ logging:
     com.alibaba.druid: DEBUG
   file:
     name: logs/super-agent-dev.log
+
+# 支付配置 - 开发环境（使用测试配置）
+payment:
+  wechat:
+    app-id: "wxtest123456"
+    mch-id: "test_merchant_id"
+    private-key-path: "classpath:cert/wechat_private_key_test.pem"
+    merchant-serial-number: "test_serial_number"
+    api-v3-key: "test_api_v3_key"
+    notify-url: "http://localhost:8081/super-agent/api/v1/payment/wechat/notify"
+  
+  alipay:
+    app-id: "test_alipay_app_id"
+    private-key: "test_private_key"
+    public-key: "test_public_key"
+    notify-url: "http://localhost:8081/super-agent/api/v1/payment/alipay/notify"
