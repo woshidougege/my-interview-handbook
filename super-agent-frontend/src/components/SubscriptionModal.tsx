@@ -16,6 +16,23 @@ interface SubscriptionModalProps {
   onClose: () => void;
 }
 
+interface PlanFeature {
+  text: string;
+  included: boolean;
+  highlight: boolean;
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  price: { monthly: number; yearly: number };
+  isCurrent: boolean;
+  buttonText: string;
+  buttonType: 'default' | 'primary';
+  isCreditsOnly?: boolean;
+  features: PlanFeature[];
+}
+
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [paymentVisible, setPaymentVisible] = useState(false);
@@ -25,7 +42,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
     amount: number;
   } | null>(null);
 
-  const plans = [
+  const plans: Plan[] = [
     {
       id: '1',
       name: '免费版',
@@ -34,43 +51,61 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
       buttonText: '当前计划',
       buttonType: 'default' as const,
       features: [
-        { text: '每日可获取30刷新积分', included: true, highlight: false },
-        { text: '基础AI功能', included: true, highlight: false },
-        { text: '社区支持', included: true, highlight: false },
-        { text: '约分析1-2个表格', included: true, highlight: false }
+        { text: '每日可获取***刷新积分', included: true, highlight: false },
+        { text: '访问基本', included: true, highlight: false },
+        { text: '公共数字分身（限制体验）', included: true, highlight: false }
       ]
     },
     {
       id: '2',
-      name: 'PRO版',
-      price: { monthly: 29, yearly: 27 }, // 年付节省7%
+      name: '基础版',
+      price: { monthly: 39, yearly: Math.round(39 * 12 * 0.83) }, // 年付节省17%
       isCurrent: false,
       buttonText: '订阅',
       buttonType: 'primary' as const,
       features: [
-        { text: '一次性获得1000积分', included: true, highlight: false },
-        { text: '每日可获取30刷新积分', included: true, highlight: false },
-        { text: '所有AI功能', included: true, highlight: false },
-        { text: '优先客服支持', included: true, highlight: false },
-        { text: '更多模型选择', included: true, highlight: false },
-        { text: '约分析3-5个表格', included: true, highlight: false }
+        { text: '一次性获得1900积分', included: true, highlight: false },
+        { text: '每日可获取***刷新积分', included: true, highlight: false },
+        { text: '访问限定天', included: true, highlight: false },
+        { text: '公共数字分身', included: true, highlight: false },
+        { text: '幻灯片制作', included: true, highlight: false },
+        { text: '网站开发', included: true, highlight: false },
+        { text: '数据分析', included: true, highlight: false },
+        { text: '图片、视频生成', included: true, highlight: false }
       ]
     },
     {
       id: '3',
-      name: 'PRO+版',
-      price: { monthly: 59, yearly: 55 }, // 年付节省7%
+      name: '高级版',
+      price: { monthly: 199, yearly: Math.round(199 * 12 * 0.83) }, // 年付节省17%
       isCurrent: false,
       buttonText: '订阅',
       buttonType: 'primary' as const,
       features: [
-        { text: '一次性获得2500积分', included: true, highlight: true },
-        { text: '每日可获取30刷新积分', included: true, highlight: false },
-        { text: '所有AI功能', included: true, highlight: false },
-        { text: '专属客服支持', included: true, highlight: true },
-        { text: '所有模型', included: true, highlight: false },
-        { text: 'API访问权限', included: true, highlight: true },
-        { text: '高级分析功能', included: true, highlight: true },
+        { text: '一次性获得19000积分', included: true, highlight: false },
+        { text: '每日可获取***刷新积分', included: true, highlight: false },
+        { text: '访问限定天', included: true, highlight: false },
+        { text: '专属数字分身', included: true, highlight: true },
+        { text: '幻灯片制作', included: true, highlight: false },
+        { text: '网站开发', included: true, highlight: false },
+        { text: '数据分析', included: true, highlight: false },
+        { text: '图片、视频生成', included: true, highlight: false },
+        { text: '本机电脑操控', included: true, highlight: false }
+      ]
+    },
+    {
+      id: '4',
+      name: '额外购买积分',
+      price: { monthly: 59, yearly: 59 },
+      isCurrent: false,
+      buttonText: '立即购买',
+      buttonType: 'primary' as const,
+      isCreditsOnly: true,
+      features: [
+        { text: '约生成10-14个PPT', included: true, highlight: false },
+        { text: '约生成7-9个深度研究报告', included: true, highlight: false },
+        { text: '约生成2-4个网站', included: true, highlight: false },
+        { text: '约生成10-14个图片', included: true, highlight: false },
         { text: '约分析4-7个表格', included: true, highlight: false }
       ]
     }
@@ -104,11 +139,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={1200}
+      width={1400}
       centered
       styles={{
         content: { 
-          background: '#fff',
+          background: '#f8f9fa',
           borderRadius: '12px',
           overflow: 'hidden',
           padding: '0'
@@ -118,7 +153,12 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
         }
       }}
     >
-      <div style={{ padding: '40px', textAlign: 'center' }}>
+      <div style={{ 
+        padding: '40px', 
+        textAlign: 'center',
+        background: '#f8f9fa',
+        minHeight: '100%'
+      }}>
         {/* 标题区域 */}
         <div style={{ marginBottom: '32px' }}>
           <h1 style={{ 
@@ -142,7 +182,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
         <div style={{ marginBottom: '40px' }}>
           <div style={{
             display: 'inline-flex',
-            background: '#f5f5f5',
+            background: '#e9ecef',
             borderRadius: '8px',
             padding: '4px',
             position: 'relative'
@@ -164,24 +204,18 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
               按月
             </div>
             
-            {/* 美化的分隔线 */}
-            <div style={{
-              width: '1px',
-              background: 'linear-gradient(to bottom, transparent, #ddd 20%, #ddd 80%, transparent)',
-              margin: '8px 0',
-              opacity: 0.6
-            }} />
-            
             <div
+              onClick={() => setBillingCycle('yearly')}
               style={{
                 padding: '12px 20px',
                 borderRadius: '6px',
-                background: '#f5f5f5',
-                color: '#999',
+                background: billingCycle === 'yearly' ? '#fff' : 'transparent',
+                color: billingCycle === 'yearly' ? '#333' : '#666',
                 fontSize: '14px',
                 fontWeight: 500,
-                cursor: 'not-allowed',
-                opacity: 0.6,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: billingCycle === 'yearly' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -189,15 +223,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
             >
               按年
               <Tag 
-                color="blue" 
+                color="blue"
                 style={{ 
                   fontSize: '12px',
                   fontWeight: 500,
-                  borderRadius: '4px',
-                  opacity: 0.7
+                  borderRadius: '4px'
                 }}
               >
-                节省7%
+                节省17%
               </Tag>
             </div>
           </div>
@@ -206,7 +239,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
         {/* 套餐卡片 */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
           gap: '24px',
           marginBottom: '32px',
           alignItems: 'stretch'
@@ -220,10 +253,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
                 position: 'relative',
                 height: '100%',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                background: '#ffffff'
               }}
               bodyStyle={{ 
-                padding: '24px',
+                padding: '20px',
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%'
@@ -234,31 +268,64 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
                 fontSize: '18px', 
                 fontWeight: 600, 
                 color: '#333',
-                marginBottom: '16px',
+                marginBottom: '12px',
                 textAlign: 'center'
               }}>
                 {plan.name}
               </h3>
 
               {/* 价格 */}
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
                   <span style={{ fontSize: '32px', fontWeight: 600, color: '#333' }}>
                     ¥{plan.price[billingCycle]}
                   </span>
                   <span style={{ fontSize: '14px', color: '#666', marginLeft: '4px' }}>
-                    {billingCycle === 'monthly' ? ' / 月' : ' / 年'}
+                    {plan.isCreditsOnly ? ' / 10000积分' : (billingCycle === 'monthly' ? ' / 月' : ' / 年')}
                   </span>
                 </div>
               </div>
 
+              {/* 订阅按钮 - 在价格下方 */}
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <Button
+                  type={plan.buttonType}
+                  block
+                  size="middle"
+                  disabled={plan.isCurrent}
+                  onClick={() => handleSubscribe(plan.id)}
+                  style={{
+                    height: '40px',
+                    borderRadius: '6px',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    background: plan.isCurrent 
+                      ? '#f5f5f5' 
+                      : plan.buttonType === 'primary' 
+                      ? '#000000'
+                      : '#ffffff',
+                    borderColor: plan.isCurrent 
+                      ? '#d9d9d9' 
+                      : '#000000',
+                    color: plan.isCurrent 
+                      ? '#999' 
+                      : plan.buttonType === 'primary' 
+                      ? '#ffffff'
+                      : '#000000',
+                    border: plan.isCurrent ? '1px solid #d9d9d9' : '1px solid #000000'
+                  }}
+                >
+                  {plan.buttonText}
+                </Button>
+              </div>
+
               {/* 功能列表 - 使用flex-grow占据剩余空间 */}
-              <div style={{ textAlign: 'left', flexGrow: 1, marginBottom: '24px' }}>
+              <div style={{ textAlign: 'left', flexGrow: 1 }}>
                 {plan.features.map((feature, index) => (
                   <div key={index} style={{ 
                     display: 'flex', 
                     alignItems: 'flex-start', 
-                    marginBottom: '12px',
+                    marginBottom: '10px',
                     fontSize: '14px',
                     minHeight: '20px'
                   }}>
@@ -290,25 +357,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
                   </div>
                 ))}
               </div>
-
-              {/* 订阅按钮 - 固定在底部 */}
-              <Button
-                type={plan.buttonType}
-                block
-                size="large"
-                disabled={plan.isCurrent}
-                onClick={() => handleSubscribe(plan.id)}
-                style={{
-                  height: '44px',
-                  borderRadius: '8px',
-                  fontWeight: 500,
-                  background: plan.isCurrent ? '#f5f5f5' : undefined,
-                  borderColor: plan.isCurrent ? '#d9d9d9' : undefined,
-                  marginTop: 'auto'
-                }}
-              >
-                {plan.buttonText}
-              </Button>
             </Card>
           ))}
         </div>

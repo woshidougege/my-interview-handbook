@@ -13,7 +13,7 @@ import {
   message,
 } from 'antd';
 import {
-  WalletOutlined,
+  ThunderboltOutlined,
   ExclamationCircleOutlined,
   TrophyOutlined,
   UserOutlined
@@ -168,8 +168,8 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
             <Statistic
               title="积分余额"
               value={creditInfo?.totalBalance || 0}
-              prefix={<WalletOutlined style={{ color: '#1890ff' }} />}
-              valueStyle={{ color: '#1890ff' }}
+              prefix={<ThunderboltOutlined style={{ color: '#faad14' }} />}
+              valueStyle={{ color: '#faad14' }}
               formatter={(value) => formatNumber(Number(value))}
             />
           </Card>
@@ -191,8 +191,8 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
             <Statistic
               title="总消费积分"
               value={creditInfo?.totalSpent || 0}
-              prefix={<ExclamationCircleOutlined style={{ color: '#faad14' }} />}
-              valueStyle={{ color: '#faad14' }}
+              prefix={<ThunderboltOutlined style={{ color: '#ff4d4f' }} />}
+              valueStyle={{ color: '#ff4d4f' }}
               formatter={(value) => formatNumber(Number(value))}
             />
           </Card>

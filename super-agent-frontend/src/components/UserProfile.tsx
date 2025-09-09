@@ -157,9 +157,13 @@ const UserProfile: React.FC = () => {
             color: '#333', 
             fontSize: '16px',
             fontWeight: 600,
-            lineHeight: 1
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
           }}>
-            ¥ {(creditInfo?.totalBalance || 1094).toLocaleString()}
+            <span style={{ color: '#faad14' }}>⚡</span>
+            {(creditInfo?.totalBalance || 1094).toLocaleString()}
           </span>
           <Button
             type="text"
