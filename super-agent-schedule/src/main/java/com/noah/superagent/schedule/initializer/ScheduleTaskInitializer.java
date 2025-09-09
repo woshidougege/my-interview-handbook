@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * 
  * 应用启动时自动注册和启动定时任务
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

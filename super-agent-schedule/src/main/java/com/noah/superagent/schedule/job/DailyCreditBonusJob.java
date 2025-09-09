@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  * 每日凌晨00:00:30执行，给所有免费套餐用户发放300积分
  * 使用db-scheduler确保高可靠性，避免程序重启导致的调度失效
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Component

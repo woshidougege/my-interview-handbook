@@ -1,6 +1,5 @@
 package com.noah.superagent.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
 import com.noah.superagent.common.enums.CreditTransactionTypeEnum;
 import com.noah.superagent.common.enums.CreditTypeEnum;
@@ -8,8 +7,10 @@ import com.noah.superagent.common.enums.ResponseCodeEnum;
 import com.noah.superagent.common.exception.BusinessException;
 import com.noah.superagent.dao.entity.CreditTransactionEntity;
 import com.noah.superagent.dao.entity.UserCreditAccountEntity;
+import com.noah.superagent.dao.entity.UserCreditBalanceEntity;
 import com.noah.superagent.dao.mapper.CreditTransactionMapper;
 import com.noah.superagent.dao.mapper.UserCreditAccountMapper;
+import com.noah.superagent.dao.mapper.UserCreditBalanceMapper;
 import com.noah.superagent.service.CreditConsumeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,15 +18,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 积分消费服务实现
  * 
  * 处理积分扣费逻辑，按照有效期优先级顺序扣费
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -34,6 +39,7 @@ import java.util.List;
 public class CreditConsumeServiceImpl implements CreditConsumeService {
 
     private final UserCreditAccountMapper userCreditAccountMapper;
+    private final UserCreditBalanceMapper userCreditBalanceMapper;
     private final CreditTransactionMapper creditTransactionMapper;
 
     @Override
@@ -45,91 +51,104 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             throw new BusinessException(ResponseCodeEnum.BAD_REQUEST, "扣费金额必须大于0");
         }
         
-        // 查询用户积分账户
+        // 1. 查询用户积分汇总账户
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
         if (creditAccount == null) {
             throw new BusinessException(ResponseCodeEnum.USER_NOT_FOUND, "用户积分账户不存在");
         }
         
-        // 检查总积分是否足够
-        if (!hasEnoughCredits(userId, amount)) {
-            throw new BusinessException(ResponseCodeEnum.INSUFFICIENT_CREDITS, "积分余额不足");
+        // 2. 检查总积分是否足够
+        if (creditAccount.getTotalBalance().compareTo(amount) < 0) {
+            throw new BusinessException(ResponseCodeEnum.INSUFFICIENT_CREDITS, 
+                    String.format("积分余额不足，当前余额: %s，需要: %s", creditAccount.getTotalBalance(), amount));
         }
         
-        // 按优先级扣费
-        List<CreditDeduction> deductions = calculateDeductions(creditAccount, amount);
-        BigDecimal totalDeducted = BigDecimal.ZERO;
+        // 3. 获取用户各类型积分余额并按优先级排序
+        List<UserCreditBalanceEntity> balanceList = userCreditBalanceMapper.selectByUserId(userId);
+        Map<CreditTypeEnum, UserCreditBalanceEntity> balanceMap = balanceList.stream()
+                .collect(Collectors.toMap(
+                        UserCreditBalanceEntity::getCreditType,
+                        balance -> balance
+                ));
         
-        // 准备更新数据
+        // 4. 按优先级计算扣费方案
+        List<CreditDeduction> deductions = calculateDeductions(balanceMap, amount);
+        
+        // 5. 更新积分汇总账户
+        BigDecimal oldTotalBalance = creditAccount.getTotalBalance();
+        BigDecimal newTotalBalance = oldTotalBalance.subtract(amount);
+        BigDecimal newTotalSpent = creditAccount.getTotalSpent().add(amount);
+        
         UserCreditAccountEntity updateAccount = new UserCreditAccountEntity();
         updateAccount.setId(creditAccount.getId());
+        updateAccount.setTotalBalance(newTotalBalance);
+        updateAccount.setTotalSpent(newTotalSpent);
         updateAccount.setVersion(creditAccount.getVersion());
         updateAccount.setUpdateBy(userId);
         
-        BigDecimal newTotalBalance = creditAccount.getTotalBalance().subtract(amount);
-        BigDecimal newTotalSpent = creditAccount.getTotalSpent().add(amount);
-        updateAccount.setTotalBalance(newTotalBalance);
-        updateAccount.setTotalSpent(newTotalSpent);
-        
-        // 分别更新各类积分余额
-        for (CreditDeduction deduction : deductions) {
-            switch (deduction.getType()) {
-                case DAILY:
-                    BigDecimal newDailyBalance = creditAccount.getDailyBalance().subtract(deduction.getAmount());
-                    updateAccount.setDailyBalance(newDailyBalance);
-                    break;
-                case ACTIVITY:
-                    BigDecimal newActivityBalance = creditAccount.getActivityBalance().subtract(deduction.getAmount());
-                    updateAccount.setActivityBalance(newActivityBalance);
-                    break;
-                case FREE:
-                    BigDecimal newFreeBalance = creditAccount.getFreeBalance().subtract(deduction.getAmount());
-                    updateAccount.setFreeBalance(newFreeBalance);
-                    break;
-                case PERMANENT:
-                    BigDecimal newPermanentBalance = creditAccount.getPermanentBalance().subtract(deduction.getAmount());
-                    updateAccount.setPermanentBalance(newPermanentBalance);
-                    break;
-            }
-            totalDeducted = totalDeducted.add(deduction.getAmount());
-        }
-        
-        // 验证扣费总额
-        if (totalDeducted.compareTo(amount) != 0) {
-            throw new BusinessException(ResponseCodeEnum.INTERNAL_ERROR, "积分扣费计算错误");
-        }
-        
-        // 更新积分账户（使用乐观锁）
         int updateResult = userCreditAccountMapper.updateBalanceByUserId(userId, updateAccount);
         if (updateResult <= 0) {
             log.error("更新用户积分账户失败（可能并发冲突） - userId: {}", userId);
             throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新积分账户失败");
         }
         
-        // 记录积分交易记录
+        // 6. 分别更新各类型积分余额并记录交易
         for (CreditDeduction deduction : deductions) {
+            UserCreditBalanceEntity balance = balanceMap.get(deduction.getType());
+            if (balance == null) {
+                continue; // 理论上不会发生
+            }
+            
+            // 更新积分余额
+            BigDecimal newBalance = balance.getBalance().subtract(deduction.getAmount());
+            BigDecimal newBalanceTotalSpent = balance.getTotalSpent().add(deduction.getAmount());
+            
+            balance.setBalance(newBalance);
+            balance.setTotalSpent(newBalanceTotalSpent);
+            balance.setLastSpendTime(LocalDateTime.now());
+            balance.setUpdateBy(userId);
+            
+            int balanceUpdateResult = userCreditBalanceMapper.updateBalanceByUserIdAndCreditType(
+                    userId, deduction.getType(), balance);
+            if (balanceUpdateResult <= 0) {
+                log.error("更新用户积分余额失败 - userId: {}, creditType: {}", userId, deduction.getType());
+                throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新积分余额失败");
+            }
+            
+            // 记录积分交易记录
             CreditTransactionEntity transaction = new CreditTransactionEntity();
             transaction.setUserId(userId);
             transaction.setTransactionType(CreditTransactionTypeEnum.EXPENSE_TOKEN_USAGE);
+            transaction.setCreditType(deduction.getType());
             transaction.setAmount(deduction.getAmount().negate()); // 负数表示支出
-            transaction.setBalanceBefore(creditAccount.getTotalBalance());
+            transaction.setBalanceBefore(oldTotalBalance);
             transaction.setBalanceAfter(newTotalBalance);
             transaction.setDescription(description + " - " + deduction.getType().getDesc());
             transaction.setRelatedOrderId(relatedOrderId);
             transaction.setCreateBy(userId);
             
-            int transactionResult = creditTransactionMapper.insert(transaction);
+            int transactionResult = creditTransactionMapper.insertTransaction(transaction);
             if (transactionResult <= 0) {
                 log.error("插入积分交易记录失败 - userId: {}", userId);
                 throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "记录交易失败");
             }
         }
         
-        // 构造返回结果
-        UserCreditResponse response = BeanUtil.copyProperties(updateAccount, UserCreditResponse.class);
-        response.setUserId(userId);
-        
         log.info("用户积分扣费成功 - userId: {}, 扣费金额: {}, 新余额: {}", userId, amount, newTotalBalance);
+        
+        // 7. 返回最新的积分信息
+        UserCreditResponse response = new UserCreditResponse();
+        response.setUserId(userId);
+        response.setTotalBalance(newTotalBalance);
+        response.setTotalEarned(creditAccount.getTotalEarned());
+        response.setTotalSpent(newTotalSpent);
+        
+        // 设置各类型积分余额
+        response.setDailyBalance(getBalanceSafely(balanceMap, CreditTypeEnum.DAILY));
+        response.setActivityBalance(getBalanceSafely(balanceMap, CreditTypeEnum.ACTIVITY));
+        response.setFreeBalance(getBalanceSafely(balanceMap, CreditTypeEnum.NEW_USER));
+        response.setPermanentBalance(getBalanceSafely(balanceMap, CreditTypeEnum.PERMANENT));
+        
         return response;
     }
 
@@ -149,11 +168,19 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             return "用户积分账户不存在";
         }
         
-        if (!hasEnoughCredits(userId, amount)) {
+        if (creditAccount.getTotalBalance().compareTo(amount) < 0) {
             return "积分余额不足，当前余额: " + creditAccount.getTotalBalance() + "，需要: " + amount;
         }
         
-        List<CreditDeduction> deductions = calculateDeductions(creditAccount, amount);
+        // 获取用户各类型积分余额
+        List<UserCreditBalanceEntity> balanceList = userCreditBalanceMapper.selectByUserId(userId);
+        Map<CreditTypeEnum, UserCreditBalanceEntity> balanceMap = balanceList.stream()
+                .collect(Collectors.toMap(
+                        UserCreditBalanceEntity::getCreditType,
+                        balance -> balance
+                ));
+        
+        List<CreditDeduction> deductions = calculateDeductions(balanceMap, amount);
         StringBuilder preview = new StringBuilder();
         preview.append("积分扣费计划：\n");
         
@@ -170,46 +197,51 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
 
     /**
      * 计算积分扣费方案
+     * 按照积分类型的消费优先级扣费：数字越小优先级越高
      */
-    private List<CreditDeduction> calculateDeductions(UserCreditAccountEntity account, BigDecimal totalAmount) {
+    private List<CreditDeduction> calculateDeductions(Map<CreditTypeEnum, UserCreditBalanceEntity> balanceMap, BigDecimal totalAmount) {
         List<CreditDeduction> deductions = new ArrayList<>();
         BigDecimal remainingAmount = totalAmount;
         
-        // 按优先级扣费：当日积分 → 活动积分 → 免费积分 → 永久积分
+        // 按消费优先级排序（数字越小优先级越高）
+        List<CreditTypeEnum> sortedTypes = balanceMap.keySet().stream()
+                .filter(type -> balanceMap.get(type).getBalance().compareTo(BigDecimal.ZERO) > 0)
+                .sorted(Comparator.comparing(CreditTypeEnum::getConsumePriority))
+                .collect(Collectors.toList());
         
-        // 1. 扣当日积分（1天有效）
-        BigDecimal dailyBalance = account.getDailyBalance() != null ? account.getDailyBalance() : BigDecimal.ZERO;
-        if (remainingAmount.compareTo(BigDecimal.ZERO) > 0 && dailyBalance.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal deductAmount = remainingAmount.min(dailyBalance);
-            deductions.add(new CreditDeduction(CreditTypeEnum.DAILY, deductAmount));
-            remainingAmount = remainingAmount.subtract(deductAmount);
+        for (CreditTypeEnum creditType : sortedTypes) {
+            if (remainingAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+            
+            UserCreditBalanceEntity balance = balanceMap.get(creditType);
+            BigDecimal availableBalance = balance.getBalance();
+            
+            if (availableBalance.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal deductAmount = remainingAmount.min(availableBalance);
+                deductions.add(new CreditDeduction(creditType, deductAmount));
+                remainingAmount = remainingAmount.subtract(deductAmount);
+                
+                log.debug("积分扣费计划 - 类型: {}, 扣费金额: {}, 剩余需扣: {}", 
+                         creditType.getDesc(), deductAmount, remainingAmount);
+            }
         }
         
-        // 2. 扣活动积分（90天有效）
-        BigDecimal activityBalance = account.getActivityBalance() != null ? account.getActivityBalance() : BigDecimal.ZERO;
-        if (remainingAmount.compareTo(BigDecimal.ZERO) > 0 && activityBalance.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal deductAmount = remainingAmount.min(activityBalance);
-            deductions.add(new CreditDeduction(CreditTypeEnum.ACTIVITY, deductAmount));
-            remainingAmount = remainingAmount.subtract(deductAmount);
-        }
-        
-        // 3. 扣免费积分（90天有效）
-        BigDecimal freeBalance = account.getFreeBalance() != null ? account.getFreeBalance() : BigDecimal.ZERO;
-        if (remainingAmount.compareTo(BigDecimal.ZERO) > 0 && freeBalance.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal deductAmount = remainingAmount.min(freeBalance);
-            deductions.add(new CreditDeduction(CreditTypeEnum.FREE, deductAmount));
-            remainingAmount = remainingAmount.subtract(deductAmount);
-        }
-        
-        // 4. 扣永久积分（无期限）
-        BigDecimal permanentBalance = account.getPermanentBalance() != null ? account.getPermanentBalance() : BigDecimal.ZERO;
-        if (remainingAmount.compareTo(BigDecimal.ZERO) > 0 && permanentBalance.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal deductAmount = remainingAmount.min(permanentBalance);
-            deductions.add(new CreditDeduction(CreditTypeEnum.PERMANENT, deductAmount));
-            remainingAmount = remainingAmount.subtract(deductAmount);
+        // 验证是否能完全扣费
+        if (remainingAmount.compareTo(BigDecimal.ZERO) > 0) {
+            log.error("积分余额不足以完成扣费 - 剩余需扣: {}", remainingAmount);
+            throw new BusinessException(ResponseCodeEnum.INSUFFICIENT_CREDITS, "积分余额不足");
         }
         
         return deductions;
+    }
+
+    /**
+     * 安全获取余额，不存在时返回0
+     */
+    private BigDecimal getBalanceSafely(Map<CreditTypeEnum, UserCreditBalanceEntity> balanceMap, CreditTypeEnum creditType) {
+        UserCreditBalanceEntity balance = balanceMap.get(creditType);
+        return balance != null ? balance.getBalance() : BigDecimal.ZERO;
     }
 
     /**

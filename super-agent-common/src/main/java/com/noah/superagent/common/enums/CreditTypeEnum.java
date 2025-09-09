@@ -11,7 +11,7 @@ import lombok.Getter;
  * 
  * 用于区分不同有效期和来源的积分类型
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter
@@ -19,9 +19,9 @@ import lombok.Getter;
 public enum CreditTypeEnum implements BaseEnum<String> {
 
     /**
-     * 当日积分（每日登录300积分，1天有效）
+     * 每日积分（每日登录300积分，1天有效）
      */
-    DAILY("daily", "当日积分", 1, 1),
+    DAILY("daily", "每日积分", 1, 1),
 
     /**
      * 活动积分（分享奖励500积分等，90天有效）
@@ -29,9 +29,9 @@ public enum CreditTypeEnum implements BaseEnum<String> {
     ACTIVITY("activity", "活动积分", 90, 2),
 
     /**
-     * 免费积分（新用户1000积分，90天有效）
+     * 新用户积分（新用户注册赠送1000积分，90天有效）
      */
-    FREE("free", "免费积分", 90, 3),
+    NEW_USER("new_user", "新用户积分", 90, 3),
 
     /**
      * 永久积分（付费积分，无期限）

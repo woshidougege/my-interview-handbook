@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  * 
  * 临时实现，后续会被单点登录替换
  *
- * @author Noah  
+ * @author 任相鹏  
  * @since 1.0.0
  */
 @Slf4j

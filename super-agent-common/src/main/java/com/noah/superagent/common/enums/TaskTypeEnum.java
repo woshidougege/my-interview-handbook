@@ -8,7 +8,7 @@ import lombok.Getter;
 /**
  * 任务类型枚举
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter

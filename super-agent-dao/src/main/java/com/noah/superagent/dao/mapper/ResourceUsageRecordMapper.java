@@ -13,7 +13,7 @@ import static com.noah.superagent.dao.entity.table.ResourceUsageRecordEntityTabl
 /**
  * 资源使用记录Mapper
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper

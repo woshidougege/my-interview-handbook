@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * <p>
  * 每天凌晨1:00执行，清理过期的积分
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

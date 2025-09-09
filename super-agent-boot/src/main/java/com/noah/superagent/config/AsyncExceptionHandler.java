@@ -11,7 +11,7 @@ import java.util.concurrent.Executor;
 /**
  * 异步异常处理配置
  * 
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

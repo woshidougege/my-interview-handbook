@@ -19,7 +19,7 @@ import javax.validation.constraints.NotNull;
  * 
  * 用于管理员手动操作和测试积分相关功能
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

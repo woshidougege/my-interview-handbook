@@ -7,7 +7,7 @@ import com.noah.superagent.common.dto.response.CreditTransactionResponse;
 /**
  * 用户积分服务接口
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface UserCreditService {

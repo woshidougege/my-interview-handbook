@@ -13,7 +13,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 /**
  * 异步处理配置
  * 
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

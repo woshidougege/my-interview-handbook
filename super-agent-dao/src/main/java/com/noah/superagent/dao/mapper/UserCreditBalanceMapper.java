@@ -14,7 +14,7 @@ import static com.noah.superagent.dao.entity.table.UserCreditBalanceEntityTableD
 /**
  * 用户积分余额明细Mapper接口
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper
@@ -105,7 +105,9 @@ public interface UserCreditBalanceMapper extends BaseMapper<UserCreditBalanceEnt
             // 更新现有记录
             entity.setId(existing.getId());
             entity.setVersion(existing.getVersion());
-            return updateById(entity);
+            return updateByQuery(entity, QueryWrapper.create()
+                    .where(USER_CREDIT_BALANCE_ENTITY.ID.eq(existing.getId()))
+                    .and(USER_CREDIT_BALANCE_ENTITY.VERSION.eq(existing.getVersion())));
         }
     }
 }

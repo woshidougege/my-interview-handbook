@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * 
  * 管理积分类型的配置信息，包括有效期、优先级等
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

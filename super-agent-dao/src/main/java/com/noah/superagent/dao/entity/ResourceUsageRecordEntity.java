@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 /**
  * 资源使用记录表
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

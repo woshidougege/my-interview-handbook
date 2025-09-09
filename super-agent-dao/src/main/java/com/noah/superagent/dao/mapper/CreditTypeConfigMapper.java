@@ -13,7 +13,7 @@ import static com.noah.superagent.dao.entity.table.CreditTypeConfigEntityTableDe
 /**
  * 积分类型配置Mapper接口
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper

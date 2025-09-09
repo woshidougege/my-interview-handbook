@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 /**
  * 用户积分账户响应
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

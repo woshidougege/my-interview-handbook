@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 /**
  * 积分过期清理日志表
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

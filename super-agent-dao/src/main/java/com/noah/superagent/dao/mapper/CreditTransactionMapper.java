@@ -15,7 +15,7 @@ import static com.noah.superagent.dao.entity.table.CreditTransactionEntityTableD
 /**
  * 积分交易记录Mapper接口
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper

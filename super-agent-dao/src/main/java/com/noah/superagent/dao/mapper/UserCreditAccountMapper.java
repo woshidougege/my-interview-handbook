@@ -12,7 +12,7 @@ import static com.noah.superagent.dao.entity.table.UserCreditAccountEntityTableD
 /**
  * 用户积分账户Mapper接口
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper
@@ -46,33 +46,4 @@ public interface UserCreditAccountMapper extends BaseMapper<UserCreditAccountEnt
         return insert(account);
     }
 
-    /**
-     * 查询有当日积分余额的用户
-     */
-    default List<UserCreditAccountEntity> selectUsersWithDailyBalance() {
-        return selectListByQuery(QueryWrapper.create()
-                .where(USER_CREDIT_ACCOUNT_ENTITY.DAILY_BALANCE.gt(0))
-                .and(USER_CREDIT_ACCOUNT_ENTITY.DELETED.eq(0))
-        );
-    }
-
-    /**
-     * 查询有活动积分余额的用户
-     */
-    default List<UserCreditAccountEntity> selectUsersWithActivityBalance() {
-        return selectListByQuery(QueryWrapper.create()
-                .where(USER_CREDIT_ACCOUNT_ENTITY.ACTIVITY_BALANCE.gt(0))
-                .and(USER_CREDIT_ACCOUNT_ENTITY.DELETED.eq(0))
-        );
-    }
-
-    /**
-     * 查询有免费积分余额的用户
-     */
-    default List<UserCreditAccountEntity> selectUsersWithFreeBalance() {
-        return selectListByQuery(QueryWrapper.create()
-                .where(USER_CREDIT_ACCOUNT_ENTITY.FREE_BALANCE.gt(0))
-                .and(USER_CREDIT_ACCOUNT_ENTITY.DELETED.eq(0))
-        );
-    }
 }

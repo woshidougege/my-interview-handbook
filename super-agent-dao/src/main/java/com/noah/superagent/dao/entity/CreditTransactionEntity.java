@@ -2,6 +2,7 @@ package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Table;
 import com.noah.superagent.common.enums.CreditTransactionTypeEnum;
+import com.noah.superagent.common.enums.CreditTypeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -28,6 +29,11 @@ public class CreditTransactionEntity extends BaseEntity {
      * 交易类型：INCOME_SUBSCRIPTION-包月赠送 INCOME_DAILY_FREE-每日免费 EXPENSE_TOKEN_USAGE-Token消费 EXPENSE_EXPIRED_CLEAR-过期清零
      */
     private CreditTransactionTypeEnum transactionType;
+
+    /**
+     * 积分类型代码
+     */
+    private CreditTypeEnum creditType;
 
     /**
      * 交易金额（正数表示收入，负数表示支出）

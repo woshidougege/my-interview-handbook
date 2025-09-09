@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 /**
  * 资源使用量上报响应
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

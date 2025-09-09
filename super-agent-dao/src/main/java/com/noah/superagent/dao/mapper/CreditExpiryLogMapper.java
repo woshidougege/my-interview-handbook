@@ -14,7 +14,7 @@ import static com.noah.superagent.dao.entity.table.CreditExpiryLogEntityTableDef
 /**
  * 积分过期清理日志Mapper接口
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper

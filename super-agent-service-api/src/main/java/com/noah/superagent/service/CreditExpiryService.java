@@ -5,7 +5,7 @@ package com.noah.superagent.service;
  * 
  * 处理不同类型积分的过期清理逻辑
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface CreditExpiryService {

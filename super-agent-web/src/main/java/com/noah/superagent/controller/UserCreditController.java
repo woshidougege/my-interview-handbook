@@ -18,7 +18,7 @@ import javax.validation.constraints.Min;
 /**
  * 用户积分控制器
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

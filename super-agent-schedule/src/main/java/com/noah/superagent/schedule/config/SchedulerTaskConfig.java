@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
  * 
  * 注册所有定时任务到db-scheduler
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Configuration

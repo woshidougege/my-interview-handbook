@@ -9,7 +9,7 @@ import lombok.EqualsAndHashCode;
 /**
  * 积分类型配置表
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

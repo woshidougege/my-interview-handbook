@@ -9,7 +9,7 @@ import java.math.BigDecimal;
  * 
  * 处理积分扣费逻辑，按照有效期优先级顺序扣费
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface CreditConsumeService {

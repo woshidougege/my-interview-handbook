@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * 资源使用量记录服务接口
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface ResourceUsageService {

@@ -1,6 +1,7 @@
 package com.noah.superagent.common.dto.response;
 
 import com.noah.superagent.common.enums.CreditTransactionTypeEnum;
+import com.noah.superagent.common.enums.CreditTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
 /**
  * 积分交易记录响应
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data
@@ -28,6 +29,12 @@ public class CreditTransactionResponse {
 
     @Schema(description = "交易类型描述")
     private String transactionTypeDesc;
+
+    @Schema(description = "积分类型")
+    private CreditTypeEnum creditType;
+
+    @Schema(description = "积分类型描述")
+    private String creditTypeDesc;
 
     @Schema(description = "交易金额（正数表示收入，负数表示支出）")
     private BigDecimal amount;

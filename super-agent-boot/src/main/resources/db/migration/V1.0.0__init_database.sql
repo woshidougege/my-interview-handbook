@@ -26,13 +26,11 @@ CREATE TABLE `t_user` (
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
--- 2. 用户积分账户表
+-- 2. 用户积分账户表（汇总表）
 CREATE TABLE `t_credit_account` (
     `id` BIGINT NOT NULL COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID（逻辑外键->t_user.id）',
     `total_balance` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '总积分余额',
-    `free_balance` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '免费积分余额',
-    `subscription_balance` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '包月积分余额',
     `total_earned` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '累计获得积分',
     `total_spent` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '累计消费积分',
     `version` INT NOT NULL DEFAULT 0 COMMENT '版本号（乐观锁）',
@@ -52,6 +50,7 @@ CREATE TABLE `t_credit_transaction` (
     `id` BIGINT NOT NULL COMMENT '主键ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID（逻辑外键->t_user.id）',
     `transaction_type` TINYINT NOT NULL COMMENT '交易类型 1-包月赠送 2-每日免费 3-Token消费 4-过期清零',
+    `credit_type` VARCHAR(32) COMMENT '积分类型代码',
     `amount` DECIMAL(15,2) NOT NULL COMMENT '交易金额（正数表示收入，负数表示支出）',
     `balance_before` DECIMAL(15,2) NOT NULL COMMENT '交易前余额',
     `balance_after` DECIMAL(15,2) NOT NULL COMMENT '交易后余额',
@@ -67,6 +66,7 @@ CREATE TABLE `t_credit_transaction` (
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_transaction_type` (`transaction_type`),
+    INDEX `idx_credit_type` (`credit_type`),
     INDEX `idx_deleted` (`deleted`),
     INDEX `idx_user_deleted_time` (`user_id`, `deleted`, `create_time`),
     INDEX `idx_create_time` (`create_time`)
@@ -252,3 +252,64 @@ CREATE TABLE `t_payment_record` (
     KEY `idx_third_party_order_no` (`third_party_order_no`),
     KEY `idx_created_time` (`created_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付记录表';
+
+-- 积分类型配置表
+CREATE TABLE `t_credit_type_config` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `type_code` VARCHAR(32) NOT NULL COMMENT '积分类型代码',
+    `type_name` VARCHAR(64) NOT NULL COMMENT '积分类型名称',
+    `validity_days` INT NOT NULL DEFAULT 0 COMMENT '有效期天数，0表示永久',
+    `consume_priority` INT NOT NULL COMMENT '消费优先级，数字越小优先级越高',
+    `description` VARCHAR(200) COMMENT '描述',
+    `enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_type_code` (`type_code`),
+    INDEX `idx_consume_priority` (`consume_priority`),
+    INDEX `idx_enabled` (`enabled`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分类型配置表';
+
+-- 用户积分余额明细表
+CREATE TABLE `t_user_credit_balance` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `credit_type` VARCHAR(32) NOT NULL COMMENT '积分类型代码',
+    `balance` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '余额',
+    `total_earned` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '累计获得',
+    `total_spent` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT '累计消费',
+    `last_earn_time` DATETIME COMMENT '最后获得时间',
+    `last_spend_time` DATETIME COMMENT '最后消费时间',
+    `version` INT NOT NULL DEFAULT 0 COMMENT '版本号（乐观锁）',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记',
+    `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_credit_type` (`user_id`, `credit_type`, `deleted`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_credit_type` (`credit_type`),
+    INDEX `idx_balance` (`balance`),
+    INDEX `idx_deleted` (`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户积分余额明细表';
+
+-- 积分过期清理日志表
+CREATE TABLE `t_credit_expiry_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `credit_type` VARCHAR(32) NOT NULL COMMENT '积分类型代码',
+    `expired_amount` DECIMAL(15,2) NOT NULL COMMENT '过期积分数量',
+    `expire_date` DATE NOT NULL COMMENT '过期日期',
+    `original_transaction_id` BIGINT COMMENT '原始积分交易记录ID',
+    `processed_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '处理时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_expire_date` (`expire_date`),
+    INDEX `idx_credit_type` (`credit_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分过期清理日志表';
+
+-- 初始化积分类型配置
+INSERT INTO `t_credit_type_config` (`type_code`, `type_name`, `validity_days`, `consume_priority`, `description`, `enabled`) VALUES
+('daily', '每日积分', 1, 1, '每日登录获得300积分，1天有效', 1),
+('activity', '活动积分', 90, 2, '分享奖励等活动积分，90天有效', 1),
+('new_user', '新用户积分', 90, 3, '新用户注册赠送1000积分，90天有效', 1),
+('permanent', '永久积分', 0, 4, '付费购买的积分，永久有效', 1);
