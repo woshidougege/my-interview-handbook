@@ -25,7 +25,7 @@
         <!-- 调度模块 -->
         <dependency>
             <groupId>com.noah</groupId>
-            <artifactId>super-agent-schedule</artifactId>
+            <artifactId>super-agent-scheduler</artifactId>
         </dependency>
 
 

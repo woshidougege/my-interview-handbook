@@ -1,4 +1,4 @@
-package com.noah.superagent.schedule.job;
+package com.noah.superagent.scheduler.job;
 
 import com.github.kagkarlsson.scheduler.task.ExecutionContext;
 import com.github.kagkarlsson.scheduler.task.TaskInstance;

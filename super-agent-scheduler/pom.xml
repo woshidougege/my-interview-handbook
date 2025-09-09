@@ -10,8 +10,8 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>super-agent-schedule</artifactId>
-    <name>super-agent-schedule</name>
+    <artifactId>super-agent-scheduler</artifactId>
+    <name>super-agent-scheduler</name>
     <description>定时任务模块</description>
 
     <dependencies>

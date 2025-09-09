@@ -1,4 +1,4 @@
-package com.noah.superagent.schedule.job;
+package com.noah.superagent.scheduler.job;
 
 import com.github.kagkarlsson.scheduler.task.ExecutionContext;
 import com.github.kagkarlsson.scheduler.task.TaskInstance;
@@ -6,7 +6,6 @@ import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import com.github.kagkarlsson.scheduler.task.schedule.Schedules;
 import com.noah.superagent.service.CreditExpiryService;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -30,12 +29,7 @@ public class CreditExpiryCleanupJob {
     // Cron表达式：每天凌晨01:00:00执行
     private static final String CRON_EXPRESSION = "0 0 1 * * ?";
 
-    /**
-     * -- GETTER --
-     *  获取任务实例
-     */
     // RecurringTask 实例
-    @Getter
     private final RecurringTask<Void> task;
 
     public CreditExpiryCleanupJob(CreditExpiryService creditExpiryService) {
@@ -71,6 +65,13 @@ public class CreditExpiryCleanupJob {
             log.error("积分过期清理任务执行失败", e);
             throw e;
         }
+    }
+
+    /**
+     * 获取任务实例
+     */
+    public RecurringTask<Void> getTask() {
+        return task;
     }
 
     /**

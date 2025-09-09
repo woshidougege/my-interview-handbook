@@ -210,16 +210,18 @@ CREATE TABLE `t_subscription_order` (
     `effective_start_time` datetime DEFAULT NULL COMMENT '套餐生效开始时间',
     `effective_end_time` datetime DEFAULT NULL COMMENT '套餐生效结束时间',
     `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-    `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
-    `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by` BIGINT COMMENT '创建人ID',
+    `update_by` BIGINT COMMENT '更新人ID',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_order_no` (`order_no`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_plan_id` (`plan_id`),
     KEY `idx_status` (`status`),
-    KEY `idx_created_time` (`created_time`)
+    KEY `idx_deleted` (`deleted`),
+    KEY `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订阅订单表';
 
 -- 9. 支付记录表
@@ -239,10 +241,11 @@ CREATE TABLE `t_payment_record` (
     `callback_data` text DEFAULT NULL COMMENT '第三方回调数据',
     `failure_reason` varchar(500) DEFAULT NULL COMMENT '失败原因',
     `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-    `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `created_by` varchar(64) DEFAULT NULL COMMENT '创建人',
-    `updated_by` varchar(64) DEFAULT NULL COMMENT '更新人',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
+    `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by` BIGINT COMMENT '创建人ID',
+    `update_by` BIGINT COMMENT '更新人ID',
     PRIMARY KEY (`id`),
     KEY `idx_order_id` (`order_id`),
     KEY `idx_order_no` (`order_no`),
@@ -250,7 +253,8 @@ CREATE TABLE `t_payment_record` (
     KEY `idx_payment_method` (`payment_method`),
     KEY `idx_status` (`status`),
     KEY `idx_third_party_order_no` (`third_party_order_no`),
-    KEY `idx_created_time` (`created_time`)
+    KEY `idx_deleted` (`deleted`),
+    KEY `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='支付记录表';
 
 -- 积分类型配置表
@@ -262,12 +266,17 @@ CREATE TABLE `t_credit_type_config` (
     `consume_priority` INT NOT NULL COMMENT '消费优先级，数字越小优先级越高',
     `description` VARCHAR(200) COMMENT '描述',
     `enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
-    `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by` BIGINT COMMENT '创建人ID',
+    `update_by` BIGINT COMMENT '更新人ID',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_type_code` (`type_code`),
     INDEX `idx_consume_priority` (`consume_priority`),
-    INDEX `idx_enabled` (`enabled`)
+    INDEX `idx_enabled` (`enabled`),
+    INDEX `idx_deleted` (`deleted`),
+    INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分类型配置表';
 
 -- 用户积分余额明细表
@@ -281,15 +290,18 @@ CREATE TABLE `t_user_credit_balance` (
     `last_earn_time` DATETIME COMMENT '最后获得时间',
     `last_spend_time` DATETIME COMMENT '最后消费时间',
     `version` INT NOT NULL DEFAULT 0 COMMENT '版本号（乐观锁）',
-    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记',
-    `created_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by` BIGINT COMMENT '创建人ID',
+    `update_by` BIGINT COMMENT '更新人ID',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_credit_type` (`user_id`, `credit_type`, `deleted`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_credit_type` (`credit_type`),
     INDEX `idx_balance` (`balance`),
-    INDEX `idx_deleted` (`deleted`)
+    INDEX `idx_deleted` (`deleted`),
+    INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户积分余额明细表';
 
 -- 积分过期清理日志表
@@ -301,10 +313,17 @@ CREATE TABLE `t_credit_expiry_log` (
     `expire_date` DATE NOT NULL COMMENT '过期日期',
     `original_transaction_id` BIGINT COMMENT '原始积分交易记录ID',
     `processed_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '处理时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by` BIGINT COMMENT '创建人ID',
+    `update_by` BIGINT COMMENT '更新人ID',
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_expire_date` (`expire_date`),
-    INDEX `idx_credit_type` (`credit_type`)
+    INDEX `idx_credit_type` (`credit_type`),
+    INDEX `idx_deleted` (`deleted`),
+    INDEX `idx_create_time` (`create_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分过期清理日志表';
 
 -- 初始化积分类型配置

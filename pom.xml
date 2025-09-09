@@ -17,7 +17,7 @@
         <module>super-agent-service-api</module>
         <module>super-agent-service-impl</module>
         <module>super-agent-web</module>
-        <module>super-agent-schedule</module>
+        <module>super-agent-scheduler</module>
         <module>super-agent-boot</module>
     </modules>
 
@@ -112,7 +112,7 @@
             </dependency>
             <dependency>
                 <groupId>com.noah</groupId>
-                <artifactId>super-agent-schedule</artifactId>
+                <artifactId>super-agent-scheduler</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
