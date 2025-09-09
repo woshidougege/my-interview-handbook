@@ -149,7 +149,7 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
               </Col>
               <Col style={{ marginLeft: '16px' }}>
                 <Title level={4} style={{ margin: 0 }}>
-                  {userInfo?.nickname || '用户'}
+                  {userInfo?.username || '用户'}
                 </Title>
                 <Space direction="vertical" size={4}>
                   <Text type="secondary">手机号: {userInfo?.phone}</Text>

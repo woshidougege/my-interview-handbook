@@ -1,5 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
+import AppLayout from '@/components/Layout/AppLayout';
 import AccountOverview from '@/components/AccountOverview';
 
 const HomePage: React.FC = () => {
@@ -12,7 +13,9 @@ const HomePage: React.FC = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       
-      <AccountOverview />
+      <AppLayout>
+        <AccountOverview />
+      </AppLayout>
     </>
   );
 };
