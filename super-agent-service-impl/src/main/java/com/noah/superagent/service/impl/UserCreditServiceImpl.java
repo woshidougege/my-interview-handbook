@@ -167,6 +167,9 @@ public class UserCreditServiceImpl implements UserCreditService {
         creditAccount.setTotalBalance(NEW_USER_CREDITS);
         creditAccount.setFreeBalance(NEW_USER_CREDITS); // 新用户1000积分属于免费积分
         creditAccount.setSubscriptionBalance(BigDecimal.ZERO);
+        creditAccount.setDailyBalance(BigDecimal.ZERO);
+        creditAccount.setActivityBalance(BigDecimal.ZERO);
+        creditAccount.setPermanentBalance(BigDecimal.ZERO);
         creditAccount.setTotalEarned(NEW_USER_CREDITS);
         creditAccount.setTotalSpent(BigDecimal.ZERO);
         creditAccount.setVersion(0);
@@ -232,16 +235,16 @@ public class UserCreditServiceImpl implements UserCreditService {
         
         // 准备更新数据
         BigDecimal oldBalance = creditAccount.getTotalBalance();
-        BigDecimal oldFreeBalance = creditAccount.getFreeBalance();
+        BigDecimal oldDailyBalance = creditAccount.getDailyBalance() != null ? creditAccount.getDailyBalance() : BigDecimal.ZERO;
         BigDecimal newTotalBalance = oldBalance.add(FREE_PLAN_DAILY_CREDITS);
-        BigDecimal newFreeBalance = oldFreeBalance.add(FREE_PLAN_DAILY_CREDITS);
+        BigDecimal newDailyBalance = oldDailyBalance.add(FREE_PLAN_DAILY_CREDITS);
         BigDecimal newTotalEarned = creditAccount.getTotalEarned().add(FREE_PLAN_DAILY_CREDITS);
         
         // 更新积分账户（使用乐观锁）
         UserCreditAccountEntity updateAccount = new UserCreditAccountEntity();
         updateAccount.setId(creditAccount.getId());
         updateAccount.setTotalBalance(newTotalBalance);
-        updateAccount.setFreeBalance(newFreeBalance);
+        updateAccount.setDailyBalance(newDailyBalance);
         updateAccount.setTotalEarned(newTotalEarned);
         updateAccount.setVersion(creditAccount.getVersion());
         updateAccount.setUpdateBy(userId);
@@ -272,8 +275,13 @@ public class UserCreditServiceImpl implements UserCreditService {
         // 构造返回结果
         UserCreditResponse response = BeanUtil.copyProperties(updateAccount, UserCreditResponse.class);
         response.setUserId(userId);
-        BigDecimal permanentBalance = newTotalBalance.subtract(newFreeBalance)
-                .subtract(creditAccount.getSubscriptionBalance());
+        // 重新计算各类积分余额
+        BigDecimal freeBalance = creditAccount.getFreeBalance() != null ? creditAccount.getFreeBalance() : BigDecimal.ZERO;
+        BigDecimal activityBalance = creditAccount.getActivityBalance() != null ? creditAccount.getActivityBalance() : BigDecimal.ZERO;
+        BigDecimal permanentBalance = creditAccount.getPermanentBalance() != null ? creditAccount.getPermanentBalance() : BigDecimal.ZERO;
+        response.setFreeBalance(freeBalance);
+        response.setActivityBalance(activityBalance);
+        response.setDailyBalance(newDailyBalance);
         response.setPermanentBalance(permanentBalance);
         
         log.info("免费套餐每日积分发放成功 - userId: {}, 发放积分: {}, 新余额: {}", 
@@ -342,18 +350,18 @@ public class UserCreditServiceImpl implements UserCreditService {
             throw new BusinessException(ResponseCodeEnum.USER_NOT_FOUND, "用户积分账户不存在");
         }
         
-        // 准备更新数据
+        // 准备更新数据（付费积分添加到永久积分余额中）
         BigDecimal oldBalance = creditAccount.getTotalBalance();
-        BigDecimal oldSubscriptionBalance = creditAccount.getSubscriptionBalance();
+        BigDecimal oldPermanentBalance = creditAccount.getPermanentBalance() != null ? creditAccount.getPermanentBalance() : BigDecimal.ZERO;
         BigDecimal newTotalBalance = oldBalance.add(credits);
-        BigDecimal newSubscriptionBalance = oldSubscriptionBalance.add(credits);
+        BigDecimal newPermanentBalance = oldPermanentBalance.add(credits);
         BigDecimal newTotalEarned = creditAccount.getTotalEarned().add(credits);
         
         // 更新积分账户（使用乐观锁）
         UserCreditAccountEntity updateAccount = new UserCreditAccountEntity();
         updateAccount.setId(creditAccount.getId());
         updateAccount.setTotalBalance(newTotalBalance);
-        updateAccount.setSubscriptionBalance(newSubscriptionBalance); // 付费积分计入订阅余额
+        updateAccount.setPermanentBalance(newPermanentBalance); // 付费积分计入永久积分余额
         updateAccount.setTotalEarned(newTotalEarned);
         updateAccount.setVersion(creditAccount.getVersion());
         updateAccount.setUpdateBy(userId);
@@ -385,9 +393,11 @@ public class UserCreditServiceImpl implements UserCreditService {
         // 构造返回结果
         UserCreditResponse response = BeanUtil.copyProperties(updateAccount, UserCreditResponse.class);
         response.setUserId(userId);
-        BigDecimal permanentBalance = newTotalBalance.subtract(creditAccount.getFreeBalance())
-                .subtract(newSubscriptionBalance);
-        response.setPermanentBalance(permanentBalance);
+        // 设置各类积分余额
+        response.setFreeBalance(creditAccount.getFreeBalance() != null ? creditAccount.getFreeBalance() : BigDecimal.ZERO);
+        response.setDailyBalance(creditAccount.getDailyBalance() != null ? creditAccount.getDailyBalance() : BigDecimal.ZERO);
+        response.setActivityBalance(creditAccount.getActivityBalance() != null ? creditAccount.getActivityBalance() : BigDecimal.ZERO);
+        response.setPermanentBalance(newPermanentBalance);
         
         log.info("付费套餐积分发放成功 - userId: {}, 发放积分: {}, 新余额: {}", 
                 userId, credits, newTotalBalance);

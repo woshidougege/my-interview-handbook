@@ -22,13 +22,19 @@ public class UserCreditResponse {
     @Schema(description = "总积分余额")
     private BigDecimal totalBalance;
 
-    @Schema(description = "免费积分余额")
+    @Schema(description = "免费积分余额（新用户1000积分，90天有效）")
     private BigDecimal freeBalance;
 
-    @Schema(description = "包月积分余额")
+    @Schema(description = "包月积分余额（已废弃）")
     private BigDecimal subscriptionBalance;
 
-    @Schema(description = "永久积分余额")
+    @Schema(description = "当日积分余额（每日登录300积分，1天有效）")
+    private BigDecimal dailyBalance;
+
+    @Schema(description = "活动积分余额（分享奖励500积分等，90天有效）")
+    private BigDecimal activityBalance;
+
+    @Schema(description = "永久积分余额（付费积分，无期限）")
     private BigDecimal permanentBalance;
 
     @Schema(description = "累计获得积分")

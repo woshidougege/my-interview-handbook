@@ -28,14 +28,29 @@ public class UserCreditAccountEntity extends BaseEntity {
     private BigDecimal totalBalance;
 
     /**
-     * 免费积分余额
+     * 免费积分余额（新用户1000积分，90天有效）
      */
     private BigDecimal freeBalance;
 
     /**
-     * 包月积分余额
+     * 包月积分余额（已废弃，数据迁移后可删除）
      */
     private BigDecimal subscriptionBalance;
+
+    /**
+     * 当日积分余额（每日登录300积分，1天有效）
+     */
+    private BigDecimal dailyBalance;
+
+    /**
+     * 活动积分余额（分享奖励500积分等，90天有效）
+     */
+    private BigDecimal activityBalance;
+
+    /**
+     * 永久积分余额（付费积分，无期限）
+     */
+    private BigDecimal permanentBalance;
 
     /**
      * 累计获得积分

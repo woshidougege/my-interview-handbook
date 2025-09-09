@@ -64,4 +64,19 @@ public interface CreditTransactionMapper extends BaseMapper<CreditTransactionEnt
     default int insertTransaction(CreditTransactionEntity transaction) {
         return insert(transaction);
     }
+
+    /**
+     * 查询过期的交易记录
+     */
+    default List<CreditTransactionEntity> selectExpiredTransactions(Long userId, 
+            CreditTransactionTypeEnum transactionType, LocalDateTime expireThreshold) {
+        return selectListByQuery(QueryWrapper.create()
+                .where(CREDIT_TRANSACTION_ENTITY.USER_ID.eq(userId))
+                .and(CREDIT_TRANSACTION_ENTITY.TRANSACTION_TYPE.eq(transactionType))
+                .and(CREDIT_TRANSACTION_ENTITY.CREATE_TIME.lt(expireThreshold))
+                .and(CREDIT_TRANSACTION_ENTITY.AMOUNT.gt(0)) // 只查询收入记录
+                .and(CREDIT_TRANSACTION_ENTITY.DELETED.eq(0))
+                .orderBy(CREDIT_TRANSACTION_ENTITY.CREATE_TIME.asc())
+        );
+    }
 }
