@@ -52,7 +52,7 @@ const nextConfig = {
     return process.env.NODE_ENV === 'development' ? [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8081/super-agent/api/:path*',
+        destination: 'http://localhost:8081/super-agent/api/v1/:path*',
       },
     ] : [];
   },

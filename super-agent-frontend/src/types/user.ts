@@ -1,24 +1,21 @@
 // 用户信息类型定义
 export interface UserInfo {
   id: string;
-  username: string;
-  email?: string;
   phone?: string;
   nickname?: string;
-  avatar?: string;
   status: number;
-  createTime: string;
-  updateTime: string;
+  statusDesc?: string;
 }
 
 // 用户积分信息类型定义
 export interface UserCredit {
-  id: string;
   userId: string;
-  totalCredits: number;
-  availableCredits: number;
-  frozenCredits: number;
-  expiredCredits: number;
+  totalBalance: number;
+  freeBalance: number;
+  subscriptionBalance: number;
+  permanentBalance: number;
+  totalEarned: number;
+  totalSpent: number;
   createTime: string;
   updateTime: string;
 }
@@ -65,6 +62,7 @@ export interface ApiResponse<T = any> {
   code: number;
   message: string;
   data: T;
+  success: boolean;
   timestamp: string;
 }
 

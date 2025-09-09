@@ -50,7 +50,7 @@ export const userApi = {
   
   // 获取用户信息
   getUserInfo: (userId: string): Promise<AxiosResponse<ApiResponse<UserInfo>>> => {
-    return api.get(`/user/${userId}`);
+    return api.get(`/users/${userId}`);
   },
 };
 
@@ -58,7 +58,7 @@ export const userApi = {
 export const creditApi = {
   // 获取用户积分信息
   getUserCredit: (userId: string): Promise<AxiosResponse<ApiResponse<UserCredit>>> => {
-    return api.get(`/credit/${userId}`);
+    return api.get(`/user-credit/${userId}`);
   },
   
   // 获取积分交易记录
@@ -67,14 +67,14 @@ export const creditApi = {
     page: number = 1,
     size: number = 10
   ): Promise<AxiosResponse<ApiResponse<PageResponse<CreditTransaction>>>> => {
-    return api.get(`/credit/${userId}/transactions`, {
-      params: { page, size }
+    return api.get(`/user-credit/${userId}/transactions`, {
+      params: { pageNum: page, pageSize: size }
     });
   },
   
   // 检查用户是否有足够积分
   checkUserCredit: (userId: string, amount: number): Promise<AxiosResponse<ApiResponse<boolean>>> => {
-    return api.get(`/credit/${userId}/check`, {
+    return api.get(`/user-credit/${userId}/available`, {
       params: { amount }
     });
   },

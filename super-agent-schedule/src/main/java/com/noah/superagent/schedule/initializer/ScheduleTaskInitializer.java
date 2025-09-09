@@ -52,10 +52,9 @@ public class ScheduleTaskInitializer implements ApplicationRunner {
      */
     private void initDailyCreditBonusTask() {
         try {
-            // 检查任务是否已经存在
             String taskName = DailyCreditBonusJob.getJobTaskName();
             
-            // 计算下次执行时间（明天凌晨00:00:30）
+            // 计算下次执行时间
             LocalDateTime nextRun = LocalDateTime.now()
                     .plusDays(1)
                     .withHour(0)
@@ -63,7 +62,6 @@ public class ScheduleTaskInitializer implements ApplicationRunner {
                     .withSecond(30)
                     .withNano(0);
             
-            // 如果今天还没有执行过，且当前时间在00:00:30之后，则立即执行一次
             LocalDateTime today00h00m30s = LocalDateTime.now()
                     .withHour(0)
                     .withMinute(0)
@@ -71,22 +69,28 @@ public class ScheduleTaskInitializer implements ApplicationRunner {
                     .withNano(0);
             
             if (LocalDateTime.now().isAfter(today00h00m30s)) {
-                // 今天已经过了执行时间，使用明天的时间
                 log.info("今日积分发放时间已过，下次执行时间: {}", nextRun);
             } else {
-                // 今天还没到执行时间，使用今天的时间
                 nextRun = today00h00m30s;
                 log.info("今日积分发放时间未到，下次执行时间: {}", nextRun);
             }
             
-            // 调度任务（如果任务已经存在，会自动更新执行时间）
-            scheduler.schedule(
-                    dailyCreditBonusJob.getTask().instance(taskName),
-                    nextRun.atZone(ZoneId.systemDefault()).toInstant()
-            );
-            
-            log.info("每日积分发放任务调度成功 - 任务名: {}, Cron: {}, 下次执行: {}", 
-                    taskName, DailyCreditBonusJob.getCronExpression(), nextRun);
+            // 使用 reschedule 方法，如果任务不存在会创建，如果存在会更新
+            try {
+                scheduler.reschedule(
+                        dailyCreditBonusJob.getTask().instance(taskName),
+                        nextRun.atZone(ZoneId.systemDefault()).toInstant()
+                );
+                log.info("每日积分发放任务调度成功 - 任务名: {}, 下次执行: {}", taskName, nextRun);
+            } catch (Exception e) {
+                // 如果reschedule失败（任务不存在），则使用schedule创建
+                log.info("任务不存在，尝试创建新任务...");
+                scheduler.schedule(
+                        dailyCreditBonusJob.getTask().instance(taskName),
+                        nextRun.atZone(ZoneId.systemDefault()).toInstant()
+                );
+                log.info("每日积分发放任务创建成功 - 任务名: {}, 下次执行: {}", taskName, nextRun);
+            }
                     
         } catch (Exception e) {
             log.error("初始化每日积分发放任务失败", e);

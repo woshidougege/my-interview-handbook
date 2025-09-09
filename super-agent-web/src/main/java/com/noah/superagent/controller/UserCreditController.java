@@ -14,7 +14,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
 
 /**
  * 用户积分控制器
@@ -37,7 +36,7 @@ public class UserCreditController {
             description = "根据用户ID查询用户的积分账户信息，包括总积分、免费积分、包月积分、永久积分等")
     public ApiResponse<UserCreditResponse> getUserCredit(
             @Parameter(description = "用户ID", required = true, example = "1234567890123456789")
-            @PathVariable @NotNull @Min(1) Long userId) {
+            @PathVariable @Min(1) Long userId) {
         
         log.info("查询用户积分账户 - userId: {}", userId);
         
@@ -55,7 +54,7 @@ public class UserCreditController {
             description = "分页查询用户的积分交易记录，包括充值、消费、过期等各种交易类型")
     public ApiResponse<PageResponse<CreditTransactionResponse>> getCreditTransactions(
             @Parameter(description = "用户ID", required = true, example = "1234567890123456789")
-            @PathVariable @NotNull @Min(1) Long userId,
+            @PathVariable @Min(1) Long userId,
             @Parameter(description = "页码", example = "1")
             @RequestParam(value = "pageNum", defaultValue = "1") @Min(1) Integer pageNum,
             @Parameter(description = "每页数量", example = "10")
@@ -79,7 +78,7 @@ public class UserCreditController {
             description = "快速查询用户当前可用的积分总额")
     public ApiResponse<Long> getAvailableCredits(
             @Parameter(description = "用户ID", required = true, example = "1234567890123456789")
-            @PathVariable @NotNull @Min(1) Long userId) {
+            @PathVariable @Min(1) Long userId) {
         
         log.info("查询用户可用积分 - userId: {}", userId);
         
@@ -97,7 +96,7 @@ public class UserCreditController {
             description = "检查指定用户是否已创建积分账户")
     public ApiResponse<Boolean> hasUserCredit(
             @Parameter(description = "用户ID", required = true, example = "1234567890123456789")
-            @PathVariable @NotNull @Min(1) Long userId) {
+            @PathVariable @Min(1) Long userId) {
         
         log.info("检查用户积分账户是否存在 - userId: {}", userId);
         

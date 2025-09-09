@@ -11,15 +11,12 @@ import {
   Typography,
   Spin,
   message,
-  Divider
 } from 'antd';
 import {
   WalletOutlined,
-  GiftOutlined,
   ExclamationCircleOutlined,
   TrophyOutlined,
-  UserOutlined,
-  CalendarOutlined
+  UserOutlined
 } from '@ant-design/icons';
 import { UserInfo, UserCredit, CreditTransaction } from '@/types/user';
 import { userApi, creditApi } from '@/services/api';
@@ -57,7 +54,7 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
       
       // 获取积分交易记录
       const transactionResponse = await creditApi.getCreditTransactions(user.id, 1, 10);
-      const transactionList = transactionResponse.data.data.records;
+      const transactionList = transactionResponse.data.data.records || [];
       setTransactions(transactionList);
       
     } catch (error: any) {
@@ -130,7 +127,7 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
   }
 
   return (
-    <div style={{ padding: '24px', background: '#f5f5f5', minHeight: '100vh' }}>
+    <div style={{ padding: '24px' }}>
       {/* 页面标题 */}
       <div style={{ marginBottom: '24px' }}>
         <Title level={2} style={{ margin: 0 }}>
@@ -147,19 +144,16 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
               <Col>
                 <Avatar 
                   size={64} 
-                  src={userInfo?.avatar} 
                   icon={<UserOutlined />}
                 />
               </Col>
               <Col style={{ marginLeft: '16px' }}>
                 <Title level={4} style={{ margin: 0 }}>
-                  {userInfo?.nickname || userInfo?.username}
+                  {userInfo?.nickname || '用户'}
                 </Title>
                 <Space direction="vertical" size={4}>
-                  <Text type="secondary">用户名: {userInfo?.username}</Text>
-                  <Text type="secondary">
-                    <CalendarOutlined /> 注册时间: {formatDate(userInfo?.createTime)}
-                  </Text>
+                  <Text type="secondary">手机号: {userInfo?.phone}</Text>
+                  <Text type="secondary">状态: {userInfo?.statusDesc}</Text>
                 </Space>
               </Col>
             </Row>
@@ -169,62 +163,42 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
 
       {/* 积分统计卡片 */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={8}>
           <Card>
             <Statistic
-              title="可用积分"
-              value={creditInfo?.availableCredits || 0}
+              title="积分余额"
+              value={creditInfo?.totalBalance || 0}
               prefix={<WalletOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ color: '#1890ff' }}
               formatter={(value) => formatNumber(Number(value))}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={8}>
           <Card>
             <Statistic
-              title="累计积分"
-              value={creditInfo?.totalCredits || 0}
+              title="累计充值（元）"
+              value={(creditInfo?.totalEarned || 0) * 0.01}
               prefix={<TrophyOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ color: '#52c41a' }}
-              formatter={(value) => formatNumber(Number(value))}
+              precision={2}
+              formatter={(value) => `¥${formatNumber(Number(value))}`}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={8}>
           <Card>
             <Statistic
-              title="冻结积分"
-              value={creditInfo?.frozenCredits || 0}
+              title="总消费积分"
+              value={creditInfo?.totalSpent || 0}
               prefix={<ExclamationCircleOutlined style={{ color: '#faad14' }} />}
               valueStyle={{ color: '#faad14' }}
               formatter={(value) => formatNumber(Number(value))}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card>
-            <Statistic
-              title="过期积分"
-              value={creditInfo?.expiredCredits || 0}
-              prefix={<GiftOutlined style={{ color: '#ff4d4f' }} />}
-              valueStyle={{ color: '#ff4d4f' }}
-              formatter={(value) => formatNumber(Number(value))}
-            />
-          </Card>
-        </Col>
       </Row>
 
-      {/* 积分使用情况图表区域 */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col span={24}>
-          <Card title="积分使用情况" extra={<Text type="secondary">近7天</Text>}>
-            <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Text type="secondary">图表功能开发中...</Text>
-            </div>
-          </Card>
-        </Col>
-      </Row>
 
       {/* 积分交易记录 */}
       <Row gutter={[16, 16]}>
