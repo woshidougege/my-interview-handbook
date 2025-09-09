@@ -59,19 +59,19 @@ public class ScheduleTaskInitializer implements ApplicationRunner {
                     .plusDays(1)
                     .withHour(0)
                     .withMinute(0)
-                    .withSecond(30)
+                    .withSecond(0)
                     .withNano(0);
             
-            LocalDateTime today00h00m30s = LocalDateTime.now()
+            LocalDateTime today00h00m00s = LocalDateTime.now()
                     .withHour(0)
                     .withMinute(0)
-                    .withSecond(30)
+                    .withSecond(0)
                     .withNano(0);
             
-            if (LocalDateTime.now().isAfter(today00h00m30s)) {
+            if (LocalDateTime.now().isAfter(today00h00m00s)) {
                 log.info("今日积分发放时间已过，下次执行时间: {}", nextRun);
             } else {
-                nextRun = today00h00m30s;
+                nextRun = today00h00m00s;
                 log.info("今日积分发放时间未到，下次执行时间: {}", nextRun);
             }
             

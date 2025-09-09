@@ -51,8 +51,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
       buttonText: '当前计划',
       buttonType: 'default' as const,
       features: [
-        { text: '每日可获取***刷新积分', included: true, highlight: false },
-        { text: '访问基本', included: true, highlight: false },
+        { text: '新用户赠送1000积分（90天有效）', included: true, highlight: false },
+        { text: '每日登录赠300积分', included: true, highlight: false },
+        { text: '分享新用户奖励500积分', included: true, highlight: false },
         { text: '公共数字分身（限制体验）', included: true, highlight: false }
       ]
     },
@@ -64,8 +65,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
       buttonText: '订阅',
       buttonType: 'primary' as const,
       features: [
-        { text: '一次性获得1900积分', included: true, highlight: false },
-        { text: '每日可获取***刷新积分', included: true, highlight: false },
+        { text: '一次性获得1900永久积分', included: true, highlight: true },
+        { text: '享受所有免费版权益', included: true, highlight: false },
         { text: '访问限定天', included: true, highlight: false },
         { text: '公共数字分身', included: true, highlight: false },
         { text: '幻灯片制作', included: true, highlight: false },
@@ -82,15 +83,15 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
       buttonText: '订阅',
       buttonType: 'primary' as const,
       features: [
-        { text: '一次性获得19000积分', included: true, highlight: false },
-        { text: '每日可获取***刷新积分', included: true, highlight: false },
+        { text: '一次性获得19000永久积分', included: true, highlight: true },
+        { text: '享受所有免费版权益', included: true, highlight: false },
         { text: '访问限定天', included: true, highlight: false },
         { text: '专属数字分身', included: true, highlight: true },
         { text: '幻灯片制作', included: true, highlight: false },
         { text: '网站开发', included: true, highlight: false },
         { text: '数据分析', included: true, highlight: false },
         { text: '图片、视频生成', included: true, highlight: false },
-        { text: '本机电脑操控', included: true, highlight: false }
+        { text: '本机电脑操控', included: true, highlight: true }
       ]
     },
     {
@@ -102,11 +103,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
       buttonType: 'primary' as const,
       isCreditsOnly: true,
       features: [
+        { text: '10000永久积分（无期限）', included: true, highlight: true },
         { text: '约生成10-14个PPT', included: true, highlight: false },
         { text: '约生成7-9个深度研究报告', included: true, highlight: false },
         { text: '约生成2-4个网站', included: true, highlight: false },
-        { text: '约生成10-14个图片', included: true, highlight: false },
-        { text: '约分析4-7个表格', included: true, highlight: false }
+        { text: '约生成10-14个图片', included: true, highlight: false }
       ]
     }
   ];

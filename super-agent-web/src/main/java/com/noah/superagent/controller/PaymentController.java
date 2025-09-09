@@ -117,4 +117,26 @@ public class PaymentController {
         return success ? ApiResponse.success("取消订单成功", true) 
                       : ApiResponse.error("取消订单失败");
     }
+
+    @Operation(summary = "[开发测试] 模拟支付成功", description = "仅用于开发测试，模拟支付回调成功")
+    @PostMapping("/mock/success/{orderNo}")
+    public ApiResponse<Boolean> mockPaymentSuccess(
+            @Parameter(description = "订单号") @PathVariable @NotBlank String orderNo,
+            @Parameter(description = "支付方式", example = "wechat") @RequestParam(defaultValue = "wechat") String paymentMethod) {
+        
+        try {
+            // TODO: [后续开发] 生产环境需要删除此接口
+            log.warn("调用模拟支付成功接口: orderNo={}, paymentMethod={}", orderNo, paymentMethod);
+            
+            boolean success = "wechat".equals(paymentMethod) 
+                ? paymentService.handleWechatPayCallback("mock_callback_data_" + orderNo)
+                : paymentService.handleAlipayCallback("mock_callback_data_" + orderNo);
+                
+            return success ? ApiResponse.success("模拟支付成功", true) 
+                          : ApiResponse.error("模拟支付失败");
+        } catch (Exception e) {
+            log.error("模拟支付成功异常: orderNo={}", orderNo, e);
+            return ApiResponse.error("模拟支付异常: " + e.getMessage());
+        }
+    }
 }

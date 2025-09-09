@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 /**
  * 每日免费套餐积分发放定时任务
  * 
- * 每日凌晨00:00:30执行，给所有免费套餐用户发放30积分
+ * 每日凌晨00:00:30执行，给所有免费套餐用户发放300积分
  * 使用db-scheduler确保高可靠性，避免程序重启导致的调度失效
  *
  * @author Noah
@@ -29,8 +29,8 @@ public class DailyCreditBonusJob {
     // 任务名称
     private static final String TASK_NAME = "daily-credit-bonus";
     
-    // Cron表达式：每天凌晨00:00:30执行
-    private static final String CRON_EXPRESSION = "30 0 0 * * ?";
+    // Cron表达式：每天凌晨00:00:00执行
+    private static final String CRON_EXPRESSION = "0 0 0 * * ?";
     
     // RecurringTask 实例
     private final RecurringTask<Void> task;

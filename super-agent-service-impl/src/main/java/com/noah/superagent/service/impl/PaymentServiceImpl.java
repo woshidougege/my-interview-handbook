@@ -10,6 +10,7 @@ import com.noah.superagent.dao.mapper.PaymentRecordMapper;
 import com.noah.superagent.dao.mapper.SubscriptionOrderMapper;
 import com.noah.superagent.dao.mapper.SubscriptionPlanMapper;
 import com.noah.superagent.service.PaymentService;
+import com.noah.superagent.service.UserCreditService;
 import com.wechat.pay.java.core.Config;
 import com.wechat.pay.java.core.RSAAutoCertificateConfig;
 import com.wechat.pay.java.service.payments.nativepay.NativePayService;
@@ -37,6 +38,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final SubscriptionOrderMapper subscriptionOrderMapper;
     private final PaymentRecordMapper paymentRecordMapper;
     private final SubscriptionPlanMapper subscriptionPlanMapper;
+    private final UserCreditService userCreditService;
 
     @Value("${payment.wechat.app-id:}")
     private String wechatAppId;
@@ -158,17 +160,59 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean handleWechatPayCallback(String callbackData) {
-        // TODO: 实现微信支付回调处理
-        log.info("处理微信支付回调: {}", callbackData);
-        return true;
+        try {
+            // TODO: [后续开发] 实现真实的微信支付回调处理
+            // 1. 验证回调签名
+            // 2. 解析回调数据
+            // 3. 验证订单金额和状态
+            // 4. 调用微信API确认支付状态
+            
+            log.info("模拟微信支付回调成功: {}", callbackData);
+            
+            // 从回调数据中提取订单号
+            String orderNo = extractOrderNoFromCallback(callbackData);
+            if (orderNo == null) {
+                log.error("无法从微信支付回调中提取订单号");
+                return false;
+            }
+            
+            // 模拟支付成功：直接处理订单完成逻辑
+            return processPaymentSuccess(orderNo, "wechat");
+            
+        } catch (Exception e) {
+            log.error("处理微信支付回调异常", e);
+            return false;
+        }
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean handleAlipayCallback(String callbackData) {
-        // TODO: 实现支付宝支付回调处理
-        log.info("处理支付宝支付回调: {}", callbackData);
-        return true;
+        try {
+            // TODO: [后续开发] 实现真实的支付宝支付回调处理
+            // 1. 验证回调签名
+            // 2. 解析回调数据  
+            // 3. 验证订单金额和状态
+            // 4. 调用支付宝API确认支付状态
+            
+            log.info("模拟支付宝支付回调成功: {}", callbackData);
+            
+            // 从回调数据中提取订单号
+            String orderNo = extractOrderNoFromCallback(callbackData);
+            if (orderNo == null) {
+                log.error("无法从支付宝支付回调中提取订单号");
+                return false;
+            }
+            
+            // 模拟支付成功：直接处理订单完成逻辑
+            return processPaymentSuccess(orderNo, "alipay");
+            
+        } catch (Exception e) {
+            log.error("处理支付宝支付回调异常", e);
+            return false;
+        }
     }
 
     @Override
@@ -287,5 +331,103 @@ public class PaymentServiceImpl implements PaymentService {
      */
     private String generateOrderNo() {
         return "ORDER" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+    
+    /**
+     * 从回调数据中提取订单号（模拟实现）
+     * TODO: [后续开发] 根据真实的微信/支付宝回调数据格式解析订单号
+     */
+    private String extractOrderNoFromCallback(String callbackData) {
+        // 模拟实现：从mock回调数据中提取订单号
+        // 格式: mock_callback_data_ORDER123456
+        log.info("模拟从回调数据中提取订单号: {}", callbackData);
+        
+        if (callbackData != null && callbackData.startsWith("mock_callback_data_")) {
+            String orderNo = callbackData.replace("mock_callback_data_", "");
+            log.info("提取到订单号: {}", orderNo);
+            return orderNo;
+        }
+        
+        // TODO: [后续开发] 实际开发中需要根据具体的回调数据格式解析
+        // 微信支付回调数据格式解析
+        // 支付宝回调数据格式解析
+        
+        log.warn("无法从回调数据中提取订单号: {}", callbackData);
+        return null;
+    }
+    
+    /**
+     * 处理支付成功业务逻辑
+     */
+    private boolean processPaymentSuccess(String orderNo, String paymentMethod) {
+        try {
+            // 1. 查找订单
+            QueryWrapper wrapper = QueryWrapper.create()
+                .eq(SubscriptionOrderEntity::getOrderNo, orderNo);
+            SubscriptionOrderEntity order = subscriptionOrderMapper.selectOneByQuery(wrapper);
+            
+            if (order == null) {
+                log.error("支付成功但找不到订单: orderNo={}", orderNo);
+                return false;
+            }
+            
+            if (!"pending".equals(order.getStatus())) {
+                log.warn("订单状态不是待支付: orderNo={}, status={}", orderNo, order.getStatus());
+                return true; // 已处理过，返回成功
+            }
+            
+            // 2. 更新订单状态为已支付
+            order.setStatus("paid");
+            order.setPaidAt(LocalDateTime.now());
+            subscriptionOrderMapper.update(order);
+            
+            // 3. 更新支付记录状态
+            QueryWrapper paymentWrapper = QueryWrapper.create()
+                .eq(PaymentRecordEntity::getOrderNo, orderNo);
+            PaymentRecordEntity payment = paymentRecordMapper.selectOneByQuery(paymentWrapper);
+            if (payment != null) {
+                payment.setStatus("success");
+                payment.setPaidAt(LocalDateTime.now());
+                paymentRecordMapper.update(payment);
+            }
+            
+            // 4. 查询套餐信息，发放积分
+            SubscriptionPlanEntity plan = subscriptionPlanMapper.selectOneById(order.getPlanId());
+            if (plan != null) {
+                try {
+                    // 发放付费套餐永久积分
+                    Long creditAmount = "monthly".equals(order.getBillingCycle()) 
+                        ? plan.getMonthlyCreditAmount().longValue()
+                        : plan.getYearlyCreditAmount().longValue();
+                        
+                    userCreditService.grantPaidPlanCredits(
+                        order.getUserId(), 
+                        creditAmount, 
+                        order.getId(), 
+                        plan.getPlanName()
+                    );
+                    
+                    log.info("发放积分成功: userId={}, planName={}, creditAmount={}", 
+                        order.getUserId(), plan.getPlanName(), creditAmount);
+                        
+                } catch (Exception e) {
+                    log.error("发放积分失败: userId={}, planName={}, error={}", 
+                        order.getUserId(), plan.getPlanName(), e.getMessage(), e);
+                    // 积分发放失败不影响支付成功状态，但需要记录日志用于后续处理
+                }
+                
+                // TODO: [后续开发] 激活用户订阅
+                // userSubscriptionService.activateSubscription(order.getUserId(), order.getPlanId(), order.getId());
+            }
+            
+            log.info("支付成功处理完成: orderNo={}, userId={}, amount={}", 
+                orderNo, order.getUserId(), order.getAmount());
+            
+            return true;
+            
+        } catch (Exception e) {
+            log.error("处理支付成功业务逻辑异常: orderNo={}", orderNo, e);
+            return false;
+        }
     }
 }

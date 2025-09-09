@@ -1,7 +1,6 @@
 package com.noah.superagent.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.date.DateUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
@@ -41,8 +40,11 @@ public class UserCreditServiceImpl implements UserCreditService {
     private final CreditTransactionMapper creditTransactionMapper;
     private final UserMapper userMapper;
 
-    // 免费套餐每日赠送积分数量
-    private static final BigDecimal FREE_PLAN_DAILY_CREDITS = new BigDecimal("30");
+    // 免费套餐每日登录赠送积分数量
+    private static final BigDecimal FREE_PLAN_DAILY_CREDITS = new BigDecimal("300");
+    
+    // 新用户注册赠送积分数量
+    private static final BigDecimal NEW_USER_CREDITS = new BigDecimal("1000");
     
     // 用于防止重复赠送的日期格式
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -159,13 +161,13 @@ public class UserCreditServiceImpl implements UserCreditService {
             return BeanUtil.copyProperties(existingAccount, UserCreditResponse.class);
         }
         
-        // 创建新的积分账户（免费套餐初始0积分）
+        // 创建新的积分账户并赠送新用户积分
         UserCreditAccountEntity creditAccount = new UserCreditAccountEntity();
         creditAccount.setUserId(userId);
-        creditAccount.setTotalBalance(BigDecimal.ZERO);
-        creditAccount.setFreeBalance(BigDecimal.ZERO);
+        creditAccount.setTotalBalance(NEW_USER_CREDITS);
+        creditAccount.setFreeBalance(NEW_USER_CREDITS); // 新用户1000积分属于免费积分
         creditAccount.setSubscriptionBalance(BigDecimal.ZERO);
-        creditAccount.setTotalEarned(BigDecimal.ZERO);
+        creditAccount.setTotalEarned(NEW_USER_CREDITS);
         creditAccount.setTotalSpent(BigDecimal.ZERO);
         creditAccount.setVersion(0);
         creditAccount.setCreateBy(userId);
@@ -174,6 +176,22 @@ public class UserCreditServiceImpl implements UserCreditService {
         if (result <= 0) {
             log.error("初始化用户积分账户失败 - userId: {}", userId);
             throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "初始化用户积分账户失败");
+        }
+        
+        // 记录新用户赠送积分的交易记录
+        CreditTransactionEntity transaction = new CreditTransactionEntity();
+        transaction.setUserId(userId);
+        transaction.setTransactionType(CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY); // TODO: 需要新增新用户赠送类型
+        transaction.setAmount(NEW_USER_CREDITS);
+        transaction.setBalanceBefore(BigDecimal.ZERO);
+        transaction.setBalanceAfter(NEW_USER_CREDITS);
+        transaction.setDescription("新用户注册赠送积分（90天有效）");
+        transaction.setExpireTime(LocalDateTime.now().plusDays(90)); // 90天后过期
+        transaction.setCreateBy(userId);
+        
+        int transactionResult = creditTransactionMapper.insertTransaction(transaction);
+        if (transactionResult <= 0) {
+            log.warn("记录新用户积分交易失败 - userId: {}", userId);
         }
         
         // TODO: 这里应该创建用户订阅记录，绑定到免费套餐
@@ -200,7 +218,6 @@ public class UserCreditServiceImpl implements UserCreditService {
         
         // 检查今日是否已经发放过积分（防重）
         String today = LocalDateTime.now().format(DATE_FORMATTER);
-        String description = "免费套餐每日赠送-" + today;
         
         List<CreditTransactionEntity> todayTransactions = creditTransactionMapper.selectByUserIdAndType(
             userId, CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY);
@@ -242,7 +259,8 @@ public class UserCreditServiceImpl implements UserCreditService {
         transaction.setAmount(FREE_PLAN_DAILY_CREDITS);
         transaction.setBalanceBefore(oldBalance);
         transaction.setBalanceAfter(newTotalBalance);
-        transaction.setDescription(description);
+        transaction.setDescription("每日登录赠送积分（24小时有效）");
+        transaction.setExpireTime(LocalDateTime.now().plusDays(1)); // 1天后过期
         transaction.setCreateBy(userId);
         
         int transactionResult = creditTransactionMapper.insertTransaction(transaction);
@@ -307,6 +325,73 @@ public class UserCreditServiceImpl implements UserCreditService {
                 successCount, skipCount, failCount);
         log.info("免费套餐每日积分批量发放完成 - {}", result);
         return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public UserCreditResponse grantPaidPlanCredits(Long userId, Long creditAmount, Long orderId, String planName) {
+        log.info("为用户发放付费套餐永久积分 - userId: {}, creditAmount: {}, orderId: {}, planName: {}", 
+                userId, creditAmount, orderId, planName);
+        
+        BigDecimal credits = new BigDecimal(creditAmount);
+        
+        // 查询用户积分账户
+        UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
+        if (creditAccount == null) {
+            log.warn("用户积分账户不存在 - userId: {}", userId);
+            throw new BusinessException(ResponseCodeEnum.USER_NOT_FOUND, "用户积分账户不存在");
+        }
+        
+        // 准备更新数据
+        BigDecimal oldBalance = creditAccount.getTotalBalance();
+        BigDecimal oldSubscriptionBalance = creditAccount.getSubscriptionBalance();
+        BigDecimal newTotalBalance = oldBalance.add(credits);
+        BigDecimal newSubscriptionBalance = oldSubscriptionBalance.add(credits);
+        BigDecimal newTotalEarned = creditAccount.getTotalEarned().add(credits);
+        
+        // 更新积分账户（使用乐观锁）
+        UserCreditAccountEntity updateAccount = new UserCreditAccountEntity();
+        updateAccount.setId(creditAccount.getId());
+        updateAccount.setTotalBalance(newTotalBalance);
+        updateAccount.setSubscriptionBalance(newSubscriptionBalance); // 付费积分计入订阅余额
+        updateAccount.setTotalEarned(newTotalEarned);
+        updateAccount.setVersion(creditAccount.getVersion());
+        updateAccount.setUpdateBy(userId);
+        
+        int updateResult = userCreditAccountMapper.updateBalanceByUserId(userId, updateAccount);
+        if (updateResult <= 0) {
+            log.error("更新用户积分账户失败（可能并发冲突） - userId: {}", userId);
+            throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新积分账户失败");
+        }
+        
+        // 记录积分交易记录
+        CreditTransactionEntity transaction = new CreditTransactionEntity();
+        transaction.setUserId(userId);
+        transaction.setTransactionType(CreditTransactionTypeEnum.INCOME_PRO_PLAN); // 使用PRO套餐类型代表付费积分
+        transaction.setAmount(credits);
+        transaction.setBalanceBefore(oldBalance);
+        transaction.setBalanceAfter(newTotalBalance);
+        transaction.setDescription("付费套餐积分 - " + planName + "（永久有效）");
+        transaction.setRelatedOrderId(orderId);
+        // 付费积分无过期时间，永久有效
+        transaction.setCreateBy(userId);
+        
+        int transactionResult = creditTransactionMapper.insertTransaction(transaction);
+        if (transactionResult <= 0) {
+            log.error("插入积分交易记录失败 - userId: {}", userId);
+            throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "记录交易失败");
+        }
+        
+        // 构造返回结果
+        UserCreditResponse response = BeanUtil.copyProperties(updateAccount, UserCreditResponse.class);
+        response.setUserId(userId);
+        BigDecimal permanentBalance = newTotalBalance.subtract(creditAccount.getFreeBalance())
+                .subtract(newSubscriptionBalance);
+        response.setPermanentBalance(permanentBalance);
+        
+        log.info("付费套餐积分发放成功 - userId: {}, 发放积分: {}, 新余额: {}", 
+                userId, credits, newTotalBalance);
+        return response;
     }
 
     /**

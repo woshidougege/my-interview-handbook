@@ -80,4 +80,16 @@ public interface UserCreditService {
      * @return 处理结果统计
      */
     String processFreePlanDailyBonusForAllUsers();
+    
+    /**
+     * 发放付费套餐永久积分
+     * （支付成功后调用）
+     *
+     * @param userId 用户ID
+     * @param creditAmount 积分数量
+     * @param orderId 订单ID
+     * @param planName 套餐名称
+     * @return 积分账户信息
+     */
+    UserCreditResponse grantPaidPlanCredits(Long userId, Long creditAmount, Long orderId, String planName);
 }
