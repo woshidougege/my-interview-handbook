@@ -31,7 +31,7 @@ public interface UserMapper extends BaseMapper<UserEntity> {
      */
     default Page<UserEntity> selectUserPage(Page<UserEntity> page, String keyword) {
         QueryWrapper query = QueryWrapper.create()
-                .where(UserEntity::getNickname).like(keyword, keyword != null)
+                .where(UserEntity::getUsername).like(keyword, keyword != null)
                 .or(UserEntity::getPhone).like(keyword, keyword != null)
                 .orderBy(UserEntity::getCreateTime).desc();
         
@@ -48,11 +48,11 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     }
 
     /**
-     * 根据昵称模糊查询用户列表
+     * 根据用户名模糊查询用户列表
      */
-    default List<UserEntity> selectByNickname(String nickname) {
+    default List<UserEntity> selectByUsername(String username) {
         return selectListByQuery(QueryWrapper.create()
-                .where(UserEntity::getNickname).like(nickname)
+                .where(UserEntity::getUsername).like(username)
                 .orderBy(UserEntity::getCreateTime).desc());
     }
 

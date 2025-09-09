@@ -64,7 +64,7 @@ public class AuthController {
             var pageResponse = userService.getUserPage(1, 1, null);
             if (pageResponse != null && !pageResponse.getRecords().isEmpty()) {
                 UserDTO firstUser = pageResponse.getRecords().get(0);
-                log.info("使用临时逻辑返回用户: {} (ID: {})", firstUser.getNickname(), firstUser.getId());
+                log.info("使用临时逻辑返回用户: {} (ID: {})", firstUser.getUsername(), firstUser.getId());
                 return firstUser;
             } else {
                 // 如果数据库中没有用户，创建一个临时用户
@@ -83,7 +83,7 @@ public class AuthController {
     private UserDTO createMockUser() {
         UserDTO mockUser = new UserDTO();
         mockUser.setId(1001L);
-        mockUser.setNickname("演示用户");
+        mockUser.setUsername("演示用户");
         mockUser.setPhone("13800138000");
         mockUser.setStatus(UserStatusEnum.ACTIVE);
         return mockUser;

@@ -20,9 +20,9 @@ public class UserDTO extends BaseDTO {
     private String phone;
 
     /**
-     * 昵称
+     * 用户名
      */
-    private String nickname;
+    private String username;
 
     /**
      * 密码（加密后）

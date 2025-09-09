@@ -19,8 +19,8 @@ public class UserResponse extends BaseResponse {
     @Schema(description = "手机号", example = "13800138000")
     private String phone;
 
-    @Schema(description = "昵称", example = "张三")
-    private String nickname;
+    @Schema(description = "用户名", example = "张三")
+    private String username;
 
     @Schema(description = "用户状态 ACTIVE-正常 DISABLED-禁用", example = "ACTIVE")
     private UserStatusEnum status;

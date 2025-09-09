@@ -2,7 +2,7 @@
 export interface UserInfo {
   id: string;
   phone?: string;
-  nickname?: string;
+  username?: string;
   status: number;
   statusDesc?: string;
 }

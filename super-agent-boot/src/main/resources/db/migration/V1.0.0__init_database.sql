@@ -10,7 +10,7 @@
 CREATE TABLE `t_user` (
     `id` BIGINT NOT NULL COMMENT '主键ID',
     `phone` VARCHAR(20) NOT NULL COMMENT '手机号',
-    `nickname` VARCHAR(50) NOT NULL COMMENT '昵称',
+    `username` VARCHAR(50) NOT NULL COMMENT '用户名',
     `password` VARCHAR(255) NOT NULL COMMENT '密码（加密后）',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '用户状态 1-正常 0-禁用',
     `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '删除标记：0-未删除，1-已删除',

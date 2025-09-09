@@ -24,10 +24,10 @@ public class UserCreateRequest extends BaseRequest {
     @Schema(description = "手机号", example = "13800138000")
     private String phone;
 
-    @NotBlank(message = "昵称不能为空")
-    @Size(min = 2, max = 20, message = "昵称长度必须在2-20个字符之间")
-    @Schema(description = "昵称", example = "张三")
-    private String nickname;
+    @NotBlank(message = "用户名不能为空")
+    @Size(min = 2, max = 20, message = "用户名长度必须在2-20个字符之间")
+    @Schema(description = "用户名", example = "张三")
+    private String username;
 
     @NotBlank(message = "密码不能为空")
     @Size(min = 6, max = 20, message = "密码长度必须在6-20个字符之间")

@@ -116,8 +116,8 @@ public class UserServiceImpl implements UserService {
         }
         
         // 更新字段
-        if (StringUtils.hasText(userDO.getNickname())) {
-            existingUserEntity.setNickname(userDO.getNickname());
+        if (StringUtils.hasText(userDO.getUsername())) {
+            existingUserEntity.setUsername(userDO.getUsername());
         }
         
         if (StringUtils.hasText(userDO.getPhone())) {
