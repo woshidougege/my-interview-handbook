@@ -1,0 +1,37 @@
+{
+  "name": "super-agent-frontend",
+  "version": "1.0.0",
+  "description": "Super Agent Dashboard - Next.js Frontend",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.0.1",
+    "@rc-component/async-validator": "^5.0.4",
+    "antd": "5.20.0",
+    "axios": "^1.7.2",
+    "dayjs": "^1.11.10",
+    "next": "14.2.15",
+    "rc-util": "5.43.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.15",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

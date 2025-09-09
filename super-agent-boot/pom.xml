@@ -22,13 +22,12 @@
             <artifactId>super-agent-web</artifactId>
         </dependency>
 
-        <!-- 暂时禁用schedule模块排查问题 -->
-        <!--
+        <!-- 调度模块 -->
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-schedule</artifactId>
         </dependency>
-        -->
+
 
         <!-- OAuth2 SSO - 暂时禁用，后续开发SSO功能时启用 -->
         <!--
