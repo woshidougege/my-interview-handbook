@@ -80,4 +80,19 @@ export const creditApi = {
   },
 };
 
+// 订阅相关API
+export const subscriptionApi = {
+  // 获取套餐列表
+  getPlans: (): Promise<AxiosResponse<ApiResponse<any[]>>> => {
+    return api.get('/subscription/plans');
+  },
+  
+  // 获取用户当前订阅
+  getCurrentSubscription: (userId: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get('/subscription/current', {
+      params: { userId }
+    });
+  },
+};
+
 export default api;

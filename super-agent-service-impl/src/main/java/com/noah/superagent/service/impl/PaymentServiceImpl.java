@@ -11,6 +11,9 @@ import com.noah.superagent.dao.mapper.SubscriptionOrderMapper;
 import com.noah.superagent.dao.mapper.SubscriptionPlanMapper;
 import com.noah.superagent.service.PaymentService;
 import com.noah.superagent.service.UserCreditService;
+import com.noah.superagent.dao.entity.UserSubscriptionEntity;
+import com.noah.superagent.dao.mapper.UserSubscriptionMapper;
+import com.noah.superagent.common.enums.SubscriptionStatusEnum;
 import com.wechat.pay.java.core.Config;
 import com.wechat.pay.java.core.RSAAutoCertificateConfig;
 import com.wechat.pay.java.service.payments.nativepay.NativePayService;
@@ -39,6 +42,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRecordMapper paymentRecordMapper;
     private final SubscriptionPlanMapper subscriptionPlanMapper;
     private final UserCreditService userCreditService;
+    private final UserSubscriptionMapper userSubscriptionMapper;
 
     @Value("${payment.wechat.app-id:}")
     private String wechatAppId;
@@ -416,8 +420,13 @@ public class PaymentServiceImpl implements PaymentService {
                     // 积分发放失败不影响支付成功状态，但需要记录日志用于后续处理
                 }
                 
-                // TODO: [后续开发] 激活用户订阅
-                // userSubscriptionService.activateSubscription(order.getUserId(), order.getPlanId(), order.getId());
+                // 简化的订阅激活逻辑
+                try {
+                    activateUserSubscription(order, plan);
+                } catch (Exception e) {
+                    log.error("激活用户订阅失败: userId={}, planId={}, orderId={}, error={}", 
+                        order.getUserId(), order.getPlanId(), order.getId(), e.getMessage(), e);
+                }
             }
             
             log.info("支付成功处理完成: orderNo={}, userId={}, amount={}", 
@@ -428,6 +437,43 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (Exception e) {
             log.error("处理支付成功业务逻辑异常: orderNo={}", orderNo, e);
             return false;
+        }
+    }
+
+    /**
+     * 简化的订阅激活逻辑
+     */
+    private void activateUserSubscription(SubscriptionOrderEntity order, SubscriptionPlanEntity plan) {
+        try {
+            // 计算订阅时间
+            LocalDateTime startTime = LocalDateTime.now();
+            LocalDateTime endTime;
+            if ("monthly".equals(order.getBillingCycle())) {
+                endTime = startTime.plusMonths(1);
+            } else {
+                endTime = startTime.plusYears(1);
+            }
+
+            // 创建订阅记录
+            UserSubscriptionEntity subscription = new UserSubscriptionEntity();
+            subscription.setUserId(order.getUserId());
+            subscription.setPlanId(order.getPlanId());
+            subscription.setStartTime(startTime);
+            subscription.setEndTime(endTime);
+            subscription.setPaidAmount(order.getAmount());
+            subscription.setCreditAmount(plan.getMonthlyCreditAmount()); // 简化，都用月度积分
+            subscription.setStatus(SubscriptionStatusEnum.ACTIVE);
+            subscription.setPayOrderNo(order.getOrderNo());
+            subscription.setRemark("套餐订阅激活");
+
+            userSubscriptionMapper.insert(subscription);
+            
+            log.info("用户订阅激活成功: userId={}, planId={}, subscriptionId={}", 
+                order.getUserId(), order.getPlanId(), subscription.getId());
+                
+        } catch (Exception e) {
+            log.error("激活订阅失败", e);
+            throw e;
         }
     }
 }

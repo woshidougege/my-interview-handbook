@@ -9,10 +9,11 @@ import {
 import {
   UserOutlined,
   SettingOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  CrownOutlined
 } from '@ant-design/icons';
 import { UserInfo, UserCredit } from '@/types/user';
-import { userApi, creditApi } from '@/services/api';
+import { userApi, creditApi, subscriptionApi } from '@/services/api';
 import UserSettings from './UserSettings';
 import SubscriptionModal from './SubscriptionModal';
 
@@ -20,6 +21,7 @@ import SubscriptionModal from './SubscriptionModal';
 const UserProfile: React.FC = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [creditInfo, setCreditInfo] = useState<UserCredit | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<Record<string, any> | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [subscriptionVisible, setSubscriptionVisible] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,16 @@ const UserProfile: React.FC = () => {
       const creditResponse = await creditApi.getUserCredit(user.id);
       const credit = creditResponse.data.data;
       setCreditInfo(credit);
+      
+      // 获取当前订阅状态
+      try {
+        const subscriptionResponse = await subscriptionApi.getCurrentSubscription(user.id);
+        const subscription = subscriptionResponse.data.data;
+        setCurrentSubscription(subscription);
+      } catch (error) {
+        // 订阅信息获取失败不影响其他功能
+        console.log('获取订阅信息失败:', error);
+      }
       
     } catch (error) {
       message.error('加载用户数据失败: ' + (error instanceof Error ? error.message : '未知错误'));
@@ -85,6 +97,13 @@ const UserProfile: React.FC = () => {
               }}>
                 {userInfo?.username || '张三'}
               </div>
+              <div style={{ 
+                fontSize: '12px',
+                color: '#666',
+                marginTop: '2px'
+              }}>
+                {currentSubscription ? '高级会员' : '免费用户'}
+              </div>
             </div>
           </div>
         </div>
@@ -109,6 +128,25 @@ const UserProfile: React.FC = () => {
         </span>
       ),
       onClick: () => setSettingsVisible(true)
+    },
+    {
+      key: 'subscription',
+      label: (
+        <span style={{ 
+          color: '#333',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <CrownOutlined style={{ 
+            fontSize: '14px',
+            color: currentSubscription ? '#faad14' : '#666'
+          }} />
+          套餐订阅
+        </span>
+      ),
+      onClick: () => setSubscriptionVisible(true)
     },
     {
       type: 'divider' as const

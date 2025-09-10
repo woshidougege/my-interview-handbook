@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Button,
   Card,
-  Tag
+  Tag,
+  Spin,
+  message
 } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined
 } from '@ant-design/icons';
 import PaymentModal from './PaymentModal';
+import { subscriptionApi } from '../services/api';
 
 interface SubscriptionModalProps {
   visible: boolean;
@@ -41,8 +44,54 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
     name: string;
     amount: number;
   } | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const plans: Plan[] = [
+  // 从API加载套餐数据
+  useEffect(() => {
+    if (visible) {
+      loadPlans();
+    }
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadPlans = async () => {
+    try {
+      setLoading(true);
+      const response = await subscriptionApi.getPlans();
+      const apiPlans = response.data.data || [];
+      
+      // 转换API数据为组件需要的格式  
+      const formattedPlans: Plan[] = apiPlans.map((plan: Record<string, any>) => ({
+        id: plan.id.toString(),
+        name: plan.planName,
+        price: { 
+          monthly: plan.monthlyPrice || 0, 
+          yearly: plan.yearlyPrice || 0 
+        },
+        isCurrent: false, // TODO: 从用户订阅状态判断
+        buttonText: plan.planName === '免费版' ? '当前计划' : '订阅',
+        buttonType: plan.planName === '免费版' ? 'default' as const : 'primary' as const,
+        isCreditsOnly: plan.planName.includes('积分'),
+        features: plan.features ? JSON.parse(plan.features).map((text: string) => ({
+          text,
+          included: true,
+          highlight: text.includes('积分') || text.includes('专属')
+        })) : []
+      }));
+      
+      setPlans(formattedPlans);
+    } catch (error) {
+      console.error('加载套餐失败:', error);
+      message.error('加载套餐失败，请重试');
+      // 使用默认套餐数据作为后备
+      setPlans(getDefaultPlans());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 默认套餐数据（作为后备）
+  const getDefaultPlans = (): Plan[] => [
     {
       id: '1',
       name: '免费版',
@@ -52,62 +101,18 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
       buttonType: 'default' as const,
       features: [
         { text: '新用户赠送1000积分（90天有效）', included: true, highlight: false },
-        { text: '每日登录赠300积分', included: true, highlight: false },
-        { text: '分享新用户奖励500积分', included: true, highlight: false },
-        { text: '公共数字分身（限制体验）', included: true, highlight: false }
+        { text: '每日登录赠300积分', included: true, highlight: false }
       ]
     },
     {
       id: '2',
       name: '基础版',
-      price: { monthly: 39, yearly: Math.round(39 * 12 * 0.83) }, // 年付节省17%
+      price: { monthly: 39, yearly: 388 },
       isCurrent: false,
       buttonText: '订阅',
       buttonType: 'primary' as const,
       features: [
-        { text: '一次性获得1900永久积分', included: true, highlight: true },
-        { text: '享受所有免费版权益', included: true, highlight: false },
-        { text: '访问限定天', included: true, highlight: false },
-        { text: '公共数字分身', included: true, highlight: false },
-        { text: '幻灯片制作', included: true, highlight: false },
-        { text: '网站开发', included: true, highlight: false },
-        { text: '数据分析', included: true, highlight: false },
-        { text: '图片、视频生成', included: true, highlight: false }
-      ]
-    },
-    {
-      id: '3',
-      name: '高级版',
-      price: { monthly: 199, yearly: Math.round(199 * 12 * 0.83) }, // 年付节省17%
-      isCurrent: false,
-      buttonText: '订阅',
-      buttonType: 'primary' as const,
-      features: [
-        { text: '一次性获得19000永久积分', included: true, highlight: true },
-        { text: '享受所有免费版权益', included: true, highlight: false },
-        { text: '访问限定天', included: true, highlight: false },
-        { text: '专属数字分身', included: true, highlight: true },
-        { text: '幻灯片制作', included: true, highlight: false },
-        { text: '网站开发', included: true, highlight: false },
-        { text: '数据分析', included: true, highlight: false },
-        { text: '图片、视频生成', included: true, highlight: false },
-        { text: '本机电脑操控', included: true, highlight: true }
-      ]
-    },
-    {
-      id: '4',
-      name: '额外购买积分',
-      price: { monthly: 59, yearly: 59 },
-      isCurrent: false,
-      buttonText: '立即购买',
-      buttonType: 'primary' as const,
-      isCreditsOnly: true,
-      features: [
-        { text: '10000永久积分（无期限）', included: true, highlight: true },
-        { text: '约生成10-14个PPT', included: true, highlight: false },
-        { text: '约生成7-9个深度研究报告', included: true, highlight: false },
-        { text: '约生成2-4个网站', included: true, highlight: false },
-        { text: '约生成10-14个图片', included: true, highlight: false }
+        { text: '一次性获得1900永久积分', included: true, highlight: true }
       ]
     }
   ];
@@ -238,14 +243,20 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
         </div>
 
         {/* 套餐卡片 */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(4, 1fr)', 
-          gap: '24px',
-          marginBottom: '32px',
-          alignItems: 'stretch'
-        }}>
-          {plans.map((plan) => (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '16px', color: '#666' }}>加载套餐中...</div>
+          </div>
+        ) : (
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: `repeat(${Math.min(plans.length, 4)}, 1fr)`, 
+            gap: '24px',
+            marginBottom: '32px',
+            alignItems: 'stretch'
+          }}>
+            {plans.map((plan) => (
             <Card
               key={plan.id}
               style={{
@@ -359,8 +370,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
                 ))}
               </div>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 支付弹窗 */}
