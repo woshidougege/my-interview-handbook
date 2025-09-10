@@ -6,7 +6,15 @@
 # @since 1.0.0
 #
 # 使用方法:
-#   ./startup.sh [start|stop|restart|status|logs|debug|daemon]
+#   ./startup.sh [start|stop|restart|status|logs|debug|daemon|cleanup]
+#
+# 项目目录结构:
+#   ├── bin/           # 启动脚本目录
+#   ├── conf/          # 配置文件目录
+#   ├── lib/           # 依赖库目录
+#   ├── modules/       # 业务模块目录
+#   ├── logs/          # 日志文件目录
+#   └── pid/           # PID文件目录
 #
 # ==================================================================================================
 
@@ -34,7 +42,10 @@ LIB_DIR="$APP_HOME/lib"
 # 业务模块目录
 MODULES_DIR="$APP_HOME/modules"
 # PID文件路径
-PID_FILE="$APP_HOME/bin/${APP_NAME}.pid"
+# 注意：现在使用Spring Boot内置PID管理（推荐方式）
+# Spring Boot会自动创建和管理PID文件，确保与应用生命周期同步
+# 使用独立的pid目录，与bin、logs、conf等目录同级
+PID_FILE="$APP_HOME/pid/${APP_NAME}.pid"
 # 日志文件 (由logback管理，这里只用于状态和tail命令)
 LOG_FILE="$APP_HOME/logs/${APP_NAME}-info.log"
 ERROR_LOG_FILE="$APP_HOME/logs/${APP_NAME}-error.log"
@@ -93,10 +104,16 @@ check_java() {
     fi
 }
 
-# 准备启动环境：构建CLASSPATH、创建日志目录、开启ANSI颜色
+# 准备启动环境：构建CLASSPATH、创建必要目录、开启ANSI颜色
 prepare_startup() {
+    # 创建必要的目录
     mkdir -p "$APP_HOME/logs"
+    mkdir -p "$APP_HOME/pid"
     export SPRING_OUTPUT_ANSI_ENABLED=ALWAYS
+    # 设置日志路径，确保logback写入到项目目录而不是当前工作目录
+    export LOG_PATH="$APP_HOME/logs"
+    # 设置PID文件路径，让Spring Boot自己管理PID文件
+    export PID_FILE_PATH="$PID_FILE"
     # 若未显式设置，则默认关闭组件URL打印
     if [ -z "$URLS" ]; then
         export URLS=off
@@ -112,6 +129,120 @@ prepare_startup() {
     for jar in "$MODULES_DIR"/*.jar.original; do
         [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
     done
+}
+
+# 清理旧的提示进程
+cleanup_old_prompts() {
+    local prompt_pid_file="/tmp/${APP_NAME}_prompt.pid"
+    
+    # 方法1：清理PID文件中记录的进程
+    if [ -f "$prompt_pid_file" ]; then
+        local old_pid=$(cat "$prompt_pid_file" 2>/dev/null)
+        if [ -n "$old_pid" ]; then
+            # 尝试杀死进程组
+            kill -TERM -"$old_pid" 2>/dev/null
+            sleep 0.5
+            kill -KILL -"$old_pid" 2>/dev/null
+            # 单独杀死主进程
+            kill "$old_pid" 2>/dev/null
+            kill -9 "$old_pid" 2>/dev/null
+        fi
+        rm -f "$prompt_pid_file"
+    fi
+    
+    # 方法2：通过进程命令行特征查找并清理所有相关进程
+    # 查找包含sleep 5和printf的后台进程（我们的提示进程特征）
+    local pids=$(ps aux | grep -E "(sleep 5|printf.*按 Ctrl\+C)" | grep -v grep | awk '{print $2}' 2>/dev/null)
+    if [ -n "$pids" ]; then
+        echo "$pids" | xargs kill -9 2>/dev/null || true
+    fi
+    
+    # 方法3：清理所有包含"super-agent"和"prompt"关键字的进程
+    pkill -f "${APP_NAME}.*prompt" 2>/dev/null || true
+    
+    # 方法4：删除标记文件，让使用标记文件的进程自然退出
+    rm -f "/tmp/${APP_NAME}_prompt_marker"
+    
+    # 清除底部提示并重置终端
+    printf "\033[999;1H\033[K\033[0m"
+}
+
+# 显示持续提示的函数
+show_persistent_prompt() {
+    local prompt_pid_file="/tmp/${APP_NAME}_prompt.pid"
+    local prompt_marker="/tmp/${APP_NAME}_prompt_marker"
+    
+    # 先清理旧的进程
+    cleanup_old_prompts
+    
+    # 创建提示进程标记文件，便于识别
+    echo "super-agent-prompt-process" > "$prompt_marker"
+    
+    # 使用setsid创建新的进程组，便于管理
+    setsid bash -c "
+        # 在子进程中也设置标记
+        echo \$\$ > '$prompt_pid_file'
+        
+        # 设置子进程的清理函数
+        cleanup_child() {
+            printf '\033[999;1H\033[K\033[0m'
+            rm -f '$prompt_marker' '$prompt_pid_file'
+            exit
+        }
+        trap cleanup_child INT TERM EXIT QUIT HUP
+        
+        # 主循环
+        while [ -f '$prompt_marker' ]; do
+            sleep 5
+            # 检查标记文件是否还存在，如果不存在则退出
+            if [ ! -f '$prompt_marker' ]; then
+                break
+            fi
+            # 保存当前光标位置，移动到屏幕底部，显示提示，然后恢复光标位置
+            printf '\033[s\033[999;1H\033[K\033[44;37m 📋 按 Ctrl+C 可停止应用 \033[0m\033[u'
+        done
+        
+        # 清理并退出
+        printf '\033[999;1H\033[K\033[0m'
+        rm -f '$prompt_marker' '$prompt_pid_file'
+    " &
+    
+    local prompt_pid=$!
+    echo $prompt_pid > "$prompt_pid_file"
+    
+    # 增强的清理函数
+    cleanup_prompt() {
+        # 删除标记文件，让子进程自然退出
+        rm -f "$prompt_marker"
+        
+        # 等待一小段时间让子进程自然退出
+        sleep 1
+        
+        # 强制清理
+        if [ -f "$prompt_pid_file" ]; then
+            local saved_pid=$(cat "$prompt_pid_file" 2>/dev/null)
+            if [ -n "$saved_pid" ]; then
+                # 杀死整个进程组
+                kill -TERM -"$saved_pid" 2>/dev/null
+                sleep 0.5
+                kill -KILL -"$saved_pid" 2>/dev/null
+                # 杀死主进程
+                kill "$saved_pid" 2>/dev/null
+                kill -9 "$saved_pid" 2>/dev/null
+            fi
+            rm -f "$prompt_pid_file"
+        fi
+        
+        # 全面清理
+        cleanup_old_prompts
+        
+        # 清除底部提示行并重置终端
+        printf "\033[999;1H\033[K\033[0m"
+        exit
+    }
+    
+    # 设置多种信号陷阱
+    trap cleanup_prompt INT TERM EXIT QUIT HUP PIPE
 }
 
 # 启动函数
@@ -145,12 +276,18 @@ start() {
     echo "📋 按 Ctrl+C 可停止应用"
     echo "--------------------------------------------------------------------------------"
     
+    # 启动持续提示显示
+    show_persistent_prompt
+    
     # 直接执行，让logback同时输出到控制台和文件
     $START_CMD
 }
 
 # 停止函数
 stop() {
+    # 先清理可能存在的提示进程
+    cleanup_old_prompts
+    
     if [ ! -f "$PID_FILE" ]; then
         echo "⚠️  应用未运行"
         return 1
@@ -244,12 +381,17 @@ debug() {
     echo "🔌 调试端口: $DEBUG_PORT"
     echo "🔧 IDE连接: localhost:$DEBUG_PORT"
     echo "📋 日志将同时显示在控制台，文件由Logback管理: $LOG_FILE"
+    echo "📋 按 Ctrl+C 可停止应用"
 
     # 添加调试参数
     DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:$DEBUG_PORT"
 
     echo ""
     echo "🚀 启动中..."
+    echo "--------------------------------------------------------------------------------"
+
+    # 启动持续提示显示
+    show_persistent_prompt
 
     # 直接执行（不使用tee），日志由Logback接管
     $JAVA_CMD $JVM_OPTS $DEBUG_OPTS -cp "$CLASSPATH" $MAIN_CLASS $SPRING_OPTS
@@ -269,27 +411,38 @@ daemon() {
     prepare_startup
     print_config_summary
 
-    # 将标准输出和错误重定向到/dev/null，完全交由logback管理日志文件
-    START_CMD="nohup $JAVA_CMD $JVM_OPTS -cp $CLASSPATH $MAIN_CLASS $SPRING_OPTS > /dev/null 2>&1 &"
-
     echo "🚀 后台启动中..."
-    eval $START_CMD
-    PID=$!
-    echo $PID > "$PID_FILE"
+    echo "📋 使用Spring Boot内置PID管理"
+    echo "📄 PID文件: $PID_FILE"
     
-    # 等待启动
-    sleep 3
-    if kill -0 "$PID" 2>/dev/null; then
-        echo "✅ $APP_NAME 后台启动成功，PID: $PID"
-        echo "📝 日志文件: $LOG_FILE"
-        echo "📝 查看实时日志: $0 logs tail"
-    else
-        echo "❌ $APP_NAME 启动失败，请检查日志: $LOG_FILE"
-        echo "📝 显示最新错误日志:"
-        tail -20 "$LOG_FILE"
-        rm -f "$PID_FILE"
-        return 1
+    # 让Spring Boot自己管理PID文件，不再手动写入
+    nohup $JAVA_CMD $JVM_OPTS -cp "$CLASSPATH" $MAIN_CLASS $SPRING_OPTS > /dev/null 2>&1 &
+    local java_pid=$!
+    
+    # 等待Spring Boot创建PID文件和应用启动
+    echo "⏳ 等待应用启动..."
+    for i in {1..30}; do
+        if [ -f "$PID_FILE" ]; then
+            local app_pid=$(cat "$PID_FILE" 2>/dev/null)
+            if [ -n "$app_pid" ] && kill -0 "$app_pid" 2>/dev/null; then
+                echo "✅ $APP_NAME 后台启动成功，PID: $app_pid"
+                echo "📝 日志文件: $LOG_FILE"
+                echo "📝 查看实时日志: $0 logs"
+                return 0
+            fi
+        fi
+        sleep 1
+    done
+    
+    # 启动失败处理
+    echo "❌ $APP_NAME 启动失败或超时"
+    if kill -0 "$java_pid" 2>/dev/null; then
+        echo "🛑 清理Java进程: $java_pid"
+        kill "$java_pid" 2>/dev/null
     fi
+    echo "📝 显示最新错误日志:"
+    tail -20 "$LOG_FILE" 2>/dev/null || echo "日志文件不存在"
+    return 1
 }
 
 # 主入口
@@ -315,8 +468,12 @@ case "$1" in
     debug)
         debug
         ;;
+    cleanup)
+        cleanup_old_prompts
+        echo "✅ 已清理所有提示进程"
+        ;;
     *)
-        echo "用法: $0 {start|daemon|stop|restart|status|logs|debug} [urls] [debug_port]"
+        echo "用法: $0 {start|daemon|stop|restart|status|logs|debug|cleanup} [urls] [debug_port]"
         echo ""
         echo "命令说明:"
         echo "  start   - 前台启动应用（显示日志，Ctrl+C停止）"
@@ -326,6 +483,7 @@ case "$1" in
         echo "  status  - 查看运行状态"
         echo "  logs    - 实时查看日志"
         echo "  debug   - 远程调试模式（前台运行，开启JVM调试端口，默认5005）"
+        echo "  cleanup - 清理残留的提示进程"
         echo ""
         echo "可选参数:"
         echo "  urls    - 启动时打印 Docs/OpenAPI/Actuator/Druid 访问地址"
@@ -334,6 +492,7 @@ case "$1" in
         echo "  $0 start urls       # 前台启动并打印组件URL"
         echo "  $0 daemon urls      # 后台启动并打印组件URL"
         echo "  $0 debug urls 5005  # 调试模式并打印组件URL"
+        echo "  $0 cleanup          # 手动清理提示进程"
         exit 1
         ;;
 esac

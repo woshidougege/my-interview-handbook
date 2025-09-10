@@ -29,6 +29,11 @@ spring:
   application:
     name: super-agent
   
+  # PID文件管理（Spring Boot官方推荐方式）
+  pid:
+    file: ${PID_FILE_PATH:pid/super-agent.pid}
+    fail-on-write-error: true
+  
   # 配置文件导入（按功能模块拆分）
   config:
     import:
