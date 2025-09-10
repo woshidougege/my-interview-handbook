@@ -420,16 +420,29 @@ daemon() {
     local java_pid=$!
     
     # 等待Spring Boot创建PID文件和应用启动
-    echo "⏳ 等待应用启动..."
+    echo "⏳ 等待应用启动和PID文件生成..."
     for i in {1..30}; do
+        # 检查Java进程是否还在运行
+        if ! kill -0 "$java_pid" 2>/dev/null; then
+            echo "❌ Java进程已退出，启动失败"
+            break
+        fi
+        
+        # 检查PID文件是否生成
         if [ -f "$PID_FILE" ]; then
             local app_pid=$(cat "$PID_FILE" 2>/dev/null)
-            if [ -n "$app_pid" ] && kill -0 "$app_pid" 2>/dev/null; then
-                echo "✅ $APP_NAME 后台启动成功，PID: $app_pid"
-                echo "📝 日志文件: $LOG_FILE"
+            if [ -n "$app_pid" ] && [ "$app_pid" -eq "$java_pid" ] 2>/dev/null; then
+                echo "✅ $APP_NAME v1.0.0 启动成功！"
+                echo "📄 PID: $app_pid (文件: $PID_FILE)"
+                echo "📝 日志目录: $LOG_FILE"
                 echo "📝 查看实时日志: $0 logs"
                 return 0
             fi
+        fi
+        
+        # 显示进度
+        if [ $((i % 5)) -eq 0 ]; then
+            echo "   ... 仍在等待 (${i}s)"
         fi
         sleep 1
     done

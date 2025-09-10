@@ -1,3 +1,4 @@
 org.springframework.context.ApplicationListener=\
   com.noah.superagent.config.ConfigLoadLogger,\
-  com.noah.superagent.config.StartupSummaryLogger
+  com.noah.superagent.config.StartupSummaryLogger,\
+  org.springframework.boot.context.ApplicationPidFileWriter

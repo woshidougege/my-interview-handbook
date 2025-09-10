@@ -58,13 +58,17 @@ public class StartupSummaryLogger implements ApplicationListener<ApplicationRead
         String C_URL   = color ? "\u001B[94m" : "";   // bright blue for URLs
         String C_RESET = color ? "\u001B[0m"  : "";
 
-        String appName = env.getProperty("spring.application.name", "Super Agnet");
+        String appName = env.getProperty("spring.application.name", "Super Agent");
         String version = env.getProperty("info.app.version", env.getProperty("APP_VERSION", "1.0.0"));
         String port = env.getProperty("server.port", "8080");
         String contextPath = env.getProperty("server.servlet.context-path", "");
         String profiles = String.join(", ", env.getActiveProfiles().length == 0 ? new String[]{"default"} : env.getActiveProfiles());
         String logPath = env.getProperty("logging.file.path", "logs");
-        String pid = ManagementFactory.getRuntimeMXBean().getName();
+        
+        // 获取PID信息
+        String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
+        String pid = runtimeName.split("@")[0]; // 提取纯PID数字
+        String pidFile = env.getProperty("spring.pid.file", "pid/super-agent.pid");
 
         // Memory (heap)
         MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
@@ -151,7 +155,7 @@ public class StartupSummaryLogger implements ApplicationListener<ApplicationRead
         }
 
         sb.append(String.format("%s• Logs Dir       %s: %s%s%n", C_LABEL, C_RESET, C_VALUE + logPath, C_RESET));
-        sb.append(String.format("%s• PID            %s: %s%s%n", C_LABEL, C_RESET, C_VALUE + pid, C_RESET));
+        sb.append(String.format("%s• PID            %s: %s%s (文件: %s)%n", C_LABEL, C_RESET, C_VALUE + pid, C_RESET, pidFile));
         sb.append(String.format("%s• Uptime         %s: %s%s%n", C_LABEL, C_RESET, C_VALUE + uptime, C_RESET));
         sb.append("=============================================================\n");
 
