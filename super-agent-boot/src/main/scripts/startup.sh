@@ -109,6 +109,9 @@ prepare_startup() {
     for jar in "$MODULES_DIR"/*.jar; do
         [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
     done
+    for jar in "$MODULES_DIR"/*.jar.original; do
+        [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
+    done
 }
 
 # 启动函数
@@ -140,10 +143,6 @@ start() {
     echo "   - 文件日志将写入: $LOG_FILE"
     echo "   - 错误日志将写入: $ERROR_LOG_FILE"
     echo "📋 按 Ctrl+C 可停止应用"
-    echo ""
-    echo "📖 API文档: http://localhost:8081/super-agent/swagger-ui.html"
-    echo "📋 API定义: http://localhost:8081/super-agent/v3/api-docs"
-    echo "📊 监控页面: http://localhost:8081/super-agent/druid"
     echo "--------------------------------------------------------------------------------"
     
     # 直接执行，让logback同时输出到控制台和文件
@@ -282,9 +281,6 @@ daemon() {
     sleep 3
     if kill -0 "$PID" 2>/dev/null; then
         echo "✅ $APP_NAME 后台启动成功，PID: $PID"
-        echo "📖 API文档: http://localhost:8081/super-agent/swagger-ui.html"
-        echo "📋 API定义: http://localhost:8081/super-agent/v3/api-docs"
-        echo "📊 监控页面: http://localhost:8081/super-agent/druid"
         echo "📝 日志文件: $LOG_FILE"
         echo "📝 查看实时日志: $0 logs tail"
     else

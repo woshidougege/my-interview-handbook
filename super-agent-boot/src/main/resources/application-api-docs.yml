@@ -27,12 +27,12 @@ springdoc:
       - **监控页面**：[Druid监控](http://localhost:8081/super-agent/druid)
       - **项目仓库**：[GitLab](http://192.168.1.222/noah/super-agent.git)
       ### 📞 联系方式
-      如有问题请联系开发团队：dev@noah.com
+      如有问题请联系开发团队：renxiangpeng@norinaviation.com
     version: ${API_VERSION:1.0.0}
     terms-of-service: ${API_TERMS_OF_SERVICE:}
     contact:
       name: ${API_CONTACT_NAME:开发团队}
-      email: ${API_CONTACT_EMAIL:dev@noah.com}
+      email: ${API_CONTACT_EMAIL:renxiangpeng@norinaviation.com}
       url: ${API_CONTACT_URL:http://192.168.1.222/noah/super-agent.git}
     license:
       name: ${API_LICENSE_NAME:Apache 2.0}

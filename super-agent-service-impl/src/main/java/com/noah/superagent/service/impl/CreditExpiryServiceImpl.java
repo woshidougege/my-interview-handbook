@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * 积分过期清理服务实现
- * 
+ * <p>
  * 处理不同类型积分的过期清理逻辑
  *
  * @author 任相鹏
@@ -229,8 +229,6 @@ public class CreditExpiryServiceImpl implements CreditExpiryService {
      */
     private CreditTransactionTypeEnum getTransactionTypeByCredit(CreditTypeEnum creditType) {
         switch (creditType) {
-            case DAILY:
-                return CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY;
             case ACTIVITY:
                 // TODO: 需要添加活动积分交易类型
                 return CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY; // 临时使用
@@ -239,6 +237,7 @@ public class CreditExpiryServiceImpl implements CreditExpiryService {
                 return CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY; // 临时使用
             case PERMANENT:
                 return CreditTransactionTypeEnum.INCOME_PRO_PLAN;
+            case DAILY:
             default:
                 return CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY;
         }
