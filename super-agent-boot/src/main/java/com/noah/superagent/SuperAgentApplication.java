@@ -17,6 +17,5 @@ public class SuperAgentApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(SuperAgentApplication.class, args);
-        System.out.println("🚀 Super Agent Platform Started Successfully!");
     }
 }

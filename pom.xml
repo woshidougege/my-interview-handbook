@@ -48,7 +48,7 @@
         <!-- 工具类版本 -->
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.30</lombok.version>
-        <hutool.version>5.8.24</hutool.version>
+        <hutool.version>5.8.40</hutool.version>
         <commons-lang3.version>3.14.0</commons-lang3.version>
         
         <!-- 调度版本 -->

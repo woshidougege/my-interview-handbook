@@ -1,0 +1,3 @@
+org.springframework.context.ApplicationListener=\
+  com.noah.superagent.config.ConfigLoadLogger,\
+  com.noah.superagent.config.StartupSummaryLogger

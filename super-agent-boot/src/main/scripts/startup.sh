@@ -1,33 +1,85 @@
 #!/bin/bash
+#
+# Super Agent 启动、停止、重启、状态查询、日志查看脚本
+#
+# @author Super Agent Team
+# @since 1.0.0
+#
+# 使用方法:
+#   ./startup.sh [start|stop|restart|status|logs|debug|daemon]
+#
+# ==================================================================================================
 
-# Super Agent Platform 启动脚本
-# 使用方法: ./startup.sh [start|stop|restart|status] [profile]
-# 示例: ./startup.sh start dev
-
+# === 基本配置 ===
+# 应用名称 (必须与 Spring Boot application.name 一致)
 APP_NAME="super-agent"
-MAIN_JAR="modules/super-agent-boot.jar.original"
-PID_FILE="logs/${APP_NAME}.pid"
-LOG_FILE="logs/${APP_NAME}.log"
+# 主启动类 (必须是完整的类名)
+MAIN_CLASS="com.noah.superagent.SuperAgentApplication"
 
+# === 路径和文件配置 ===
 # 获取脚本所在目录
-APP_HOME=$(cd "$(dirname "$0")/.." && pwd)
-cd "$APP_HOME"
+SCRIPT_PATH=$(cd "$(dirname "$0")"; pwd)
+# 应用根目录 (bin目录的上级目录)
+APP_HOME=$(cd "$SCRIPT_PATH/.."; pwd)
+# 解析简单参数（第二参数开启URL打印）
+CMD="$1"
+EXTRA="$2"
+if [ "$EXTRA" = "urls" ] || [ "$EXTRA" = "--urls" ]; then
+    export URLS=on
+fi
+# 配置文件目录
+CONF_DIR="$APP_HOME/conf"
+# 依赖包目录
+LIB_DIR="$APP_HOME/lib"
+# 业务模块目录
+MODULES_DIR="$APP_HOME/modules"
+# PID文件路径
+PID_FILE="$APP_HOME/bin/${APP_NAME}.pid"
+# 日志文件 (由logback管理，这里只用于状态和tail命令)
+LOG_FILE="$APP_HOME/logs/${APP_NAME}-info.log"
+ERROR_LOG_FILE="$APP_HOME/logs/${APP_NAME}-error.log"
 
-# 获取profile参数
-PROFILE=${2:-dev}
-
+# === Java 和 JVM 配置 ===
+# Java命令路径 (如果不在PATH中，请指定绝对路径)
+JAVA_CMD="java"
 # JVM参数
-JVM_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=logs/"
-SPRING_OPTS="--spring.config.location=conf/ --spring.profiles.active=${PROFILE} --logging.file.path=logs/ --spring.flyway.locations=classpath:conf/db/migration"
+# -Xms, -Xmx: 初始和最大堆大小
+# -Xmn: 新生代大小 (建议为堆大小的1/4到1/3)
+# -XX:+UseG1GC: 使用G1垃圾收集器 (适用于大堆内存)
+# -XX:+HeapDumpOnOutOfMemoryError: OOM时自动生成堆转储文件
+# -Djava.awt.headless=true: 无头模式，适用于服务器环境
+# -Dfile.encoding=UTF-8: 文件编码
+JVM_OPTS="-server -Xms512m -Xmx1024m -Xmn256m -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError -Djava.awt.headless=true -Dfile.encoding=UTF-8"
+# 调试模式参数
+DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+
+# === Spring Boot 配置 ===
+# 指定配置文件位置
+SPRING_OPTS="--spring.config.location=$CONF_DIR/"
+
+
+# ==================================================================================================
+#   函数定义
+# ==================================================================================================
+
+# 打印配置加载摘要
+print_config_summary() {
+    echo ""
+    echo "🔧 加载的配置文件预览:"
+    
+    local main_config_file="${CONF_DIR}/application.yml"
+    
+    if [ -r "$main_config_file" ]; then
+        echo "   - 主文件: $main_config_file"
+        # 使用awk解析import块，更健壮
+        awk '/import:/,/^[^[:space:]]/{if(/classpath:/) {gsub("classpath:",""); printf "     -> %s\n", $2}}' "$main_config_file"
+    else
+        echo "   - 警告: 主配置文件 application.yml 不存在或不可读。"
+    fi
+    echo ""
+}
 
 # 检查Java环境
-if [ -z "$JAVA_HOME" ]; then
-    JAVA_CMD="java"
-else
-    JAVA_CMD="$JAVA_HOME/bin/java"
-fi
-
-# 检查Java版本
 check_java() {
     if ! command -v $JAVA_CMD &> /dev/null; then
         echo "❌ 错误: 未找到Java运行环境，请安装JDK 11+"
@@ -41,103 +93,64 @@ check_java() {
     fi
 }
 
-# 启动应用
+# 准备启动环境：构建CLASSPATH、创建日志目录、开启ANSI颜色
+prepare_startup() {
+    mkdir -p "$APP_HOME/logs"
+    export SPRING_OUTPUT_ANSI_ENABLED=ALWAYS
+    # 若未显式设置，则默认关闭组件URL打印
+    if [ -z "$URLS" ]; then
+        export URLS=off
+    fi
+    # 构建classpath，包含conf、lib与modules下的所有jar
+    CLASSPATH="$CONF_DIR"
+    for jar in "$LIB_DIR"/*.jar; do
+        [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
+    done
+    for jar in "$MODULES_DIR"/*.jar; do
+        [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
+    done
+}
+
+# 启动函数
 start() {
     if [ -f "$PID_FILE" ]; then
         PID=$(cat "$PID_FILE")
-        if kill -0 "$PID" 2>/dev/null; then
-            echo "⚠️  应用已在运行中，PID: $PID"
-            return 1
-        else
-            echo "🔄 清理无效的PID文件"
-            rm -f "$PID_FILE"
+        if ps -p $PID > /dev/null 2>&1; then
+            echo "❌ $APP_NAME 正在运行 (PID: $PID)，请先停止。"
+            exit 1
         fi
     fi
 
+    # 检查Java环境
     check_java
     
-    echo "🚀 启动 $APP_NAME (Profile: $PROFILE)..."
-    echo "📋 工作目录: $(pwd)"
-    mkdir -p logs
+    # 准备启动环境
+    prepare_startup
     
-    # 强制启用颜色输出
-    export SPRING_OUTPUT_ANSI_ENABLED=ALWAYS
-    
-    # 检查主启动jar是否存在
-    if [ ! -f "$MAIN_JAR" ]; then
-        echo "❌ 错误: 找不到主启动jar文件: $MAIN_JAR"
-        echo "📋 请检查打包是否正确"
-        ls -la modules/ 2>/dev/null || echo "modules目录不存在"
-        return 1
-    fi
-    
-    echo "📦 使用分离依赖启动方式"
-    
-    # 构建classpath，包含配置目录、lib和modules目录下的所有jar
-    CLASSPATH="conf"
-    echo "📦 构建Classpath..."
-    
-    # 添加第三方依赖
-    LIB_COUNT=0
-    for jar in lib/*.jar; do
-        if [ -f "$jar" ]; then
-            CLASSPATH="$CLASSPATH:$jar"
-            LIB_COUNT=$((LIB_COUNT + 1))
-        fi
-    done
-    echo "  找到 $LIB_COUNT 个第三方依赖jar"
-    
-    # 添加业务模块jar
-    MODULE_COUNT=0
-    for jar in modules/*.jar*; do
-        if [ -f "$jar" ]; then
-            CLASSPATH="$CLASSPATH:$jar"
-            MODULE_COUNT=$((MODULE_COUNT + 1))
-            echo "  + $jar"
-        fi
-    done
-    echo "  找到 $MODULE_COUNT 个业务模块jar"
-    
-    if [ $MODULE_COUNT -eq 0 ]; then
-        echo "❌ 错误: 在modules目录下找不到任何jar文件！"
-        echo "📋 请检查打包是否正确"
-        ls -la modules/ 2>/dev/null || echo "modules目录不存在"
-        return 1
-    fi
-    
-    # 检查主类是否存在
-    echo "🔍 检查主类是否存在..."
-    if jar tf "$MAIN_JAR" | grep -q "com/noah/superagent/SuperAgentApplication.class"; then
-        echo "✅ 找到主类: com.noah.superagent.SuperAgentApplication"
-    else
-        echo "❌ 错误: 在$MAIN_JAR中找不到主类！"
-        echo "📋 jar包内容（前20行）："
-        jar tf "$MAIN_JAR" | head -20
-        echo "..."
-        echo "📋 jar包主类配置："
-        jar xf "$MAIN_JAR" META-INF/MANIFEST.MF -O 2>/dev/null | grep -i "main-class" || echo "未找到主类配置"
-        return 1
-    fi
-    
-    START_CMD="$JAVA_CMD $JVM_OPTS -cp $CLASSPATH com.noah.superagent.SuperAgentApplication $SPRING_OPTS"
-    
+    # 打印配置摘要
+    print_config_summary
+
+    # 让日志框架(logback)来处理文件写入和控制台输出
+    # 不再使用 tee 重定向
+    START_CMD="$JAVA_CMD $JVM_OPTS -cp $CLASSPATH $MAIN_CLASS $SPRING_OPTS"
+
     echo ""
-    echo "🔧 JVM参数: $JVM_OPTS"
-    echo "🔧 Spring参数: $SPRING_OPTS"
-    echo "🔧 启动命令: $START_CMD"
-    echo ""
-    echo "🚀 启动中，日志将持续显示在控制台..."
+    echo "🚀 启动中，日志将由Logback管理..."
+    echo "   - 控制台将显示彩色日志"
+    echo "   - 文件日志将写入: $LOG_FILE"
+    echo "   - 错误日志将写入: $ERROR_LOG_FILE"
     echo "📋 按 Ctrl+C 可停止应用"
+    echo ""
     echo "📖 API文档: http://localhost:8081/super-agent/swagger-ui.html"
     echo "📋 API定义: http://localhost:8081/super-agent/v3/api-docs"
     echo "📊 监控页面: http://localhost:8081/super-agent/druid"
-    echo ""
+    echo "--------------------------------------------------------------------------------"
     
-    # 前台运行，同时写入日志文件，直到用户按Ctrl+C
-    $START_CMD 2>&1 | tee "$LOG_FILE"
+    # 直接执行，让logback同时输出到控制台和文件
+    $START_CMD
 }
 
-# 停止应用
+# 停止函数
 stop() {
     if [ ! -f "$PID_FILE" ]; then
         echo "⚠️  应用未运行"
@@ -171,7 +184,7 @@ stop() {
     echo "✅ $APP_NAME 已强制停止"
 }
 
-# 查看状态
+# 状态检查函数
 status() {
     if [ ! -f "$PID_FILE" ]; then
         echo "📋 状态: $APP_NAME 未运行"
@@ -198,20 +211,16 @@ restart() {
     daemon
 }
 
-# 查看日志
+# 日志查看函数
 logs() {
     if [ ! -f "$LOG_FILE" ]; then
-        echo "📝 日志文件不存在: $LOG_FILE"
-        return 1
+        echo "❌ 日志文件不存在: $LOG_FILE"
+        exit 1
     fi
     
-    if [ "$2" = "tail" ] || [ "$2" = "f" ]; then
-        echo "📝 实时查看日志 (Ctrl+C 退出):"
-        tail -f "$LOG_FILE"
-    else
-        echo "📝 显示最近100行日志:"
-        tail -100 "$LOG_FILE"
-    fi
+    echo "📋 正在查看日志 (按 Ctrl+C 退出): $LOG_FILE"
+    echo "--------------------------------------------------------------------------------"
+    tail -f "$LOG_FILE"
 }
 
 
@@ -219,110 +228,53 @@ logs() {
 debug() {
     if [ -f "$PID_FILE" ]; then
         PID=$(cat "$PID_FILE")
-        if kill -0 "$PID" 2>/dev/null; then
-            echo "⚠️  应用已在运行中，PID: $PID，请先停止"
-            return 1
-        else
-            echo "🔄 清理无效的PID文件"
-            rm -f "$PID_FILE"
+        if ps -p $PID > /dev/null 2>&1; then
+            echo "❌ $APP_NAME 正在运行 (PID: $PID)，请先停止再以调试模式启动。"
+            exit 1
         fi
     fi
 
     check_java
-    
+    prepare_startup
+    print_config_summary
+
     # 调试端口
     DEBUG_PORT=${3:-5005}
     
-    echo "🐛 远程调试模式启动 $APP_NAME (Profile: $PROFILE)..."
+    echo "🐛 远程调试模式启动 $APP_NAME ..."
     echo "🔌 调试端口: $DEBUG_PORT"
     echo "🔧 IDE连接: localhost:$DEBUG_PORT"
-    echo "📋 日志将同时显示在控制台和写入文件: $LOG_FILE"
-    echo "📋 按 Ctrl+C 停止应用"
-    mkdir -p logs
-    
-    # 构建classpath
-    CLASSPATH="conf"
-    for jar in lib/*.jar; do
-        [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
-    done
-    for jar in modules/*.jar; do
-        [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
-    done
-    
+    echo "📋 日志将同时显示在控制台，文件由Logback管理: $LOG_FILE"
+
     # 添加调试参数
     DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:$DEBUG_PORT"
-    
+
     echo ""
     echo "🚀 启动中..."
-    
-    # 使用tee同时输出到控制台和文件
-    $JAVA_CMD $JVM_OPTS $DEBUG_OPTS -cp "$CLASSPATH" com.noah.superagent.SuperAgentApplication $SPRING_OPTS 2>&1 | tee "$LOG_FILE"
+
+    # 直接执行（不使用tee），日志由Logback接管
+    $JAVA_CMD $JVM_OPTS $DEBUG_OPTS -cp "$CLASSPATH" $MAIN_CLASS $SPRING_OPTS
 }
 
-# 后台启动
+# 后台启动函数
 daemon() {
     if [ -f "$PID_FILE" ]; then
         PID=$(cat "$PID_FILE")
-        if kill -0 "$PID" 2>/dev/null; then
-            echo "⚠️  应用已在运行中，PID: $PID"
-            return 1
-        else
-            echo "🔄 清理无效的PID文件"
-            rm -f "$PID_FILE"
+        if ps -p $PID > /dev/null 2>&1; then
+            echo "❌ $APP_NAME 正在运行 (PID: $PID)，请勿重复启动。"
+            exit 1
         fi
     fi
 
     check_java
-    
-    echo "🚀 后台启动 $APP_NAME (Profile: $PROFILE)..."
-    echo "📋 工作目录: $(pwd)"
-    mkdir -p logs
-    
-    # 强制启用颜色输出
-    export SPRING_OUTPUT_ANSI_ENABLED=ALWAYS
-    
-    # 检查主启动jar是否存在
-    if [ ! -f "$MAIN_JAR" ]; then
-        echo "❌ 错误: 找不到主启动jar文件: $MAIN_JAR"
-        echo "📋 请检查打包是否正确"
-        ls -la modules/ 2>/dev/null || echo "modules目录不存在"
-        return 1
-    fi
-    
-    echo "📦 使用分离依赖启动方式"
-    
-    # 构建classpath
-    CLASSPATH="conf"
-    
-    # 添加第三方依赖
-    LIB_COUNT=0
-    for jar in lib/*.jar; do
-        if [ -f "$jar" ]; then
-            CLASSPATH="$CLASSPATH:$jar"
-            LIB_COUNT=$((LIB_COUNT + 1))
-        fi
-    done
-    echo "  找到 $LIB_COUNT 个第三方依赖jar"
-    
-    # 添加业务模块jar
-    MODULE_COUNT=0
-    for jar in modules/*.jar*; do
-        if [ -f "$jar" ]; then
-            CLASSPATH="$CLASSPATH:$jar"
-            MODULE_COUNT=$((MODULE_COUNT + 1))
-        fi
-    done
-    echo "  找到 $MODULE_COUNT 个业务模块jar"
-    
-    START_CMD="$JAVA_CMD $JVM_OPTS -cp $CLASSPATH com.noah.superagent.SuperAgentApplication $SPRING_OPTS"
-    
-    echo ""
-    echo "🔧 启动命令: $START_CMD"
-    echo ""
+    prepare_startup
+    print_config_summary
+
+    # 将标准输出和错误重定向到/dev/null，完全交由logback管理日志文件
+    START_CMD="nohup $JAVA_CMD $JVM_OPTS -cp $CLASSPATH $MAIN_CLASS $SPRING_OPTS > /dev/null 2>&1 &"
+
     echo "🚀 后台启动中..."
-    
-    # 后台启动
-    nohup $START_CMD > "$LOG_FILE" 2>&1 &
+    eval $START_CMD
     PID=$!
     echo $PID > "$PID_FILE"
     
@@ -368,7 +320,7 @@ case "$1" in
         debug
         ;;
     *)
-        echo "用法: $0 {start|daemon|stop|restart|status|logs|debug} [profile] [debug_port]"
+        echo "用法: $0 {start|daemon|stop|restart|status|logs|debug} [urls] [debug_port]"
         echo ""
         echo "命令说明:"
         echo "  start   - 前台启动应用（显示日志，Ctrl+C停止）"
@@ -376,20 +328,16 @@ case "$1" in
         echo "  stop    - 停止应用"
         echo "  restart - 重启应用"
         echo "  status  - 查看运行状态"
-        echo "  logs    - 查看日志（最近100行）"
-        echo "  logs tail - 实时查看日志"
-        echo "  debug   - 远程调试模式（前台运行，开启JVM调试端口）"
+        echo "  logs    - 实时查看日志"
+        echo "  debug   - 远程调试模式（前台运行，开启JVM调试端口，默认5005）"
         echo ""
-        echo "Profile说明:"
-        echo "  dev     - 开发环境（默认）"
-        echo "  test    - 测试环境"
-        echo "  prod    - 生产环境"
+        echo "可选参数:"
+        echo "  urls    - 启动时打印 Docs/OpenAPI/Actuator/Druid 访问地址"
         echo ""
         echo "示例:"
-        echo "  $0 start dev          # 前台启动开发环境"
-        echo "  $0 daemon prod        # 后台启动生产环境"
-        echo "  $0 debug dev 5005     # 开启远程调试，端口5005"
-        echo "  $0 logs tail          # 实时查看日志"
+        echo "  $0 start urls       # 前台启动并打印组件URL"
+        echo "  $0 daemon urls      # 后台启动并打印组件URL"
+        echo "  $0 debug urls 5005  # 调试模式并打印组件URL"
         exit 1
         ;;
 esac
