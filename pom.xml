@@ -51,11 +51,16 @@
         <hutool.version>5.8.24</hutool.version>
         <commons-lang3.version>3.14.0</commons-lang3.version>
         
-        <!-- 调度和文档版本 -->
+        <!-- 调度版本 -->
         <db-scheduler.version>12.1.0</db-scheduler.version>
-        <knife4j.version>3.0.3</knife4j.version>
-        <swagger-annotations.version>1.5.22</swagger-annotations.version>
-        <snakeyaml.version>1.33</snakeyaml.version>
+        
+        <!-- API文档版本 -->
+        <springdoc.version>1.7.0</springdoc.version>
+        <swagger-annotations.version>2.2.9</swagger-annotations.version>
+        
+        <!-- Jackson版本 - 与Spring Boot 2.7.18兼容 -->
+        <jackson.version>2.13.5</jackson.version>
+        
         <slf4j.version>1.7.36</slf4j.version>
 
         <!-- Maven插件版本 -->
@@ -164,11 +169,52 @@
                 <version>${mapstruct.version}</version>
             </dependency>
 
-            <!-- Knife4j API文档 for Spring Boot 2.x -->
+            <!-- SpringDoc OpenAPI 3 - 官方推荐方案（Spring Boot 2.x兼容版本） -->
             <dependency>
-                <groupId>com.github.xiaoymin</groupId>
-                <artifactId>knife4j-spring-boot-starter</artifactId>
-                <version>${knife4j.version}</version>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-ui</artifactId>
+                <version>${springdoc.version}</version>
+                <exclusions>
+                    <!-- 排除可能的Swagger版本冲突 -->
+                    <exclusion>
+                        <groupId>io.swagger.core.v3</groupId>
+                        <artifactId>swagger-core</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            
+            <!-- OpenAPI 3 注解支持 -->
+            <dependency>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-annotations</artifactId>
+                <version>${swagger-annotations.version}</version>
+            </dependency>
+            
+            <!-- Jackson JSON处理（用于枚举注解等） -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson.version}</version>
             </dependency>
 
             <!-- Flyway 数据库迁移 -->
@@ -202,29 +248,43 @@
                 <version>${gt-sso-client.version}</version>
             </dependency>-->
 
-            <!-- 🔧 依赖冲突解决 - 统一Swagger注解版本 -->
-            <dependency>
-                <groupId>io.swagger</groupId>
-                <artifactId>swagger-annotations</artifactId>
-                <version>${swagger-annotations.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.swagger.core.v3</groupId>
-                <artifactId>swagger-annotations</artifactId>
-                <version>2.1.2</version>
-            </dependency>
+            <!-- 🔧 OpenAPI 3 模型类支持 - 排除Jackson避免版本冲突 -->
             <dependency>
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-models</artifactId>
-                <version>2.1.2</version>
+                <version>${swagger-annotations.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-annotations</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-core</artifactId>
+                <version>${swagger-annotations.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.dataformat</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.datatype</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <!-- 排除snakeyaml版本冲突 -->
+                    <exclusion>
+                        <groupId>org.yaml</groupId>
+                        <artifactId>snakeyaml</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
-            <!-- 🔧 依赖冲突解决 - 统一YAML解析器版本 -->
-            <dependency>
-                <groupId>org.yaml</groupId>
-                <artifactId>snakeyaml</artifactId>
-                <version>${snakeyaml.version}</version>
-            </dependency>
 
             <!-- 🔧 依赖冲突解决 - 统一日志API版本 (关键!) -->
             <dependency>

@@ -9,9 +9,9 @@ import com.noah.superagent.convert.ChatTaskWebConvert;
 import com.noah.superagent.model.ChatTaskDTO;
 import com.noah.superagent.service.ChatTaskService;
 import com.noah.superagent.response.ApiResponse;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
@@ -30,7 +30,7 @@ import javax.validation.Valid;
 @RequestMapping("/api/v1/workspaces/{workspaceId}/chat-tasks")
 @RequiredArgsConstructor
 @Validated
-@Api(tags = "对话任务管理", description = "对话任务CRUD操作接口")
+@Tag(name = "对话任务管理", description = "对话任务CRUD操作接口")
 public class ChatTaskController {
 
     private final ChatTaskService chatTaskService;
@@ -38,9 +38,9 @@ public class ChatTaskController {
     private final ChatTaskWebConvert chatTaskWebConvert;
 
     @PostMapping
-    @ApiOperation(value = "创建对话任务", notes = "创建新对话任务")
+    @Operation(summary = "创建对话任务", description = "创建新对话任务")
     public ApiResponse<ChatTaskResponse> createChatTask(
-            @ApiParam(value = "工作空间ID", example = "1234567890123456789")
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
             @PathVariable("workspaceId") Long workspaceId,
             @Valid @RequestBody ChatTaskCreateRequest request) {
         log.info("接收创建对话任务请求: {}", request.getTitle());
@@ -56,9 +56,9 @@ public class ChatTaskController {
     }
 
     @GetMapping("/{id}")
-    @ApiOperation(value = "查询对话任务", notes = "根据ID查询对话任务详情")
+    @Operation(summary = "查询对话任务", description = "根据ID查询对话任务详情")
     public ApiResponse<ChatTaskResponse> getChatTaskById(
-            @ApiParam(value = "对话任务ID", example = "1234567890123456789") 
+            @Parameter(description = "对话任务ID", example = "1234567890123456789") 
             @PathVariable("id") Long id) {
         log.info("接收查询对话任务请求: {}", id);
         
@@ -70,9 +70,9 @@ public class ChatTaskController {
     }
 
     @GetMapping
-    @ApiOperation(value = "分页查询对话任务", notes = "分页查询对话任务列表")
+    @Operation(summary = "分页查询对话任务", description = "分页查询对话任务列表")
     public ApiResponse<PageResponse<ChatTaskResponse>> getChatTaskPage(
-            @ApiParam(value = "工作空间ID", example = "1234567890123456789")
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
             @PathVariable("workspaceId") Long workspaceId,
             @Valid PageRequest request) {
         log.info("接收分页查询对话任务请求: {}", request);
@@ -92,9 +92,9 @@ public class ChatTaskController {
     }
 
     @PutMapping("/{id}")
-    @ApiOperation(value = "更新对话任务", notes = "更新对话任务信息")
+    @Operation(summary = "更新对话任务", description = "更新对话任务信息")
     public ApiResponse<ChatTaskResponse> updateChatTask(
-            @ApiParam(value = "对话任务ID", example = "1234567890123456789") 
+            @Parameter(description = "对话任务ID", example = "1234567890123456789") 
             @PathVariable("id") Long id,
             @Valid @RequestBody ChatTaskUpdateRequest request) {
         log.info("接收更新对话任务请求: {}", id);
@@ -109,11 +109,11 @@ public class ChatTaskController {
     }
 
     @DeleteMapping("/{id}")
-    @ApiOperation(value = "删除对话任务", notes = "根据ID删除对话任务")
+    @Operation(summary = "删除对话任务", description = "根据ID删除对话任务")
     public ApiResponse<Void> deleteChatTask(
-            @ApiParam(value = "工作空间ID", example = "1234567890123456789")
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
             @PathVariable("workspaceId") Long workspaceId,
-            @ApiParam(value = "对话任务ID", example = "1234567890123456789") 
+            @Parameter(description = "对话任务ID", example = "1234567890123456789") 
             @PathVariable("id") Long id) {
         log.info("接收删除对话任务请求: {}", id);
         
@@ -122,9 +122,9 @@ public class ChatTaskController {
     }
     
     @PostMapping("/{id}/favorite")
-    @ApiOperation(value = "收藏对话任务", notes = "将指定对话任务标记为收藏")
+    @Operation(summary = "收藏对话任务", description = "将指定对话任务标记为收藏")
     public ApiResponse<Void> favoriteChatTask(
-            @ApiParam(value = "对话任务ID", example = "1234567890123456789")
+            @Parameter(description = "对话任务ID", example = "1234567890123456789")
             @PathVariable("id") Long id) {
         log.info("接收收藏对话任务请求: {}", id);
         
@@ -134,9 +134,9 @@ public class ChatTaskController {
     }
     
     @DeleteMapping("/{id}/favorite")
-    @ApiOperation(value = "取消收藏对话任务", notes = "取消对话任务的收藏标记")
+    @Operation(summary = "取消收藏对话任务", description = "取消对话任务的收藏标记")
     public ApiResponse<Void> unfavoriteChatTask(
-            @ApiParam(value = "对话任务ID", example = "1234567890123456789")
+            @Parameter(description = "对话任务ID", example = "1234567890123456789")
             @PathVariable("id") Long id) {
         log.info("接收取消收藏对话任务请求: {}", id);
         
@@ -146,9 +146,9 @@ public class ChatTaskController {
     }
     
     @GetMapping("/favorites")
-    @ApiOperation(value = "查询收藏的对话任务列表", notes = "分页查询收藏的对话任务列表")
+    @Operation(summary = "查询收藏的对话任务列表", description = "分页查询收藏的对话任务列表")
     public ApiResponse<PageResponse<ChatTaskResponse>> getFavoriteChatTasks(
-            @ApiParam(value = "工作空间ID", example = "1234567890123456789")
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
             @PathVariable("workspaceId") Long workspaceId,
             @Valid PageRequest request) {
         log.info("接收查询收藏对话任务列表请求，工作空间ID: {}", workspaceId);

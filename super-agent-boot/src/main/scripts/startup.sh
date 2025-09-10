@@ -128,7 +128,8 @@ start() {
     echo ""
     echo "🚀 启动中，日志将持续显示在控制台..."
     echo "📋 按 Ctrl+C 可停止应用"
-    echo "📖 API文档: http://localhost:8081/super-agent/doc.html"
+    echo "📖 API文档: http://localhost:8081/super-agent/swagger-ui.html"
+    echo "📋 API定义: http://localhost:8081/super-agent/v3/api-docs"
     echo "📊 监控页面: http://localhost:8081/super-agent/druid"
     echo ""
     
@@ -329,7 +330,8 @@ daemon() {
     sleep 3
     if kill -0 "$PID" 2>/dev/null; then
         echo "✅ $APP_NAME 后台启动成功，PID: $PID"
-        echo "📖 API文档: http://localhost:8081/super-agent/doc.html"
+        echo "📖 API文档: http://localhost:8081/super-agent/swagger-ui.html"
+        echo "📋 API定义: http://localhost:8081/super-agent/v3/api-docs"
         echo "📊 监控页面: http://localhost:8081/super-agent/druid"
         echo "📝 日志文件: $LOG_FILE"
         echo "📝 查看实时日志: $0 logs tail"

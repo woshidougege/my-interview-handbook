@@ -33,10 +33,23 @@
             <artifactId>super-agent-service-impl</artifactId>
         </dependency>
 
-        <!-- Spring Boot Web -->
+        <!-- Spring Boot Web - 使用Undertow替代Tomcat -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <!-- 排除默认的Tomcat容器 -->
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-tomcat</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        
+        <!-- 引入Undertow容器 - 更高性能、更少内存占用 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-undertow</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

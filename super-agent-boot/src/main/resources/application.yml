@@ -7,6 +7,19 @@ server:
       charset: UTF-8
       enabled: true
       force: true
+  # Undertow容器优化配置 - 高性能Web服务器
+  undertow:
+    # 工作线程数（建议为CPU核心数 * 2）
+    threads:
+      worker: 8
+      io: 4
+    # 缓冲区配置
+    buffer-size: 1024
+    buffers-per-region: 1024
+    # 使用直接内存提升性能
+    direct-buffers: true
+    # 最大HTTP POST请求大小
+    max-http-post-size: 10MB
 
 spring:
   application:
@@ -89,23 +102,25 @@ mybatis-flex:
     map-underscore-to-camel-case: true
     cache-enabled: false
 
-# Knife4j 文档配置
-knife4j:
-  enable: true
-  openapi:
-    title: Super Agent API
-    description: 用户管理和计费平台接口文档
-    version: ${revision:1.0.0}
-    concat-contact: true
-    contact:
-      name: 开发团队
-      email: dev@noah.com
-    license: Apache 2.0
-    license-url: https://www.apache.org/licenses/LICENSE-2.0
-  setting:
-    language: zh-CN
-    enable-version: true
-    enable-dynamic-parameter: true
+# SpringDoc OpenAPI 3 配置（官方推荐）
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    # 自动按@Tag分组显示
+    tags-sorter: alpha
+    operations-sorter: alpha
+    # 默认展开接口详情
+    doc-expansion: list
+    # 显示请求头
+    display-request-duration: true
+  # 只扫描业务Controller包，排除系统Controller
+  packages-to-scan: com.noah.superagent.controller
+  # 只匹配API路径
+  paths-to-match: /api/**
 
 # 默认日志配置
 logging:
