@@ -20,6 +20,19 @@ spring:
     pathmatch:
       matching-strategy: ant_path_matcher
   
+  # 静态资源配置
+  web:
+    resources:
+      static-locations: classpath:/static/
+      cache:
+        period: 31536000  # 1年缓存
+      chain:
+        strategy:
+          content:
+            enabled: true
+            paths: "/**"
+        cache: true
+  
   # 数据源公共配置
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
