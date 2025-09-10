@@ -1,0 +1,64 @@
+# ========== Flyway 数据库迁移配置 ==========
+spring:
+  flyway:
+    # 是否启用Flyway（通过环境变量控制）
+    enabled: ${FLYWAY_ENABLED:false}
+    # 迁移脚本位置
+    locations: 
+      - classpath:db/migration
+      - classpath:conf/db/migration
+    # 基线迁移
+    baseline-on-migrate: true
+    baseline-version: 0
+    baseline-description: "Initial baseline"
+    # 验证迁移
+    validate-on-migrate: true
+    # 是否允许乱序迁移
+    out-of-order: false
+    # Flyway表名
+    table: flyway_schema_history
+    # 迁移脚本命名规则
+    sql-migration-prefix: V
+    sql-migration-separator: __
+    sql-migration-suffixes: .sql
+    # 可重复迁移脚本前缀
+    repeatable-sql-migration-prefix: R
+    # 文件编码
+    encoding: UTF-8
+    # 占位符替换
+    placeholder-replacement: true
+    # 占位符前缀
+    placeholder-prefix: "${"
+    # 占位符后缀
+    placeholder-suffix: "}"
+    # 自定义占位符
+    placeholders:
+      database_name: ${DB_NAME:super_agent}
+      charset: utf8mb4
+      collation: utf8mb4_unicode_ci
+    # 禁用clean命令（生产安全）
+    clean-disabled: true
+    # 禁用清理验证
+    clean-on-validation-error: false
+    # 混合模式（允许在非空数据库上运行）
+    mixed: false
+    # 分组处理
+    group: false
+    # 跳过默认回调
+    skip-default-callbacks: false
+    # 跳过默认解析器
+    skip-default-resolvers: false
+    # 验证迁移命名
+    validate-migration-naming: false
+    # 忽略迁移模式
+    ignore-migration-patterns: []
+    # 连接重试次数
+    connect-retries: 0
+    # 连接重试延迟（秒）
+    connect-retries-interval: 120
+    # 初始化SQL
+    init-sqls: []
+    # 默认模式
+    default-schema: ${DB_NAME:super_agent}
+    # 模式列表
+    schemas: []

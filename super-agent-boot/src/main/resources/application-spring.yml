@@ -1,0 +1,111 @@
+# ========== Spring Framework 配置 ==========
+spring:
+  application:
+    name: super-agent
+  
+  # MVC配置
+  mvc:
+    pathmatch:
+      # 使用Ant路径匹配策略（兼容Swagger/OpenAPI）
+      matching-strategy: ant_path_matcher
+    # 静态路径匹配
+    static-path-pattern: /**
+    # 抛出404异常
+    throw-exception-if-no-handler-found: false
+    # 日期格式
+    format:
+      date: yyyy-MM-dd
+      time: HH:mm:ss
+      date-time: yyyy-MM-dd HH:mm:ss
+  
+  # 静态资源配置
+  web:
+    resources:
+      # 静态资源位置
+      static-locations: 
+        - classpath:/static/
+        - classpath:/public/
+        - classpath:/resources/
+        - classpath:/META-INF/resources/
+      # 缓存配置
+      cache:
+        # 缓存时间（秒）
+        period: ${STATIC_CACHE_PERIOD:31536000}  # 1年
+        # 缓存控制
+        cachecontrol:
+          max-age: ${STATIC_CACHE_MAX_AGE:31536000}  # 1年
+          cache-public: true
+      # 资源链配置
+      chain:
+        # 启用资源链
+        enabled: true
+        # 缓存策略
+        cache: true
+        # 压缩策略
+        compressed: true
+        # 内容策略
+        strategy:
+          content:
+            enabled: true
+            paths: "/**"
+          # 固定版本策略
+          fixed:
+            enabled: false
+            paths: "/**"
+            version: "v1.0.0"
+  
+  # JSON配置
+  jackson:
+    # 日期格式
+    date-format: yyyy-MM-dd HH:mm:ss
+    # 时区
+    time-zone: GMT+8
+    # 序列化配置
+    serialization:
+      # 写入日期时使用时间戳
+      write-dates-as-timestamps: false
+      # 序列化空对象
+      fail-on-empty-beans: false
+      # 格式化输出
+      indent-output: false
+    # 反序列化配置
+    deserialization:
+      # 未知属性时不失败
+      fail-on-unknown-properties: false
+      # 读取枚举时使用toString
+      read-enums-using-to-string: true
+    # 解析器配置
+    parser:
+      # 允许注释
+      allow-comments: true
+      # 允许单引号
+      allow-single-quotes: true
+      # 允许未引用字段名
+      allow-unquoted-field-names: true
+    # 生成器配置
+    generator:
+      # 转义非ASCII字符
+      escape-non-ascii: false
+    # 默认属性包含
+    default-property-inclusion: non_null
+  
+  # 消息配置
+  messages:
+    # 基础名称
+    basename: messages
+    # 编码
+    encoding: UTF-8
+    # 缓存时间（秒）
+    cache-duration: 3600
+    # 回退到系统Locale
+    fallback-to-system-locale: true
+    # 总是使用消息格式
+    always-use-message-format: false
+    # 使用代码作为默认消息
+    use-code-as-default-message: false
+  
+  # 输出配置
+  output:
+    ansi:
+      # 启用ANSI彩色输出
+      enabled: ${SPRING_OUTPUT_ANSI_ENABLED:always}

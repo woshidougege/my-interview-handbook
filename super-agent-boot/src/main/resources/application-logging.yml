@@ -1,0 +1,54 @@
+# ========== 日志配置 ==========
+logging:
+  # 日志级别配置
+  level:
+    # 根日志级别
+    root: ${LOG_LEVEL_ROOT:INFO}
+    # 业务包日志级别
+    com.noah.superagent: ${LOG_LEVEL_BUSINESS:DEBUG}
+    # SQL日志级别
+    com.noah.superagent.dao: ${LOG_LEVEL_SQL:DEBUG}
+    # 第三方库日志级别
+    org.springframework: ${LOG_LEVEL_SPRING:INFO}
+    org.springframework.web: ${LOG_LEVEL_SPRING_WEB:INFO}
+    org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:INFO}
+    org.mybatis: ${LOG_LEVEL_MYBATIS:INFO}
+    com.mybatisflex: ${LOG_LEVEL_MYBATIS_FLEX:DEBUG}
+    com.alibaba.druid: ${LOG_LEVEL_DRUID:INFO}
+    org.flywaydb: ${LOG_LEVEL_FLYWAY:INFO}
+    # Spring Boot配置加载日志
+    org.springframework.boot.context.config: ${LOG_LEVEL_SPRING_CONFIG:DEBUG}
+    # HTTP客户端日志
+    org.apache.http: ${LOG_LEVEL_HTTP:INFO}
+    # 定时任务日志
+    org.springframework.scheduling: ${LOG_LEVEL_SCHEDULING:INFO}
+    # 缓存日志
+    org.springframework.cache: ${LOG_LEVEL_CACHE:INFO}
+  
+  # Logback配置文件
+  config: classpath:logback-spring.xml
+  
+  # 文件路径（供logback-spring.xml使用）
+  file:
+    path: ${LOG_PATH:logs}
+  
+  # 注册默认的关闭钩子
+  register-shutdown-hook: false
+  
+  # 组配置
+  group:
+    # 业务日志组
+    business: 
+      - com.noah.superagent
+    # SQL日志组  
+    sql:
+      - com.noah.superagent.dao
+      - com.mybatisflex
+    # Web日志组
+    web:
+      - org.springframework.web
+      - org.springframework.security
+    # 数据库日志组
+    database:
+      - com.alibaba.druid
+      - org.flywaydb
