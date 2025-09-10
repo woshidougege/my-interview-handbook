@@ -20,7 +20,6 @@
             <fileMode>0755</fileMode>
             <includes>
                 <include>*.sh</include>
-                <include>*.bat</include>
             </includes>
         </fileSet>
 
@@ -80,6 +79,15 @@
             </excludes>
         </fileSet>
 
+        <!-- 主启动JAR (Spring Boot thin jar - 只包含项目代码) -->
+        <fileSet>
+            <directory>target</directory>
+            <outputDirectory>modules</outputDirectory>
+            <includes>
+                <include>${project.artifactId}.jar.original</include>
+            </includes>
+        </fileSet>
+
     </fileSets>
 
     <dependencySets>
@@ -101,9 +109,8 @@
         <!-- 业务模块依赖 - 放到modules目录 -->
         <dependencySet>
             <outputDirectory>modules</outputDirectory>
-            <useProjectArtifact>true</useProjectArtifact>
+            <useProjectArtifact>false</useProjectArtifact>
             <includes>
-                <include>com.noah:super-agent-boot</include>
                 <include>com.noah:super-agent-common</include>
                 <include>com.noah:super-agent-dao</include>
                 <include>com.noah:super-agent-service-api</include>
