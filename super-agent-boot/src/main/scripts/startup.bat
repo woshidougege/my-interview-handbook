@@ -6,8 +6,8 @@ rem Super Agent Platform 启动脚本 - Windows版本
 rem 使用方法: startup.bat [start|stop|restart|status] [profile]
 rem 示例: startup.bat start dev
 
-set APP_NAME=super-agent-boot
-set APP_JAR=lib\%APP_NAME%.jar
+set APP_NAME=super-agent
+set APP_JAR=modules\super-agent-boot.jar
 set PID_FILE=logs\%APP_NAME%.pid
 set LOG_FILE=logs\%APP_NAME%.log
 
@@ -21,7 +21,7 @@ if "%PROFILE%"=="" set PROFILE=dev
 
 rem JVM参数
 set JVM_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=logs/
-set SPRING_OPTS=--spring.config.location=conf/ --spring.profiles.active=%PROFILE% --logging.file.path=logs/
+set SPRING_OPTS=--spring.config.location=conf/ --spring.profiles.active=%PROFILE% --logging.file.path=logs/ --spring.flyway.locations=classpath:conf/db/migration
 
 rem 检查Java环境
 if defined JAVA_HOME (
@@ -64,7 +64,12 @@ call :check_java
 echo 🚀 启动 %APP_NAME% (Profile: %PROFILE%)...
 if not exist logs mkdir logs
 
-start /b "" %JAVA_CMD% %JVM_OPTS% -jar "%APP_JAR%" %SPRING_OPTS% > "%LOG_FILE%" 2>&1
+rem 构建classpath，包含配置目录、lib和modules目录下的所有jar
+set CLASSPATH=conf
+for %%i in (lib\*.jar) do call :append_classpath "%%i"
+for %%i in (modules\*.jar) do call :append_classpath "%%i"
+
+start /b "" %JAVA_CMD% %JVM_OPTS% -cp "%CLASSPATH%" com.noah.superagent.SuperAgentApplication %SPRING_OPTS% > "%LOG_FILE%" 2>&1
 
 rem 获取Java进程PID（简化版本，实际可能需要更复杂的逻辑）
 timeout /t 3 /nobreak >nul
@@ -150,5 +155,13 @@ echo   %0 start prod   # 以生产环境启动
 echo.
 pause
 exit /b 1
+
+:append_classpath
+if "%CLASSPATH%"=="" (
+    set CLASSPATH=%~1
+) else (
+    set CLASSPATH=%CLASSPATH%;%~1
+)
+goto :eof
 
 :eof

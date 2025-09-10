@@ -4,8 +4,8 @@
 # 使用方法: ./startup.sh [start|stop|restart|status] [profile]
 # 示例: ./startup.sh start dev
 
-APP_NAME="super-agent-boot"
-APP_JAR="lib/${APP_NAME}.jar"
+APP_NAME="super-agent"
+APP_JAR="modules/super-agent-boot.jar"
 PID_FILE="logs/${APP_NAME}.pid"
 LOG_FILE="logs/${APP_NAME}.log"
 
@@ -18,7 +18,7 @@ PROFILE=${2:-dev}
 
 # JVM参数
 JVM_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=logs/"
-SPRING_OPTS="--spring.config.location=conf/ --spring.profiles.active=${PROFILE} --logging.file.path=logs/"
+SPRING_OPTS="--spring.config.location=conf/ --spring.profiles.active=${PROFILE} --logging.file.path=logs/ --spring.flyway.locations=classpath:conf/db/migration"
 
 # 检查Java环境
 if [ -z "$JAVA_HOME" ]; then
@@ -59,7 +59,16 @@ start() {
     echo "🚀 启动 $APP_NAME (Profile: $PROFILE)..."
     mkdir -p logs
     
-    nohup $JAVA_CMD $JVM_OPTS -jar "$APP_JAR" $SPRING_OPTS > "$LOG_FILE" 2>&1 &
+    # 构建classpath，包含配置目录、lib和modules目录下的所有jar
+    CLASSPATH="conf"
+    for jar in lib/*.jar; do
+        [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
+    done
+    for jar in modules/*.jar; do
+        [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
+    done
+    
+    nohup $JAVA_CMD $JVM_OPTS -cp "$CLASSPATH" com.noah.superagent.SuperAgentApplication $SPRING_OPTS > "$LOG_FILE" 2>&1 &
     PID=$!
     echo $PID > "$PID_FILE"
     

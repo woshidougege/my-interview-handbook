@@ -97,7 +97,7 @@
                     <descriptors>
                         <descriptor>src/main/assembly/assembly.xml</descriptor>
                     </descriptors>
-                    <finalName>${project.artifactId}-${project.version}</finalName>
+                    <finalName>super-agent-${project.version}</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
                 <executions>
