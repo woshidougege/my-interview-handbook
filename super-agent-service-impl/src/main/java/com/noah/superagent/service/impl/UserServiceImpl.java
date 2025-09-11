@@ -1,6 +1,7 @@
 package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.noah.superagent.dao.entity.UserEntity;
 import com.noah.superagent.convert.UserPersistenceConvert;
 import com.noah.superagent.common.dto.response.PageResponse;
@@ -24,7 +25,7 @@ import org.springframework.util.StringUtils;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl extends ServiceImpl<UserMapper,UserEntity> implements UserService  {
 
     private final UserMapper userMapper;
     private final UserPersistenceConvert userPersistenceConvert;

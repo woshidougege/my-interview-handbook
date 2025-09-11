@@ -1,13 +1,16 @@
 package com.noah.superagent.controller;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.noah.superagent.common.dto.request.PasswordLoginRequest;
 import com.noah.superagent.common.dto.request.PhoneLoginRequest;
 import com.noah.superagent.common.dto.request.RegisterRequest;
 import com.noah.superagent.common.dto.request.ResetPasswordRequest;
 import com.noah.superagent.common.dto.response.UserResponse;
 import com.noah.superagent.convert.UserWebConvert;
+import com.noah.superagent.dao.entity.UserEntity;
 import com.noah.superagent.model.UserDTO;
 import com.noah.superagent.response.ApiResponse;
+import com.noah.superagent.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -30,7 +33,9 @@ import cn.hutool.core.util.URLUtil;
 import cn.hutool.core.lang.Validator;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 认证相关控制器 - 方舟认证系统对接
@@ -46,6 +51,7 @@ import java.util.Map;
 public class AuthController {
 
     private final UserWebConvert userWebConvert;
+    private final UserService userService;
     private final RestTemplate restTemplate;
 
     @Value("${sso.server.url:http://192.168.1.65:10000/sso-server}")
@@ -329,11 +335,12 @@ public class AuthController {
         try {
             // 这里需要实现从SSO Token中获取用户信息的逻辑
             // 暂时返回模拟数据
-            UserDTO userDTO = new UserDTO();
-            userDTO.setId(1001L);
-            userDTO.setUsername("演示用户");
-            userDTO.setPhone("13800138000");
-            
+            List<UserEntity> list = userService.list();
+
+            //TODO 开发中，暂时随机返回数据
+            int nextInt = ThreadLocalRandom.current().nextInt(0, list.size());
+            UserEntity userEntity = list.get(nextInt);
+            UserDTO userDTO = BeanUtil.copyProperties(userEntity, UserDTO.class);
             UserResponse response = userWebConvert.toResponse(userDTO);
             return ApiResponse.success("获取当前用户信息成功", response);
             

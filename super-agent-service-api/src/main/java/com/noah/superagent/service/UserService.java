@@ -1,6 +1,8 @@
 package com.noah.superagent.service;
 
+import com.mybatisflex.core.service.IService;
 import com.noah.superagent.common.dto.response.PageResponse;
+import com.noah.superagent.dao.entity.UserEntity;
 import com.noah.superagent.model.UserDTO;
 
 /**
@@ -10,7 +12,7 @@ import com.noah.superagent.model.UserDTO;
  * @author 任相鹏
  * @since 1.0.0
  */
-public interface UserService {
+public interface UserService extends IService<UserEntity> {
 
     /**
      * 创建用户
