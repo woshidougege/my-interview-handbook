@@ -2,16 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Button,
-  Radio,
   message,
   Spin,
-  QRCode,
-  Divider,
-  Alert
+  QRCode
 } from 'antd';
 import {
   WechatOutlined,
-  AlipayOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined
 } from '@ant-design/icons';
@@ -47,7 +43,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   billingCycle,
   onSuccess
 }) => {
-  const [paymentMethod, setPaymentMethod] = useState<'wechat' | 'alipay'>('wechat');
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success' | 'failed' | 'expired'>('pending');
@@ -76,7 +71,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         body: JSON.stringify({
           planId: parseInt(planId),
           billingCycle,
-          paymentMethod
+          paymentMethod: 'wechat'
         }),
       });
 
@@ -172,151 +167,197 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     onClose();
   };
 
+  // 自动创建支付
+  useEffect(() => {
+    if (visible && !paymentData) {
+      handleCreatePayment();
+    }
+  }, [visible]);
+
+  // 获取价格显示
+  const getPriceDisplay = () => {
+    if (planName.includes('积分')) {
+      return `¥ ${amount}`;
+    }
+    
+    if (billingCycle === 'yearly') {
+      const monthlyPrice = Math.round(amount / 12);
+      return `¥ ${amount}`;
+    }
+    
+    return `¥ ${amount}`;
+  };
+
+  const getCycleDisplay = () => {
+    if (planName.includes('积分')) {
+      return '';
+    }
+    return billingCycle === 'monthly' ? '' : `${Math.round(amount / 12)}元/月`;
+  };
+
   return (
     <Modal
-      title="订阅支付"
+      title="开通订阅"
       open={visible}
       onCancel={handleClose}
       footer={null}
-      width={500}
+      width={640}
       centered
       destroyOnClose
+      styles={{
+        content: { 
+          background: '#6b6b6b',
+          color: '#fff',
+          borderRadius: '12px'
+        },
+        header: {
+          background: '#6b6b6b',
+          borderBottom: '1px solid #8b8b8b'
+        }
+      }}
     >
-      <div style={{ padding: '20px 0' }}>
-        {/* 订单信息 */}
-        <div style={{ marginBottom: '24px' }}>
-          <div style={{ 
-            background: '#f8f9fa', 
-            padding: '16px', 
-            borderRadius: '8px',
-            marginBottom: '16px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>套餐：</span>
-              <span style={{ fontWeight: 600 }}>{planName}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>计费周期：</span>
-              <span>{billingCycle === 'monthly' ? '按月' : '按年'}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>金额：</span>
-              <span style={{ fontSize: '18px', fontWeight: 600, color: '#ff4d4f' }}>
-                ¥{amount}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {!paymentData ? (
-          // 支付方式选择
-          <div>
-            <div style={{ marginBottom: '16px', fontSize: '16px', fontWeight: 600 }}>
-              选择支付方式
-            </div>
-            <Radio.Group 
-              value={paymentMethod} 
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              style={{ width: '100%' }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <Radio value="wechat">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <WechatOutlined style={{ color: '#07c160', fontSize: '20px' }} />
-                    <span>微信支付</span>
-                  </div>
-                </Radio>
-                <Radio value="alipay">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <AlipayOutlined style={{ color: '#1677ff', fontSize: '20px' }} />
-                    <span>支付宝</span>
-                  </div>
-                </Radio>
-              </div>
-            </Radio.Group>
-
-            <Divider />
-
-            <Button
-              type="primary"
-              block
-              size="large"
-              loading={loading}
-              onClick={handleCreatePayment}
-              style={{ height: '48px', fontSize: '16px', fontWeight: 600 }}
-            >
-              立即支付
-            </Button>
+      <div style={{ padding: '20px 0', background: '#6b6b6b', color: '#fff' }}>
+        {loading && !paymentData ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: '16px', color: '#ccc' }}>正在创建支付...</div>
           </div>
         ) : (
-          // 支付二维码
-          <div style={{ textAlign: 'center' }}>
-            {paymentStatus === 'pending' && (
-              <>
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                    请使用{paymentMethod === 'wechat' ? '微信' : '支付宝'}扫码支付
-                  </div>
-                  <div style={{ color: '#666' }}>
-                    订单将在 <span style={{ color: '#ff4d4f', fontWeight: 600 }}>
-                      {formatCountdown(countdown)}
-                    </span> 后过期
-                  </div>
+          <div style={{ display: 'flex', gap: '40px' }}>
+            {/* 左侧：订单信息 */}
+            <div style={{ flex: 1 }}>
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '14px', color: '#ccc', marginBottom: '4px' }}>
+                  当前状态：免费版用户
                 </div>
+                <div style={{ fontSize: '14px', color: '#ccc' }}>
+                  开通时长：会员有效期到2026-09-02 17:09:25
+                </div>
+              </div>
 
-                {paymentData.qrCode && (
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    marginBottom: '16px',
-                    padding: '20px',
-                    background: '#fff',
-                    border: '1px solid #f0f0f0',
-                    borderRadius: '8px'
+              <div style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                padding: '20px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                position: 'relative'
+              }}>
+                {billingCycle === 'yearly' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    left: '16px',
+                    background: '#666',
+                    color: '#fff',
+                    padding: '4px 12px',
+                    borderRadius: '4px',
+                    fontSize: '12px'
                   }}>
-                    <QRCode value={paymentData.qrCode} size={200} />
+                    按年
                   </div>
                 )}
-
-                <Alert
-                  message="请在新页面完成支付，支付完成前请不要关闭此页面"
-                  type="info"
-                  showIcon
-                />
-              </>
-            )}
-
-            {paymentStatus === 'paid' && (
-              <div style={{ padding: '40px 0' }}>
-                <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
-                <div style={{ fontSize: '18px', fontWeight: 600, color: '#52c41a' }}>
-                  支付成功！
-                </div>
-                <div style={{ color: '#666', marginTop: '8px' }}>
-                  页面将自动关闭...
+                
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>
+                    {planName}
+                  </div>
+                  
+                  <div style={{ fontSize: '32px', fontWeight: 600, marginBottom: '8px' }}>
+                    {getPriceDisplay()}
+                  </div>
+                  
+                  {getCycleDisplay() && (
+                    <div style={{ fontSize: '14px', color: '#ccc' }}>
+                      {getCycleDisplay()}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
 
-            {(paymentStatus === 'expired' || paymentStatus === 'failed') && (
-              <div style={{ padding: '40px 0' }}>
-                <CloseCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
-                <div style={{ fontSize: '18px', fontWeight: 600, color: '#ff4d4f' }}>
-                  {paymentStatus === 'expired' ? '支付已过期' : '支付失败'}
+              {/* 支付状态 */}
+              {paymentStatus === 'success' && (
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                  <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
+                  <div style={{ fontSize: '18px', fontWeight: 600, color: '#52c41a' }}>
+                    支付成功！
+                  </div>
                 </div>
-                <Button
-                  type="primary"
-                  style={{ marginTop: '16px' }}
-                  onClick={() => {
-                    resetState();
-                  }}
-                >
-                  重新支付
-                </Button>
+              )}
+
+              {(paymentStatus === 'expired' || paymentStatus === 'failed') && (
+                <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                  <CloseCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
+                  <div style={{ fontSize: '18px', fontWeight: 600, color: '#ff4d4f' }}>
+                    {paymentStatus === 'expired' ? '支付已过期' : '支付失败'}
+                  </div>
+                  <Button
+                    type="primary"
+                    style={{ marginTop: '16px' }}
+                    onClick={() => {
+                      resetState();
+                      handleCreatePayment();
+                    }}
+                  >
+                    重新支付
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* 右侧：微信支付二维码 */}
+            <div style={{ width: '200px', textAlign: 'center' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                  微信扫码支付
+                </div>
+                {paymentStatus === 'pending' && countdown > 0 && (
+                  <div style={{ fontSize: '12px', color: '#ccc' }}>
+                    {formatCountdown(countdown)}
+                  </div>
+                )}
               </div>
-            )}
+
+              {paymentData?.qrCode && paymentStatus === 'pending' ? (
+                <div style={{
+                  background: '#fff',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  marginBottom: '16px'
+                }}>
+                  <QRCode value={paymentData.qrCode} size={168} />
+                </div>
+              ) : (
+                <div style={{
+                  width: '200px',
+                  height: '200px',
+                  background: 'rgba(255,255,255,0.1)',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '16px'
+                }}>
+                  <WechatOutlined style={{ fontSize: '48px', color: '#07c160' }} />
+                </div>
+              )}
+
+              <div style={{ fontSize: '18px', fontWeight: 600 }}>
+                ¥ {amount}
+              </div>
+            </div>
           </div>
         )}
+
+        <div style={{ 
+          textAlign: 'center', 
+          marginTop: '30px', 
+          paddingTop: '20px', 
+          borderTop: '1px solid #8b8b8b',
+          fontSize: '12px',
+          color: '#ccc'
+        }}>
+          支付即视为你同意《Super Agent会员协议》
+        </div>
       </div>
     </Modal>
   );

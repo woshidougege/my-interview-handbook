@@ -1,20 +1,18 @@
-# 支付配置
-payment:
-  # 微信支付配置
-  wechat:
-    app-id: ${WECHAT_APP_ID:your_wechat_app_id}
-    mch-id: ${WECHAT_MCH_ID:your_merchant_id}
-    private-key-path: ${WECHAT_PRIVATE_KEY_PATH:classpath:cert/wechat_private_key.pem}
-    merchant-serial-number: ${WECHAT_MERCHANT_SERIAL_NUMBER:your_serial_number}
-    api-v3-key: ${WECHAT_API_V3_KEY:your_api_v3_key}
-    notify-url: ${WECHAT_NOTIFY_URL:http://localhost:8081/super-agent/api/v1/payment/wechat/notify}
+# 微信支付配置 - 使用V3 API
+wx:
+  pay:
+    appId: wx384b079ac2a54c25
+    mchId: 1707461989
+    # V3 API 配置
+    apiV3Key: 60ff1dff815241a895d17b67751cf62e
+    certSerialNo: 76F179E7AE36820B8554D64ADDF6EAA638CED021
+    privateCertPath: ${user.home}${file.separator}.goldmine${file.separator}config${file.separator}apiclient_cert.pem
+    privateKeyPath: ${user.home}${file.separator}.goldmine${file.separator}config${file.separator}apiclient_key.pem
+    publicKeyPath: ${user.home}${file.separator}.goldmine${file.separator}config${file.separator}pub_key.pem
+    publicKeyId: PUB_KEY_ID_0117074619892025021900198200000359
+    notifyUrl: ${WX_NOTIFY_URL:https://8440-103-90-188-90.ngrok-free.app/api/v1/payment/wechat/notify}
     
-  # 支付宝配置
-  alipay:
-    app-id: ${ALIPAY_APP_ID:your_alipay_app_id}
-    private-key: ${ALIPAY_PRIVATE_KEY:your_private_key}
-    public-key: ${ALIPAY_PUBLIC_KEY:your_public_key}
-    notify-url: ${ALIPAY_NOTIFY_URL:http://localhost:8081/super-agent/api/v1/payment/alipay/notify}
+  # 支付宝配置已删除 - 系统只支持微信支付
     
   # 订单配置
   order:

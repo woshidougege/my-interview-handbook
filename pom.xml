@@ -76,6 +76,13 @@
         
         <!-- SSO客户端版本 -->
         <gt-sso-client.version>3.2.15-SNAPSHOT</gt-sso-client.version>
+        
+        <!-- 微信支付SDK版本 -->
+        <weixin-java.version>4.7.0</weixin-java.version>
+        
+        <!-- 解决微信支付SDK依赖冲突的版本 -->
+        <guava.version>32.1.2-jre</guava.version>
+        <commons-io.version>2.14.0</commons-io.version>
     </properties>
 
     <dependencyManagement>
@@ -308,25 +315,29 @@
             </dependency>
 
             <!-- 🔧 支付相关依赖版本管理 -->
-            <!-- 统一OkHttp版本，解决支付SDK版本冲突 -->
+            <!-- 微信支付SDK - 使用推荐的binarywang版本 -->
             <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp</artifactId>
-                <version>4.12.0</version>
+                <groupId>com.github.binarywang</groupId>
+                <artifactId>weixin-java-pay</artifactId>
+                <version>${weixin-java.version}</version>
             </dependency>
-
-            <!-- 微信支付SDK -->
             <dependency>
-                <groupId>com.github.wechatpay-apiv3</groupId>
-                <artifactId>wechatpay-java</artifactId>
-                <version>0.2.12</version>
+                <groupId>com.github.binarywang</groupId>
+                <artifactId>weixin-java-common</artifactId>
+                <version>${weixin-java.version}</version>
             </dependency>
-
-            <!-- 支付宝支付SDK -->
+            
+            <!-- 解决微信支付SDK依赖冲突 -->
             <dependency>
-                <groupId>com.alipay.sdk</groupId>
-                <artifactId>alipay-sdk-java</artifactId>
-                <version>4.38.157.ALL</version>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
             </dependency>
 
             <!-- 🔧 统一Kotlin标准库版本，解决OkHttp依赖冲突 -->

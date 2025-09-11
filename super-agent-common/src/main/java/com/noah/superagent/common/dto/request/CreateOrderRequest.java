@@ -22,6 +22,6 @@ public class CreateOrderRequest {
     private String billingCycle;
 
     @NotBlank(message = "支付方式不能为空")
-    @Schema(description = "支付方式", example = "wechat", allowableValues = {"wechat", "alipay"})
+    @Schema(description = "支付方式", example = "wechat", allowableValues = {"wechat"})
     private String paymentMethod;
 }
