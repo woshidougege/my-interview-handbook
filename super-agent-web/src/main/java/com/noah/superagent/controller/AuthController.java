@@ -7,7 +7,6 @@ import com.noah.superagent.common.dto.request.ResetPasswordRequest;
 import com.noah.superagent.common.dto.response.UserResponse;
 import com.noah.superagent.convert.UserWebConvert;
 import com.noah.superagent.model.UserDTO;
-import com.noah.superagent.service.UserService;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,12 +16,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.core.ParameterizedTypeReference;
+
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.map.MapUtil;
+import cn.hutool.core.util.URLUtil;
+import cn.hutool.core.lang.Validator;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +46,6 @@ import java.util.Map;
 @Tag(name = "认证管理", description = "用户认证相关接口（方舟认证系统对接）")
 public class AuthController {
 
-    private final UserService userService;
     private final UserWebConvert userWebConvert;
     private final RestTemplate restTemplate;
 
@@ -49,6 +54,65 @@ public class AuthController {
 
     @Value("${sso.servicecode:super_agent}")
     private String serviceCode;
+
+    /**
+     * 创建 ParameterizedTypeReference 用于 Map<String, Object>
+     */
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE_REFERENCE =
+            new ParameterizedTypeReference<>() {
+            };
+
+    /**
+     * 验证手机号码格式 - 使用hutool工具库
+     */
+    private boolean isValidPhoneNumber(String phoneNumber) {
+        if (StrUtil.isBlank(phoneNumber)) {
+            return false;
+        }
+        // 移除所有空白字符
+        phoneNumber = StrUtil.trim(phoneNumber);
+        return Validator.isMobile(phoneNumber);
+    }
+
+    /**
+     * 安全地构建URL，防止SSRF攻击 - 使用hutool工具库
+     */
+    private String buildSecureUrl(String baseUrl, Map<String, String> params) {
+        String fullUrl = URLUtil.normalize(baseUrl + "/sms/send");
+        if (MapUtil.isNotEmpty(params)) {
+            StringBuilder urlBuilder = new StringBuilder(fullUrl);
+            if (!fullUrl.contains("?")) {
+                urlBuilder.append("?");
+            } else {
+                urlBuilder.append("&");
+            }
+            boolean first = true;
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                if (!first) {
+                    urlBuilder.append("&");
+                }
+                urlBuilder.append(URLUtil.encode(entry.getKey())).append("=").append(URLUtil.encode(entry.getValue()));
+                first = false;
+            }
+            return urlBuilder.toString();
+        }
+        return fullUrl;
+    }
+
+    /**
+     * 安全地从Map中获取嵌套的Map数据 - 使用hutool工具库
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> getDataFromResponse(Map<String, Object> response) {
+        if (MapUtil.isEmpty(response)) {
+            return MapUtil.newHashMap();
+        }
+        Object data = response.get("data");
+        if (data instanceof Map) {
+            return (Map<String, Object>) data;
+        }
+        return MapUtil.newHashMap();
+    }
 
     @PostMapping("/password-login")
     @Operation(
@@ -77,33 +141,42 @@ public class AuthController {
         try {
             String url = ssoServerUrl + "/agent/sso/doLogin";
 
-            Map<String, String> requestBody = new HashMap<>();
-            requestBody.put("username", loginRequest.getUsername());
-            requestBody.put("pwd", loginRequest.getPwd());
-            requestBody.put("servicecode", serviceCode);
+            // 使用hutool的MapUtil构建请求参数，代码更简洁
+            Map<String, String> requestBody = MapUtil.<String, String>builder()
+                    .put("username", loginRequest.getUsername())
+                    .put("pwd", loginRequest.getPwd())
+                    .put("servicecode", serviceCode)
+                    .build();
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                Map<String, Object> result = response.getBody();
-                if ("200".equals(String.valueOf(result.get("code")))) {
-                    Map<String, String> data = (Map<String, String>) result.get("data");
-                    String ticket = data.get("ticket");
-
-                    Map<String, String> responseData = new HashMap<>();
-                    responseData.put("ticket", ticket);
-                    return ApiResponse.success("登录成功", responseData);
-                } else {
-                    return ApiResponse.error(String.valueOf(result.get("msg")));
-                }
-            }
-
-            return ApiResponse.error("登录失败，请稍后重试");
+            return getMapApiResponse(url, requestBody);
 
         } catch (Exception e) {
             log.error("密码登录失败: {}", e.getMessage(), e);
             return ApiResponse.error("登录失败: " + e.getMessage());
         }
+    }
+
+    @NotNull
+    private ApiResponse<Map<String, String>> getMapApiResponse(String url, Map<String, String> requestBody) {
+        HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url, HttpMethod.POST, requestEntity, MAP_TYPE_REFERENCE);
+
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            Map<String, Object> result = response.getBody();
+            if ("200".equals(String.valueOf(result.get("code")))) {
+                Map<String, Object> data = getDataFromResponse(result);
+                String ticket = String.valueOf(data.get("ticket"));
+
+                Map<String, String> responseData = new HashMap<>();
+                responseData.put("ticket", ticket);
+                return ApiResponse.success("登录成功", responseData);
+            } else {
+                return ApiResponse.error(String.valueOf(result.get("msg")));
+            }
+        }
+
+        return ApiResponse.error("登录失败，请稍后重试");
     }
 
     @PostMapping("/phone-login")
@@ -133,28 +206,14 @@ public class AuthController {
         try {
             String url = ssoServerUrl + "/agent/sso/doLogin";
 
-            Map<String, String> requestBody = new HashMap<>();
-            requestBody.put("phone", loginRequest.getPhone());
-            requestBody.put("phoneCode", loginRequest.getPhoneCode());
-            requestBody.put("servicecode", serviceCode);
+            // 使用hutool的MapUtil构建请求参数，代码更简洁
+            Map<String, String> requestBody = MapUtil.<String, String>builder()
+                    .put("phone", loginRequest.getPhone())
+                    .put("phoneCode", loginRequest.getPhoneCode())
+                    .put("servicecode", serviceCode)
+                    .build();
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                Map<String, Object> result = response.getBody();
-                if ("200".equals(String.valueOf(result.get("code")))) {
-                    Map<String, String> data = (Map<String, String>) result.get("data");
-                    String ticket = data.get("ticket");
-
-                    Map<String, String> responseData = new HashMap<>();
-                    responseData.put("ticket", ticket);
-                    return ApiResponse.success("登录成功", responseData);
-                } else {
-                    return ApiResponse.error(String.valueOf(result.get("msg")));
-                }
-            }
-
-            return ApiResponse.error("登录失败，请稍后重试");
+            return getMapApiResponse(url, requestBody);
 
         } catch (Exception e) {
             log.error("手机验证码登录失败: {}", e.getMessage(), e);
@@ -183,10 +242,18 @@ public class AuthController {
             @RequestParam String phoneNumber) {
         log.info("发送短信验证码请求，手机号: {}", phoneNumber);
 
-        try {
-            String url = ssoServerUrl + "/sms/send?phoneNumber=" + phoneNumber;
+        // 安全验证：检查手机号格式，防止SSRF攻击
+        if (!isValidPhoneNumber(phoneNumber)) {
+            return ApiResponse.error("无效的手机号码格式");
+        }
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, null, Map.class);
+        try {
+            // 使用安全的URL构建方法，防止SSRF攻击
+            Map<String, String> params = MapUtil.of("phoneNumber", phoneNumber);
+            String url = buildSecureUrl(ssoServerUrl, params);
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, null, MAP_TYPE_REFERENCE);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> result = response.getBody();
@@ -227,13 +294,15 @@ public class AuthController {
             requestBody.put("phoneCode", request.getPhoneCode());
             requestBody.put("servicecode", serviceCode);
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
+            HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity, MAP_TYPE_REFERENCE);
             
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> result = response.getBody();
                 if ("200".equals(String.valueOf(result.get("code")))) {
-                    Map<String, String> data = (Map<String, String>) result.get("data");
-                    String ticket = data.get("ticket");
+                    Map<String, Object> data = getDataFromResponse(result);
+                    String ticket = String.valueOf(data.get("ticket"));
                     
                     Map<String, String> responseData = new HashMap<>();
                     responseData.put("ticket", ticket);
@@ -299,12 +368,13 @@ public class AuthController {
             formData.add("serviceCode", serviceCode);
             
             HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity, MAP_TYPE_REFERENCE);
             
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> result = response.getBody();
                 if ("200".equals(String.valueOf(result.get("code")))) {
-                    Map<String, Object> data = (Map<String, Object>) result.get("data");
+                    Map<String, Object> data = getDataFromResponse(result);
                     return ApiResponse.success("获取公钥成功", data);
                 } else {
                     return ApiResponse.error(String.valueOf(result.get("msg")));
@@ -336,7 +406,9 @@ public class AuthController {
             requestBody.put("newPassword", resetRequest.getNewPassword());
             requestBody.put("servicecode", serviceCode);
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
+            HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity, MAP_TYPE_REFERENCE);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 Map<String, Object> result = response.getBody();
