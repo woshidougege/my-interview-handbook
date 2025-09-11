@@ -29,18 +29,23 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/**/*.css",
                         "/**/*.html",
                         "/**/*.js",
-                        "/swagger-resource",
-                        "/v3/api-docs/**",
-                        "/doc.html/**",
-                        "/webjars/**",
+                        // Swagger UI 相关路径
+                        "/swagger-ui.html",
                         "/swagger-ui/**",
-                        "/swagger-resources/**",
+                        "/swagger-resources/**", 
+                        "/swagger-resource",
+                        "/webjars/**",
+                        // API 文档相关路径
+                        "/v3/api-docs/**",
+                        "/v3/api-docs/swagger-config",
+                        "/v2/api-docs",
+                        "/doc.html/**",
+                        // 静态资源
                         "/index.html",
                         "/chat.html",
                         "/super-agent/chat.html",
                         "/static/**",
-                        "/ws/**",
-                        "/v2/api-docs"
+                        "/ws/**"
                 );
     }
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

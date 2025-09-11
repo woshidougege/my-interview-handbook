@@ -70,10 +70,10 @@
 
         <!-- SSO客户端 -->
 
-<!--        <dependency>
+        <dependency>
             <groupId>com.norinrd</groupId>
             <artifactId>gt-sso-client-starter</artifactId>
-        </dependency>-->
+        </dependency>
 
         <!-- MapStruct -->
         <dependency>
