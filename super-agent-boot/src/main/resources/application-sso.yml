@@ -12,7 +12,35 @@ sa-token:
     # 业务系统公钥 注：需登录认证中心-基础管理系统-权限管理-系统管理-（页签）单点登录-右侧按钮（详情）公钥
     public-key: 04a5e22ae1d17350b3b33e849f74e0b15ac4a47a5af825a61b8181825cf34219507232b3f3844c62884c4ecf27876a89c94d6e25912e552774d9c4791a705e5dc5
     # 业务系统不需要认证的地址路径
-    exclude-urls: ["/sso/*","favicon.ico","/**/*.css","/**/*.html","/**/*.js","swagger-resource","/v3/api-docs/**","/v3/api-docs/swagger-config","/doc.html/**","/webjars/**","/swagger-ui.html","/swagger-ui/**","/swagger-resources/**", "/chat.html","/static/**","/ws/**","/v2/api-docs"]
+    exclude-urls: [
+      "/sso/*",
+      "favicon.ico",
+      "/**/*.css",
+      "/**/*.html",
+      "/**/*.js",
+      # Swagger API文档相关
+      "swagger-resource",
+      "/v3/api-docs/**",
+      "/v3/api-docs/swagger-config",
+      "/doc.html/**",
+      "/webjars/**",
+      "/swagger-ui.html",
+      "/swagger-ui/**",
+      "/swagger-resources/**",
+      "/v2/api-docs",
+      # 认证相关接口（用户登录前需要访问）
+      "/api/v1/auth/send-sms",
+      "/api/v1/auth/reset-password", 
+      "/api/v1/auth/register",
+      "/api/v1/auth/phone-login",
+      "/api/v1/auth/password-login",
+      "/api/v1/auth/get-sys-client-info",
+      "/api/v1/auth/public-key",
+      # 静态资源
+      "/chat.html",
+      "/static/**",
+      "/ws/**"
+    ]
     isHttp: true
   # 是否打印启动成功标志
   is-print: true
