@@ -2,7 +2,7 @@
 #
 # Super Agent 启动、停止、重启、状态查询、日志查看脚本
 #
-# @author Super Agent Team
+# @author 任相鹏
 # @since 1.0.0
 #
 # 使用方法:

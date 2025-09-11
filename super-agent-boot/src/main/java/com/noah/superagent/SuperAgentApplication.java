@@ -3,7 +3,9 @@ package com.noah.superagent;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Import;
 import com.noah.superagent.config.OpenApiDocProperties;
+import com.noah.superagent.config.ThirdPartyIntegrationConfig;
 import com.noah.superagent.config.WxPayProperties;
 
 /**
@@ -14,6 +16,7 @@ import com.noah.superagent.config.WxPayProperties;
  */
 @SpringBootApplication(scanBasePackages = "com.noah.superagent")
 @EnableConfigurationProperties({OpenApiDocProperties.class, WxPayProperties.class})
+@Import(ThirdPartyIntegrationConfig.class)
 public class SuperAgentApplication {
 
     public static void main(String[] args) {

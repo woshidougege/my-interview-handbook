@@ -9,8 +9,8 @@ springdoc:
     path: /swagger-ui.html
     enabled: ${SWAGGER_UI_ENABLED:true}
   # 扫描配置
-  packages-to-scan: com.noah.superagent.controller
-  paths-to-match: /api/**
+  packages-to-scan: com.noah.superagent.controller,com.norinrd.client.controller
+  paths-to-match: /api/**,/sso/**,/logout
   # 自定义API信息
   info:
     title: ${API_TITLE:Super Agent API 接口文档}
