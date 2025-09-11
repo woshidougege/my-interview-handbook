@@ -8,6 +8,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: ${SWAGGER_UI_ENABLED:true}
+    # 默认折叠所有接口
+    doc-expansion: none
   # 扫描配置
   packages-to-scan: com.noah.superagent.controller,com.norinrd.client.controller
   paths-to-match: /api/**,/sso/**,/logout
