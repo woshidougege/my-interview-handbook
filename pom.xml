@@ -75,7 +75,7 @@
         <flatten-maven-plugin.version>1.5.0</flatten-maven-plugin.version>
         
         <!-- SSO客户端版本 -->
-        <gt-sso-client.version>3.2.15-SNAPSHOT</gt-sso-client.version>
+        <gt-sso-client.version>3.3.3-SNAPSHOT</gt-sso-client.version>
         
         <!-- 微信支付SDK版本 -->
         <weixin-java.version>4.7.0</weixin-java.version>
@@ -256,11 +256,11 @@
             </dependency>
 
             <!-- SSO客户端 -->
-<!--            <dependency>
+            <dependency>
                 <groupId>com.norinrd</groupId>
                 <artifactId>gt-sso-client-starter</artifactId>
                 <version>${gt-sso-client.version}</version>
-            </dependency>-->
+            </dependency>
 
             <!-- 🔧 OpenAPI 3 模型类支持 - 排除Jackson避免版本冲突 -->
             <dependency>
