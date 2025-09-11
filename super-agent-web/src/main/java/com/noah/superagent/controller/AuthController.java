@@ -53,11 +53,24 @@ public class AuthController {
     @PostMapping("/password-login")
     @Operation(
             summary = "密码登录",
-            description = "使用用户名和SM2加密密码进行登录，对接方舟认证系统"
+            description = "使用用户名和SM2加密密码进行登录，对接方舟认证系统",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "密码登录请求参数",
+                required = true,
+                content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PasswordLoginRequest.class),
+                    examples = @ExampleObject(
+                        name = "密码登录示例",
+                        value = "{\n" +
+                                "  \"username\": \"admin\",\n" +
+                                "  \"pwd\": \"304802...\",\n" +
+                                "  \"servicecode\": \"super_agent\"\n" +
+                                "}"
+                    )
+                )
+            )
     )
-    @Parameter(name = "username", description = "用户名", required = true, example = "admin")
-    @Parameter(name = "pwd", description = "SM2加密后的密码", required = true, example = "304802...")
-    @Parameter(name = "servicecode", description = "服务代码", required = true, example = "super_agent")
     public ApiResponse<Map<String, String>> passwordLogin(@RequestBody PasswordLoginRequest loginRequest) {
         log.info("密码登录请求，用户名: {}", loginRequest.getUsername());
 
@@ -96,11 +109,24 @@ public class AuthController {
     @PostMapping("/phone-login")
     @Operation(
             summary = "手机验证码登录",
-            description = "使用手机号和SM2加密验证码进行登录，对接方舟认证系统"
+            description = "使用手机号和SM2加密验证码进行登录，对接方舟认证系统",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                description = "手机登录请求参数",
+                required = true,
+                content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PhoneLoginRequest.class),
+                    examples = @ExampleObject(
+                        name = "手机登录示例",
+                        value = "{\n" +
+                                "  \"phone\": \"13800138000\",\n" +
+                                "  \"phoneCode\": \"123456\",\n" +
+                                "  \"servicecode\": \"super_agent\"\n" +
+                                "}"
+                    )
+                )
+            )
     )
-    @Parameter(name = "phone", description = "手机号码", required = true, example = "13800138000")
-    @Parameter(name = "phoneCode", description = "短信验证码", required = true, example = "304802...")
-    @Parameter(name = "servicecode", description = "服务代码", required = true, example = "super_agent")
     public ApiResponse<Map<String, String>> phoneLogin(@RequestBody PhoneLoginRequest loginRequest) {
         log.info("手机验证码登录请求，手机号: {}", loginRequest.getPhone());
 
@@ -141,7 +167,6 @@ public class AuthController {
      */
     @PostMapping("/send-sms")
     @Operation(summary = "发送短信验证码", description = "发送短信验证码到指定手机号")
-    @Parameter(name = "phoneNumber", description = "手机号码", required = true, example = "13800138000")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
         responseCode = "200",
         description = "验证码发送成功",
@@ -153,7 +178,9 @@ public class AuthController {
             )
         )
     )
-    public ApiResponse<String> sendSmsCode(@RequestParam String phoneNumber) {
+    public ApiResponse<String> sendSmsCode(
+            @Parameter(description = "手机号码", required = true, example = "13800138000") 
+            @RequestParam String phoneNumber) {
         log.info("发送短信验证码请求，手机号: {}", phoneNumber);
 
         try {
