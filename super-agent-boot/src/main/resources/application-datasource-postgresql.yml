@@ -1,0 +1,31 @@
+# ========== PostgreSQL 数据源特殊配置 ==========
+spring:
+  # PostgreSQL 特殊数据源配置
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL:jdbc:postgresql://192.168.1.67:5432/super_agent?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:Jd2019}
+    
+    # PostgreSQL 特殊的 Druid 配置
+    druid:
+      validation-query: SELECT 1
+      # 配置过滤器 - 针对PostgreSQL优化，通过 DruidSecurityConfig 类提供配置
+      # StatFilter和WallFilter通过Bean配置，支持PostgreSQL特殊语法
+      filters: ${DRUID_FILTERS:stat,wall}
+      # Wall Filter 配置 - 通过 DruidSecurityConfig 类进行程序化配置
+      wall:
+        enabled: ${DRUID_WALL_ENABLED:true}
+        # 配置通过 DruidSecurityConfig Bean 提供，支持 PostgreSQL 特殊语法
+
+  # PostgreSQL 特殊的 Flyway 配置
+  flyway:
+    # 默认模式
+    default-schema: ${DB_SCHEMA:public}
+    # 模式列表
+    schemas: []
+    # PostgreSQL 特有的占位符
+    placeholders:
+      database_name: ${DB_NAME:super_agent}
+      charset: UTF8
+      collation: zh_CN.UTF-8

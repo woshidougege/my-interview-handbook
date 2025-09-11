@@ -16,10 +16,12 @@ logging:
     com.mybatisflex: ${LOG_LEVEL_MYBATIS_FLEX:INFO}
     com.alibaba.druid: ${LOG_LEVEL_DRUID:INFO}
     org.flywaydb: ${LOG_LEVEL_FLYWAY:INFO}
+    # Spring Boot Flyway 自动配置日志（问题已解决，降级到 INFO）
+    org.springframework.boot.autoconfigure.flyway: ${LOG_LEVEL_FLYWAY_AUTO:INFO}
     # Spring Boot配置加载 & 环境装配（默认INFO，排查时可设为TRACE）
     org.springframework.boot.context.config: ${LOG_LEVEL_SPRING_CONFIG:INFO}
     org.springframework.boot.env: ${LOG_LEVEL_SPRING_ENV:INFO}
-    # 自动装配条件评估报告（默认INFO，排查时设为DEBUG）
+    # 自动装配条件评估报告（问题已解决，恢复到 INFO）
     org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener: ${LOG_LEVEL_AUTOCONFIG_REPORT:INFO}
     org.springframework.boot.autoconfigure: ${LOG_LEVEL_AUTOCONFIG:INFO}
     # HTTP客户端日志
@@ -29,10 +31,10 @@ logging:
     # 缓存日志
     org.springframework.cache: ${LOG_LEVEL_CACHE:INFO}
   
-  # Logback配置文件
-  config: classpath:logback-spring.xml
+  # Log4j2配置文件
+  config: classpath:log4j2-spring.xml
   
-  # 文件路径（供logback-spring.xml使用）
+  # 文件路径（供log4j2-spring.xml使用）
   file:
     path: ${LOG_PATH:logs}
   

@@ -18,3 +18,4 @@
 /.flattened-pom.xml
 /.vscode/settings.json
 /pid/super-agent.pid
+/super-agent-boot/logs/

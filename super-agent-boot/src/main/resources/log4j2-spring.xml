@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <!-- 1. 属性配置 - 从Spring环境中获取 -->
+    <Properties>
+        <!-- 日志文件路径 -->
+        <Property name="LOG_PATH">${spring:logging.file.path:-logs}</Property>
+        <!-- 应用名称 -->
+        <Property name="APP_NAME">${spring:spring.application.name:-super-agent}</Property>
+        <!-- 最大文件大小 -->
+        <Property name="MAX_FILE_SIZE">${env:LOG_FILE_MAX_SIZE:-100MB}</Property>
+        <!-- 最大历史记录 -->
+        <Property name="MAX_HISTORY">${env:LOG_FILE_MAX_HISTORY:-30}</Property>
+        <!-- 总大小上限 -->
+        <Property name="TOTAL_SIZE_CAP">${env:LOG_FILE_TOTAL_SIZE_CAP:-1GB}</Property>
+        
+        <!-- 日志格式 -->
+        <Property name="CONSOLE_LOG_PATTERN">%clr{%d{yyyy-MM-dd HH:mm:ss.SSS}}{faint} %clr{%5p} %clr{%pid}{magenta} %clr{---}{faint} %clr{[%15.15t]}{faint} %clr{%-40.40c{1.}}{cyan} %clr{:}{faint} %m%n%ex</Property>
+        <Property name="FILE_LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %5p %pid --- [%t] %-40.40c{1.} : %m%n%ex</Property>
+    </Properties>
+
+    <!-- 2. Appenders配置 -->
+    <Appenders>
+        <!-- 控制台Appender -->
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout>
+                <Pattern>${CONSOLE_LOG_PATTERN}</Pattern>
+            </PatternLayout>
+        </Console>
+
+        <!-- INFO级别日志文件Appender -->
+        <RollingFile name="INFO_FILE" 
+                     fileName="${LOG_PATH}/${APP_NAME}-info.log"
+                     filePattern="${LOG_PATH}/${APP_NAME}-info.%d{yyyy-MM-dd}.%i.log.gz">
+            <!-- 只记录INFO级别及以上 -->
+            <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout>
+                <Pattern>${FILE_LOG_PATTERN}</Pattern>
+                <Charset>UTF-8</Charset>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="${MAX_FILE_SIZE}" />
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX_HISTORY}">
+                <Delete basePath="${LOG_PATH}" maxDepth="1">
+                    <IfFileName glob="${APP_NAME}-info.*.log.gz" />
+                    <IfAccumulatedFileSize exceeds="${TOTAL_SIZE_CAP}" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- ERROR级别日志文件Appender -->
+        <RollingFile name="ERROR_FILE" 
+                     fileName="${LOG_PATH}/${APP_NAME}-error.log"
+                     filePattern="${LOG_PATH}/${APP_NAME}-error.%d{yyyy-MM-dd}.%i.log.gz">
+            <!-- 只记录ERROR级别 -->
+            <LevelRangeFilter minLevel="ERROR" maxLevel="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout>
+                <Pattern>${FILE_LOG_PATTERN}</Pattern>
+                <Charset>UTF-8</Charset>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="${MAX_FILE_SIZE}" />
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX_HISTORY}">
+                <Delete basePath="${LOG_PATH}" maxDepth="1">
+                    <IfFileName glob="${APP_NAME}-error.*.log.gz" />
+                    <IfAccumulatedFileSize exceeds="${TOTAL_SIZE_CAP}" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- 异步Appender包装器 -->
+        <Async name="ASYNC_INFO_FILE" includeLocation="true">
+            <AppenderRef ref="INFO_FILE"/>
+        </Async>
+
+        <Async name="ASYNC_ERROR_FILE" includeLocation="true">
+            <AppenderRef ref="ERROR_FILE"/>
+        </Async>
+    </Appenders>
+
+    <!-- 3. Loggers配置 -->
+    <Loggers>
+        <!-- MyBatis Flex SQL日志 -->
+        <Logger name="com.mybatisflex" level="${spring:logging.level.com.mybatisflex:-INFO}" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_INFO_FILE"/>
+            <AppenderRef ref="ASYNC_ERROR_FILE"/>
+        </Logger>
+
+        <!-- Druid SQL日志 -->
+        <Logger name="druid.sql" level="${spring:logging.level.com.alibaba.druid:-INFO}" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_INFO_FILE"/>
+            <AppenderRef ref="ASYNC_ERROR_FILE"/>
+        </Logger>
+
+        <!-- 项目业务日志 -->
+        <Logger name="com.noah.superagent" level="${spring:logging.level.com.noah.superagent:-INFO}" additivity="false">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_INFO_FILE"/>
+            <AppenderRef ref="ASYNC_ERROR_FILE"/>
+        </Logger>
+
+        <!-- Spring框架日志 -->
+        <Logger name="org.springframework" level="${spring:logging.level.org.springframework:-INFO}"/>
+        <Logger name="org.springframework.web" level="${spring:logging.level.org.springframework.web:-INFO}"/>
+        <Logger name="org.springframework.security" level="${spring:logging.level.org.springframework.security:-INFO}"/>
+        
+        <!-- 数据库相关日志 -->
+        <Logger name="org.mybatis" level="${spring:logging.level.org.mybatis:-INFO}"/>
+        <Logger name="org.flywaydb" level="${spring:logging.level.org.flywaydb:-INFO}"/>
+        
+        <!-- HTTP客户端日志 -->
+        <Logger name="org.apache.http" level="${spring:logging.level.org.apache.http:-INFO}"/>
+        
+        <!-- 定时任务日志 -->
+        <Logger name="org.springframework.scheduling" level="${spring:logging.level.org.springframework.scheduling:-INFO}"/>
+        
+        <!-- 缓存日志 -->
+        <Logger name="org.springframework.cache" level="${spring:logging.level.org.springframework.cache:-INFO}"/>
+
+        <!-- Boot配置日志 -->
+        <Logger name="org.springframework.boot.context.config" level="${spring:logging.level.org.springframework.boot.context.config:-INFO}"/>
+        <Logger name="org.springframework.boot.env" level="${spring:logging.level.org.springframework.boot.env:-INFO}"/>
+        <Logger name="org.springframework.boot.autoconfigure" level="${spring:logging.level.org.springframework.boot.autoconfigure:-INFO}"/>
+
+        <!-- Root Logger -->
+        <Root level="${spring:logging.level.root:-INFO}">
+            <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_INFO_FILE"/>
+            <AppenderRef ref="ASYNC_ERROR_FILE"/>
+        </Root>
+    </Loggers>
+</Configuration>

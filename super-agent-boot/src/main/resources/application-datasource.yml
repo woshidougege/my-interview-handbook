@@ -1,14 +1,20 @@
-# ========== 数据源配置 ==========
+# ========== 数据源配置主文件 ==========
+# 通过环境变量 DB_TYPE 来切换数据库类型：mysql 或 postgresql（默认）
+# 
+# 使用方式：
+# 1. 启动时指定：java -jar app.jar --spring.profiles.include=datasource-postgresql
+# 2. 环境变量：export DB_TYPE=postgresql 或 export DB_TYPE=mysql
+
 spring:
-  # 数据源配置
+  profiles:
+    # 默认使用PostgreSQL配置
+    include: datasource-${DB_TYPE:postgresql}
+
+  # ========== 公共数据源配置 ==========
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:jdbc:mysql://192.168.1.54:32233/super_agent?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8&allowMultiQueries=true&rewriteBatchedStatements=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
     
-    # Druid 连接池配置
+    # Druid 连接池公共配置
     druid:
       # 连接池配置
       initial-size: ${DB_INITIAL_SIZE:5}
@@ -17,7 +23,6 @@ spring:
       max-wait: ${DB_MAX_WAIT:60000}
       time-between-eviction-runs-millis: 60000
       min-evictable-idle-time-millis: 300000
-      validation-query: SELECT 1
       test-while-idle: true
       test-on-borrow: false
       test-on-return: false
@@ -50,3 +55,7 @@ spring:
         enabled: true
         url-pattern: /*
         exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*"
+
+# 数据源特殊配置由单独的profile文件提供：
+# - application-datasource-mysql.yml      (MySQL特殊配置)
+# - application-datasource-postgresql.yml (PostgreSQL特殊配置)

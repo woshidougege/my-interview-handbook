@@ -2,11 +2,10 @@
 spring:
   flyway:
     # 是否启用Flyway（通过环境变量控制）
-    enabled: ${FLYWAY_ENABLED:false}
-    # 迁移脚本位置
+    enabled: ${FLYWAY_ENABLED:true}
+    # 自动识别数据库供应商的迁移脚本位置
     locations: 
-      - classpath:db/migration
-      - classpath:conf/db/migration
+      - classpath:db/migration/{vendor}
     # 基线迁移
     baseline-on-migrate: true
     baseline-version: 0
@@ -31,16 +30,11 @@ spring:
     placeholder-prefix: "${"
     # 占位符后缀
     placeholder-suffix: "}"
-    # 自定义占位符
-    placeholders:
-      database_name: ${DB_NAME:super_agent}
-      charset: utf8mb4
-      collation: utf8mb4_unicode_ci
     # 禁用clean命令（生产安全）
     clean-disabled: true
     # 禁用清理验证
     clean-on-validation-error: false
-    # 混合模式（允许在非空数据库上运行）
+    # 混合模式（禁用以确保事务一致性）
     mixed: false
     # 分组处理
     group: false
@@ -54,11 +48,7 @@ spring:
     ignore-migration-patterns: []
     # 连接重试次数
     connect-retries: 0
-    # 连接重试延迟（秒）
-    connect-retries-interval: 120
+    # 连接重试延迟（ISO-8601 持续时间格式：PT120S = 120秒）
+    connect-retries-interval: PT120S
     # 初始化SQL
     init-sqls: []
-    # 默认模式
-    default-schema: ${DB_NAME:super_agent}
-    # 模式列表
-    schemas: []
