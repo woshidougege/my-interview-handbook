@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Modal,
   Button,
   message,
   Spin,
-  QRCode
+  QRCode,
+  Input
 } from 'antd';
 import {
   WechatOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined
 } from '@ant-design/icons';
+import { PaymentSSEListener } from '../utils/paymentSSE';
+import { userApi, paymentApi } from '../services/api';
 
 interface PaymentModalProps {
   visible: boolean;
@@ -34,6 +37,9 @@ interface PaymentData {
   expiredAt: string;
 }
 
+// 支付状态类型定义
+type PaymentStatusType = 'waiting' | 'paid' | 'failed' | 'expired' | 'cancelled' | 'pending';
+
 const PaymentModal: React.FC<PaymentModalProps> = ({
   visible,
   onClose,
@@ -45,103 +51,156 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'paid' | 'failed' | 'expired'>('pending');
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusType>('waiting');
   const [countdown, setCountdown] = useState(0);
-  const [polling, setPolling] = useState<NodeJS.Timeout | null>(null);
+  const [countdownTimer, setCountdownTimer] = useState<NodeJS.Timeout | null>(null);
+  const [sseListener, setSseListener] = useState<PaymentSSEListener | null>(null);
+  const sseListenerRef = useRef<PaymentSSEListener | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [testOrderNo, setTestOrderNo] = useState<string>('ORDER_1757580221659_71A178E7');
 
-  // 清理定时器
+  // 获取用户信息
   useEffect(() => {
-    return () => {
-      if (polling) {
-        clearInterval(polling);
+    const loadUserInfo = async () => {
+      try {
+        const userResponse = await userApi.getCurrentUser();
+        const user = userResponse.data.data;
+        setUserId(user.id);
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+        message.error('获取用户信息失败，请重新登录');
       }
     };
-  }, [polling]);
-
-  // 创建订单并发起支付
-  const handleCreatePayment = async () => {
-    try {
-      setLoading(true);
-      
-      const response = await fetch('/api/payment/create?userId=322604385681035264', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          planId: parseInt(planId),
-          billingCycle,
-          paymentMethod: 'wechat'
-        }),
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setPaymentData(result.data);
-        startPaymentPolling(result.data.orderNo);
-        startCountdown(result.data.expiredAt);
-      } else {
-        message.error(result.message || '创建支付失败');
-      }
-    } catch (error) {
-      console.error('创建支付失败:', error);
-      message.error('创建支付失败，请重试');
-    } finally {
-      setLoading(false);
+    
+    if (visible) {
+      loadUserInfo();
     }
-  };
+  }, [visible]);
 
-  // 开始轮询支付状态
-  const startPaymentPolling = (orderNo: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/payment/status/${orderNo}`);
-        const result = await response.json();
+  // 清理SSE连接和定时器 - 仅在组件卸载时清理
+  useEffect(() => {
+    return () => {
+      if (sseListenerRef.current) {
+        sseListenerRef.current.stopListening();
+      }
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+      }
+    };
+  }, []); // 移除依赖项，仅在组件卸载时执行清理
+
+  // 开始SSE监听支付状态
+  const startPaymentSSEListener = useCallback((orderNo: string) => {
+    // 先停止旧的SSE连接
+    if (sseListenerRef.current) {
+      sseListenerRef.current.stopListening();
+    }
+    
+    const listener = new PaymentSSEListener(orderNo);
+    
+    listener.startListening({
+      onConnection: () => {
+        // 连接建立成功
+      },
+      
+      onPaymentStatus: (event) => {
+        setPaymentStatus(event.status as PaymentStatusType);
         
-        if (result.success) {
-          const status = result.data.status;
-          setPaymentStatus(status);
-          
-          if (status === 'paid') {
-            clearInterval(interval);
-            setPolling(null);
+        switch (event.status) {
+          case 'paid':
+            message.destroy();
             message.success('支付成功！');
             onSuccess?.();
             setTimeout(() => {
               onClose();
             }, 2000);
-          } else if (status === 'expired' || status === 'cancelled') {
-            clearInterval(interval);
-            setPolling(null);
-            setPaymentStatus(status);
-          }
+            break;
+          case 'failed':
+            message.destroy();
+            message.error('支付失败，请重试');
+            break;
+          case 'expired':
+            message.destroy();
+            message.warning('支付超时，请重新发起支付');
+            break;
+          case 'cancelled':
+            message.destroy();
+            message.warning('支付已取消');
+            break;
         }
-      } catch (error) {
-        console.error('查询支付状态失败:', error);
+      },
+      
+      onError: () => {
+        message.error('连接异常，请刷新页面重试');
+      },
+      
+      onClose: () => {
+        // 连接关闭
       }
-    }, 3000); // 每3秒查询一次
+    });
     
-    setPolling(interval);
-  };
+    setSseListener(listener);
+    sseListenerRef.current = listener;
+  }, [onSuccess, onClose]);
 
   // 开始倒计时
-  const startCountdown = (expiredAt: string) => {
+  const startCountdown = useCallback((expiredAt: string) => {
+    // 清理现有定时器
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+    }
+    
     const expiredTime = new Date(expiredAt).getTime();
     
-    const countdownInterval = setInterval(() => {
+    const interval = setInterval(() => {
       const now = new Date().getTime();
       const timeLeft = expiredTime - now;
       
       if (timeLeft <= 0) {
         setCountdown(0);
         setPaymentStatus('expired');
-        clearInterval(countdownInterval);
+        clearInterval(interval);
+        setCountdownTimer(null);
       } else {
         setCountdown(Math.floor(timeLeft / 1000));
       }
     }, 1000);
-  };
+    
+    setCountdownTimer(interval);
+  }, [countdownTimer]);
+
+  // 创建订单并发起支付
+  const handleCreatePayment = useCallback(async () => {
+    if (!userId) {
+      message.error('用户信息未加载，请稍后重试');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      const response = await paymentApi.createOrder(userId, {
+        planId: parseInt(planId),
+        billingCycle,
+        paymentMethod: 'wechat'
+      });
+
+      const result = response.data;
+      
+      if (result.success) {
+        setPaymentData(result.data);
+        startPaymentSSEListener(result.data.orderNo);
+        startCountdown(result.data.expiredAt);
+      } else {
+        message.error(result.message || '创建支付失败');
+      }
+    } catch (error: any) {
+      console.error('创建支付失败:', error);
+      message.error('创建支付失败：' + (error.message || '请重试'));
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, planId, billingCycle, startPaymentSSEListener, startCountdown]);
 
   // 格式化倒计时
   const formatCountdown = (seconds: number) => {
@@ -153,11 +212,21 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   // 重置状态
   const resetState = () => {
     setPaymentData(null);
-    setPaymentStatus('pending');
+    setPaymentStatus('waiting');
     setCountdown(0);
-    if (polling) {
-      clearInterval(polling);
-      setPolling(null);
+    setUserId(null);
+    
+    // 清理SSE连接
+    if (sseListenerRef.current) {
+      sseListenerRef.current.stopListening();
+      setSseListener(null);
+      sseListenerRef.current = null;
+    }
+    
+    // 清理倒计时定时器
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+      setCountdownTimer(null);
     }
   };
 
@@ -169,24 +238,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // 自动创建支付
   useEffect(() => {
-    if (visible && !paymentData) {
+    if (visible && userId && !paymentData) {
       handleCreatePayment();
     }
-  }, [visible]);
+  }, [visible, userId, paymentData, handleCreatePayment]);
 
   // 获取价格显示
-  const getPriceDisplay = () => {
-    if (planName.includes('积分')) {
-      return `¥ ${amount}`;
-    }
-    
-    if (billingCycle === 'yearly') {
-      const monthlyPrice = Math.round(amount / 12);
-      return `¥ ${amount}`;
-    }
-    
-    return `¥ ${amount}`;
-  };
+  const getPriceDisplay = () => `¥ ${amount}`;
 
   const getCycleDisplay = () => {
     if (planName.includes('积分')) {
@@ -274,8 +332,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 </div>
               </div>
 
-              {/* 支付状态 */}
-              {paymentStatus === 'success' && (
+              {/* 支付状态显示 */}
+              {paymentStatus === 'paid' && (
                 <div style={{ textAlign: 'center', marginTop: '20px' }}>
                   <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
                   <div style={{ fontSize: '18px', fontWeight: 600, color: '#52c41a' }}>
@@ -284,11 +342,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 </div>
               )}
 
-              {(paymentStatus === 'expired' || paymentStatus === 'failed') && (
+
+              {(paymentStatus === 'expired' || paymentStatus === 'failed' || paymentStatus === 'cancelled') && (
                 <div style={{ textAlign: 'center', marginTop: '20px' }}>
                   <CloseCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
                   <div style={{ fontSize: '18px', fontWeight: 600, color: '#ff4d4f' }}>
-                    {paymentStatus === 'expired' ? '支付已过期' : '支付失败'}
+                    {paymentStatus === 'expired' && '支付已过期'}
+                    {paymentStatus === 'failed' && '支付失败'}
+                    {paymentStatus === 'cancelled' && '支付已取消'}
                   </div>
                   <Button
                     type="primary"
@@ -310,14 +371,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
                   微信扫码支付
                 </div>
-                {paymentStatus === 'pending' && countdown > 0 && (
+                {(paymentStatus === 'waiting' || paymentStatus === 'pending') && countdown > 0 && (
                   <div style={{ fontSize: '12px', color: '#ccc' }}>
-                    {formatCountdown(countdown)}
+                    剩余时间: {formatCountdown(countdown)}
                   </div>
                 )}
               </div>
 
-              {paymentData?.qrCode && paymentStatus === 'pending' ? (
+              {paymentData?.qrCode && (paymentStatus === 'waiting' || paymentStatus === 'pending') ? (
                 <div style={{
                   background: '#fff',
                   padding: '16px',
@@ -345,6 +406,46 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 ¥ {amount}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 开发测试按钮 */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{ 
+            textAlign: 'center', 
+            marginTop: '20px',
+            padding: '15px',
+            backgroundColor: '#f5f5f5',
+            borderRadius: '4px'
+          }}>
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+              开发测试工具
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <Input
+                size="small"
+                placeholder="输入订单号进行SSE测试"
+                value={testOrderNo}
+                onChange={(e) => setTestOrderNo(e.target.value)}
+                style={{ width: '300px' }}
+              />
+            </div>
+            <Button 
+              size="small" 
+              type="dashed"
+              disabled={!testOrderNo.trim()}
+              onClick={() => {
+                const orderNo = testOrderNo.trim();
+                if (!orderNo) {
+                  message.error('请输入订单号');
+                  return;
+                }
+                startPaymentSSEListener(orderNo);
+                message.info('已开始监听测试订单: ' + orderNo);
+              }}
+            >
+              🧪 测试SSE连接
+            </Button>
           </div>
         )}
 

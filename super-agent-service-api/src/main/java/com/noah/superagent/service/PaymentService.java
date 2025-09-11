@@ -2,6 +2,7 @@ package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.request.CreateOrderRequest;
 import com.noah.superagent.common.dto.response.PaymentResponse;
+import com.github.binarywang.wxpay.bean.notify.SignatureHeader;
 
 /**
  * 支付服务接口
@@ -29,17 +30,10 @@ public interface PaymentService {
      * 处理微信支付回调
      *
      * @param callbackData 回调数据
+     * @param header 签名头信息
      * @return 处理结果
      */
-    boolean handleWechatPayCallback(String callbackData);
-
-    /**
-     * 处理支付宝支付回调
-     *
-     * @param callbackData 回调数据
-     * @return 处理结果
-     */
-    boolean handleAlipayCallback(String callbackData);
+    boolean handleWechatPayCallback(String callbackData, SignatureHeader header);
 
     /**
      * 取消订单

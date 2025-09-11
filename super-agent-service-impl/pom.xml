@@ -46,27 +46,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- 微信支付 -->
-        <dependency>
-            <groupId>com.github.binarywang</groupId>
-            <artifactId>weixin-java-pay</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.github.binarywang</groupId>
-            <artifactId>weixin-java-common</artifactId>
-        </dependency>
-        
-        <!-- 解决微信支付SDK依赖冲突 - 显式引入统一版本 -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-        </dependency>
-        
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-        </dependency>
-
     </dependencies>
 
     <build>

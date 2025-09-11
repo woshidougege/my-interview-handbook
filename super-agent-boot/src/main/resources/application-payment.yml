@@ -10,7 +10,7 @@ wx:
     privateKeyPath: ${user.home}${file.separator}.goldmine${file.separator}config${file.separator}apiclient_key.pem
     publicKeyPath: ${user.home}${file.separator}.goldmine${file.separator}config${file.separator}pub_key.pem
     publicKeyId: PUB_KEY_ID_0117074619892025021900198200000359
-    notifyUrl: ${WX_NOTIFY_URL:https://8440-103-90-188-90.ngrok-free.app/api/v1/payment/wechat/notify}
+    notifyUrl: ${WX_NOTIFY_URL:https://unparrying-elizbeth-chylophyllous.ngrok-free.app/super-agent/api/v1/payment/wechat/notify}
     
   # 支付宝配置已删除 - 系统只支持微信支付
     

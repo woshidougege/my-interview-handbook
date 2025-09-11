@@ -3,6 +3,9 @@ package com.noah.superagent.service.impl;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.noah.superagent.common.dto.request.CreateOrderRequest;
 import com.noah.superagent.common.dto.response.PaymentResponse;
+import com.noah.superagent.common.dto.PaymentStatusEvent;
+import com.noah.superagent.common.constants.PaymentStatus;
+import org.springframework.context.ApplicationEventPublisher;
 import com.noah.superagent.dao.entity.PaymentRecordEntity;
 import com.noah.superagent.dao.entity.SubscriptionOrderEntity;
 import com.noah.superagent.dao.entity.SubscriptionPlanEntity;
@@ -15,17 +18,24 @@ import com.noah.superagent.service.PaymentService;
 import com.noah.superagent.service.UserCreditService;
 import com.noah.superagent.common.enums.SubscriptionStatusEnum;
 import com.github.binarywang.wxpay.bean.request.WxPayUnifiedOrderV3Request;
+import com.github.binarywang.wxpay.bean.request.WxPayOrderQueryV3Request;
 import com.github.binarywang.wxpay.bean.result.enums.TradeTypeEnum;
+import com.github.binarywang.wxpay.bean.result.WxPayOrderQueryV3Result;
+import com.github.binarywang.wxpay.bean.notify.WxPayNotifyV3Result;
+import com.github.binarywang.wxpay.bean.notify.WxPayNotifyV3Result.DecryptNotifyResult;
+import com.github.binarywang.wxpay.bean.notify.SignatureHeader;
 import com.github.binarywang.wxpay.exception.WxPayException;
 import com.github.binarywang.wxpay.service.WxPayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
 
 /**
  * 支付服务实现 - 使用真实的微信支付V3 API
@@ -41,6 +51,10 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserCreditService userCreditService;
     private final UserSubscriptionMapper userSubscriptionMapper;
     private final WxPayService wxPayService;
+    
+    // 使用ApplicationEventPublisher发布支付状态事件，避免循环依赖
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -71,7 +85,7 @@ public class PaymentServiceImpl implements PaymentService {
             order.setPlanName(plan.getPlanName());
             order.setAmount(amount);
             order.setBillingCycle(request.getBillingCycle());
-            order.setStatus("pending");
+            order.setStatus(PaymentStatus.WAITING.getValue());
             order.setPaymentMethod("wechat");
             order.setExpiredAt(LocalDateTime.now().plusMinutes(15)); // 15分钟后过期
             
@@ -83,7 +97,7 @@ public class PaymentServiceImpl implements PaymentService {
             response.setOrderNo(orderNo);
             response.setAmount(amount);
             response.setPaymentMethod("wechat");
-            response.setStatus("pending");
+            response.setStatus(PaymentStatus.WAITING.getValue());
             response.setExpiredAt(order.getExpiredAt());
             response.setCreatedTime(order.getCreateTime());
 
@@ -105,6 +119,16 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException("订单不存在");
         }
 
+        // 如果订单还在进行中，主动查询微信支付状态
+        if (PaymentStatus.isProcessingStatus(order.getStatus())) {
+            try {
+                updateOrderStatusFromWechat(order);
+            } catch (Exception e) {
+                log.warn("查询微信支付状态失败: orderNo={}, error={}", orderNo, e.getMessage());
+                // 查询失败不影响返回本地状态
+            }
+        }
+
         PaymentResponse response = new PaymentResponse();
         response.setOrderId(order.getId());
         response.setOrderNo(order.getOrderNo());
@@ -117,35 +141,104 @@ public class PaymentServiceImpl implements PaymentService {
         return response;
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean handleWechatPayCallback(String callbackData) {
-        try {
-            // TODO: 实现真实的微信支付V3回调处理
-            // 这里应该验证微信支付回调签名，解析回调数据
-            log.info("处理微信支付回调: {}", callbackData);
-
-            // 从回调数据中提取订单号（简化实现）
-            String orderNo = extractOrderNoFromCallback(callbackData);
-            if (orderNo == null) {
-                log.error("无法从微信支付回调中提取订单号");
-                return false;
-            }
-
-            return processPaymentSuccess(orderNo, "wechat");
-
-        } catch (Exception e) {
-            log.error("处理微信支付回调异常", e);
-            return false;
+    /**
+     * 主动查询微信支付状态并更新本地订单状态
+     */
+    private void updateOrderStatusFromWechat(SubscriptionOrderEntity order) throws WxPayException {
+        // 构建查询请求
+        WxPayOrderQueryV3Request queryRequest = new WxPayOrderQueryV3Request();
+        queryRequest.setOutTradeNo(order.getOrderNo());
+        
+        // 查询微信支付状态
+        WxPayOrderQueryV3Result queryResult = wxPayService.queryOrderV3(queryRequest);
+        
+        if (queryResult == null) {
+            return;
+        }
+        
+        String wechatStatus = queryResult.getTradeState();
+        String currentStatus = order.getStatus();
+        String newStatus = mapWechatStatusToLocal(wechatStatus);
+        
+        // 只有状态发生变化时才更新
+        if (!currentStatus.equals(newStatus)) {
+            order.setStatus(newStatus);
+            subscriptionOrderMapper.update(order);
+            
+            // 发布状态变更事件
+            sendPaymentStatusEvent(order.getOrderNo(), newStatus, order.getAmount(), 
+                    order.getPaymentMethod(), PaymentStatus.getStatusDescription(newStatus));
+        }
+    }
+    
+    /**
+     * 映射微信支付状态到本地状态
+     */
+    private String mapWechatStatusToLocal(String wechatStatus) {
+        if (wechatStatus == null) {
+            return PaymentStatus.WAITING.getValue();
+        }
+        
+        switch (wechatStatus) {
+            case "NOTPAY":
+            case "USERPAYING":
+                return PaymentStatus.WAITING.getValue(); // 等待支付（包含已扫码但未完成支付的状态）
+            case "SUCCESS":
+                return PaymentStatus.PAID.getValue();
+            case "CLOSED":
+            case "REVOKED":
+                return PaymentStatus.EXPIRED.getValue();
+            case "PAYERROR":
+                return PaymentStatus.FAILED.getValue();
+            default:
+                log.warn("未知的微信支付状态: {}", wechatStatus);
+                return PaymentStatus.WAITING.getValue();
         }
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean handleAlipayCallback(String callbackData) {
-        // 不再支持支付宝支付
-        log.warn("收到支付宝回调，但当前系统只支持微信支付: {}", callbackData);
-        return false;
+    @Transactional(rollbackFor = Exception.class)  
+    public boolean handleWechatPayCallback(String callbackData, SignatureHeader header) {
+        try {
+            if (callbackData == null || callbackData.trim().isEmpty()) {
+                log.error("微信支付回调数据为空");
+                return false;
+            }
+            
+            // 使用微信支付SDK解密V3回调数据
+            WxPayNotifyV3Result notifyResult = wxPayService.parseOrderNotifyV3Result(callbackData, header);
+            
+            if (notifyResult == null || notifyResult.getResult() == null) {
+                log.error("解密微信支付V3回调数据失败");
+                return false;
+            }
+            
+            DecryptNotifyResult result = notifyResult.getResult();
+            String orderNo = result.getOutTradeNo();
+            String transactionId = result.getTransactionId();
+            String tradeState = result.getTradeState();
+            
+            // 检查交易状态
+            if (!"SUCCESS".equals(tradeState)) {
+                return false;
+            }
+            
+            // 处理支付成功逻辑
+            boolean processResult = processPaymentSuccess(orderNo, "wechat");
+            
+            if (!processResult) {
+                log.error("微信支付回调处理失败: orderNo={}, transactionId={}", orderNo, transactionId);
+            }
+            
+            return processResult;
+
+        } catch (WxPayException e) {
+            log.error("微信支付SDK解析回调数据失败: {}", e.getMessage(), e);
+            return false;
+        } catch (Exception e) {
+            log.error("处理微信支付回调异常: {}", e.getMessage(), e);
+            return false;
+        }
     }
 
     @Override
@@ -161,15 +254,17 @@ public class PaymentServiceImpl implements PaymentService {
                 return false;
             }
 
-            if (!"pending".equals(order.getStatus())) {
+            if (!PaymentStatus.isProcessingStatus(order.getStatus())) {
                 log.warn("取消订单失败，订单状态不允许取消: orderNo={}, status={}", orderNo, order.getStatus());
                 return false;
             }
 
-            order.setStatus("cancelled");
+            order.setStatus(PaymentStatus.CANCELLED.getValue());
             subscriptionOrderMapper.update(order);
+            
+            // 推送订单取消事件到SSE连接
+            sendPaymentStatusEvent(orderNo, PaymentStatus.CANCELLED.getValue(), order.getAmount(), order.getPaymentMethod(), PaymentStatus.CANCELLED.getDescription());
 
-            log.info("订单取消成功: {}", orderNo);
             return true;
 
         } catch (Exception e) {
@@ -183,15 +278,11 @@ public class PaymentServiceImpl implements PaymentService {
      */
     private PaymentResponse createWeChatPayV3(SubscriptionOrderEntity order) {
         try {
-            log.info("创建微信支付V3: order={}", order);
-
             // 创建统一下单请求
             WxPayUnifiedOrderV3Request request = getWxPayUnifiedOrderV3Request(order);
 
             // 调用微信支付V3 API
             String codeUrl = wxPayService.createOrderV3(TradeTypeEnum.NATIVE, request);
-            
-            log.info("微信支付V3下单成功: orderNo={}, codeUrl={}", order.getOrderNo(), codeUrl);
 
             // 创建支付记录
             PaymentRecordEntity payment = new PaymentRecordEntity();
@@ -200,7 +291,7 @@ public class PaymentServiceImpl implements PaymentService {
             payment.setUserId(order.getUserId());
             payment.setAmount(order.getAmount());
             payment.setPaymentMethod("wechat");
-            payment.setStatus("pending");
+            payment.setStatus(PaymentStatus.WAITING.getValue());
             payment.setQrCode(codeUrl); // 真实的微信支付二维码URL
             
             paymentRecordMapper.insert(payment);
@@ -242,18 +333,6 @@ public class PaymentServiceImpl implements PaymentService {
         return "ORDER_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
-    /**
-     * 从回调数据中提取订单号
-     */
-    private String extractOrderNoFromCallback(String callbackData) {
-        // 简化实现：从模拟回调数据中提取
-        if (callbackData != null && callbackData.contains("mock_callback_data_")) {
-            return callbackData.replace("mock_callback_data_", "");
-        }
-        
-        // TODO: 实现真实的微信V3回调数据解析
-        return null;
-    }
 
     /**
      * 处理支付成功的业务逻辑
@@ -271,13 +350,13 @@ public class PaymentServiceImpl implements PaymentService {
                 return false;
             }
 
-            if ("paid".equals(order.getStatus())) {
+            if (PaymentStatus.PAID.getValue().equals(order.getStatus())) {
                 log.warn("订单已处理过支付成功状态: orderNo={}", orderNo);
                 return true;
             }
 
             // 2. 更新订单状态
-            order.setStatus("paid");
+            order.setStatus(PaymentStatus.PAID.getValue());
             order.setPaidAt(LocalDateTime.now());
             order.setPaymentMethod(paymentMethod);
             subscriptionOrderMapper.update(order);
@@ -287,7 +366,7 @@ public class PaymentServiceImpl implements PaymentService {
                 QueryWrapper.create().where("order_no = ?", orderNo)
             );
             if (payment != null) {
-                payment.setStatus("success");
+                payment.setStatus("success"); // PaymentRecord表的成功状态
                 payment.setThirdPartyTransactionNo("wx_transaction_" + System.currentTimeMillis());
                 paymentRecordMapper.update(payment);
             }
@@ -308,8 +387,7 @@ public class PaymentServiceImpl implements PaymentService {
                         plan.getPlanName()
                     );
                     
-                    log.info("发放积分成功: userId={}, planName={}, creditAmount={}", 
-                        order.getUserId(), plan.getPlanName(), creditAmount);
+                    // 积分发放成功
                         
                 } catch (Exception e) {
                     log.error("发放积分失败: userId={}, planName={}, error={}", 
@@ -326,14 +404,37 @@ public class PaymentServiceImpl implements PaymentService {
                 }
             }
             
-            log.info("支付成功处理完成: orderNo={}, userId={}, amount={}", 
-                orderNo, order.getUserId(), order.getAmount());
+            // 推送支付成功事件到SSE连接
+            sendPaymentStatusEvent(orderNo, PaymentStatus.PAID.getValue(), order.getAmount(), paymentMethod, PaymentStatus.PAID.getDescription());
             
             return true;
             
         } catch (Exception e) {
             log.error("处理支付成功业务逻辑异常: orderNo={}", orderNo, e);
             return false;
+        }
+    }
+    
+    /**
+     * 发送支付状态事件（使用Spring事件机制）
+     */
+    private void sendPaymentStatusEvent(String orderNo, String status, BigDecimal amount, String paymentMethod, String message) {
+        try {
+            // 创建支付状态事件
+            PaymentStatusEvent event = PaymentStatusEvent.builder()
+                    .orderNo(orderNo)
+                    .status(status)
+                    .amount(amount)
+                    .paymentMethod(paymentMethod)
+                    .message(message)
+                    .eventTime(LocalDateTime.now())
+                    .build();
+            
+            // 发布Spring事件，避免循环依赖
+            eventPublisher.publishEvent(event);
+        } catch (Exception e) {
+            // 事件发布失败不影响主业务流程，只记录日志
+            log.warn("发布支付状态事件失败: orderNo={}, status={}, error={}", orderNo, status, e.getMessage());
         }
     }
 
@@ -365,8 +466,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             userSubscriptionMapper.insert(subscription);
             
-            log.info("用户订阅激活成功: userId={}, planId={}, subscriptionId={}", 
-                order.getUserId(), order.getPlanId(), subscription.getId());
+            // 订阅激活成功
                 
         } catch (Exception e) {
             log.error("激活订阅失败", e);

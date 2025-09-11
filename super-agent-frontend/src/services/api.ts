@@ -3,7 +3,7 @@ import { ApiResponse } from '@/types/user';
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:8081/super-agent/api' : '/super-agent/api',
+  baseURL: process.env.NODE_ENV === 'development' ? '/api' : '/super-agent/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -45,32 +45,32 @@ api.interceptors.response.use(
 export const authApi = {
   // 密码登录
   passwordLogin: (data: { username: string; password: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.post('/v1/auth/password-login', data);
+    return api.post('/auth/password-login', data);
   },
   
   // 手机验证码登录
   phoneLogin: (data: { phone: string; smsCode: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.post('/v1/auth/phone-login', data);
+    return api.post('/auth/phone-login', data);
   },
   
   // 发送短信验证码
   sendSms: (data: { phone: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.post('/v1/auth/send-sms', data);
+    return api.post('/auth/send-sms', data);
   },
   
   // 用户注册
   register: (data: { username: string; password: string; phone: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.post('/v1/auth/register', data);
+    return api.post('/auth/register', data);
   },
 
   // 获取系统客户端信息（包含SM2公钥）
   getSysClientInfo: (data: { serviceCode: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.post('/v1/auth/get-sys-client-info', data);
+    return api.post('/auth/get-sys-client-info', data);
   },
 
   // 获取公钥信息
   getPublicKey: (): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.get('/v1/auth/public-key');
+    return api.get('/auth/public-key');
   },
 };
 
@@ -87,6 +87,64 @@ export const subscriptionApi = {
       params: { userId }
     });
   },
+};
+
+// 用户相关API
+export const userApi = {
+  // 获取当前用户信息
+  getCurrentUser: (): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get('/auth/user/current');
+  },
+  
+  // 更新用户信息
+  updateUser: (data: any): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.put('/users/update', data);
+  },
+};
+
+// 积分相关API
+export const creditApi = {
+  // 获取用户积分信息
+  getUserCredit: (userId: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get(`/user-credit/${userId}`);
+  },
+  
+  // 获取积分交易记录
+  getCreditTransactions: (userId: string, pageNum: number = 1, pageSize: number = 10): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get(`/user-credit/${userId}/transactions`, {
+      params: { pageNum, pageSize }
+    });
+  },
+  
+  // 充值积分
+  recharge: (data: { amount: number; paymentMethod: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post('/credit/recharge', data);
+  },
+};
+
+// 支付相关API
+export const paymentApi = {
+  // 创建订单并发起支付
+  createOrder: (userId: string, data: {
+    planId: number;
+    billingCycle: string;
+    paymentMethod: string;
+  }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post('/payment/create', data, {
+      params: { userId }
+    });
+  },
+  
+  // 查询支付状态
+  queryStatus: (orderNo: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get(`/payment/status/${orderNo}`);
+  },
+  
+  // 取消订单
+  cancelOrder: (orderNo: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post(`/payment/cancel/${orderNo}`);
+  },
+  
 };
 
 export default api;
