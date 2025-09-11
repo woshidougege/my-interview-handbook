@@ -1,9 +1,9 @@
 import axios, { AxiosResponse } from 'axios';
-import { ApiResponse, UserCredit, CreditTransaction, UserInfo, PageResponse } from '@/types/user';
+import { ApiResponse } from '@/types/user';
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'development' ? '/api' : '/super-agent/api',
+  baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:8081/super-agent/api' : '/super-agent/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -41,42 +41,36 @@ api.interceptors.response.use(
   }
 );
 
-// 用户相关API
-export const userApi = {
-  // 获取当前用户信息
-  getCurrentUser: (): Promise<AxiosResponse<ApiResponse<UserInfo>>> => {
-    return api.get('/user/current');
+// 认证相关API
+export const authApi = {
+  // 密码登录
+  passwordLogin: (data: { username: string; password: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post('/v1/auth/password-login', data);
   },
   
-  // 获取用户信息
-  getUserInfo: (userId: string): Promise<AxiosResponse<ApiResponse<UserInfo>>> => {
-    return api.get(`/users/${userId}`);
+  // 手机验证码登录
+  phoneLogin: (data: { phone: string; smsCode: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post('/v1/auth/phone-login', data);
   },
-};
+  
+  // 发送短信验证码
+  sendSms: (data: { phone: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post('/v1/auth/send-sms', data);
+  },
+  
+  // 用户注册
+  register: (data: { username: string; password: string; phone: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post('/v1/auth/register', data);
+  },
 
-// 积分相关API
-export const creditApi = {
-  // 获取用户积分信息
-  getUserCredit: (userId: string): Promise<AxiosResponse<ApiResponse<UserCredit>>> => {
-    return api.get(`/user-credit/${userId}`);
+  // 获取系统客户端信息（包含SM2公钥）
+  getSysClientInfo: (data: { serviceCode: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post('/v1/auth/get-sys-client-info', data);
   },
-  
-  // 获取积分交易记录
-  getCreditTransactions: (
-    userId: string,
-    page: number = 1,
-    size: number = 10
-  ): Promise<AxiosResponse<ApiResponse<PageResponse<CreditTransaction>>>> => {
-    return api.get(`/user-credit/${userId}/transactions`, {
-      params: { pageNum: page, pageSize: size }
-    });
-  },
-  
-  // 检查用户是否有足够积分
-  checkUserCredit: (userId: string, amount: number): Promise<AxiosResponse<ApiResponse<boolean>>> => {
-    return api.get(`/user-credit/${userId}/available`, {
-      params: { amount }
-    });
+
+  // 获取公钥信息
+  getPublicKey: (): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get('/v1/auth/public-key');
   },
 };
 

@@ -1,47 +1,246 @@
 package com.noah.superagent.controller;
 
+import com.noah.superagent.common.dto.request.PasswordLoginRequest;
+import com.noah.superagent.common.dto.request.PhoneLoginRequest;
+import com.noah.superagent.common.dto.request.RegisterRequest;
+import com.noah.superagent.common.dto.request.ResetPasswordRequest;
 import com.noah.superagent.common.dto.response.UserResponse;
-import com.noah.superagent.common.enums.UserStatusEnum;
 import com.noah.superagent.convert.UserWebConvert;
 import com.noah.superagent.model.UserDTO;
 import com.noah.superagent.service.UserService;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.util.MultiValueMap;
+import org.springframework.util.LinkedMultiValueMap;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * 认证相关控制器
- * 
- * 临时实现，后续会被单点登录替换
+ * 认证相关控制器 - 方舟认证系统对接
  *
  * @author 任相鹏  
  * @since 1.0.0
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Tag(name = "认证管理", description = "用户认证相关接口（临时实现）")
+@Tag(name = "认证管理", description = "用户认证相关接口（方舟认证系统对接）")
 public class AuthController {
 
     private final UserService userService;
     private final UserWebConvert userWebConvert;
+    private final RestTemplate restTemplate;
+
+    @Value("${sso.server.url:http://192.168.1.65:10000/sso-server}")
+    private String ssoServerUrl;
+
+    @Value("${sso.servicecode:super_agent}")
+    private String serviceCode;
+
+    @PostMapping("/password-login")
+    @Operation(
+            summary = "密码登录",
+            description = "使用用户名和SM2加密密码进行登录，对接方舟认证系统"
+    )
+    @Parameter(name = "username", description = "用户名", required = true, example = "admin")
+    @Parameter(name = "pwd", description = "SM2加密后的密码", required = true, example = "304802...")
+    @Parameter(name = "servicecode", description = "服务代码", required = true, example = "super_agent")
+    public ApiResponse<Map<String, String>> passwordLogin(@RequestBody PasswordLoginRequest loginRequest) {
+        log.info("密码登录请求，用户名: {}", loginRequest.getUsername());
+
+        try {
+            String url = ssoServerUrl + "/agent/sso/doLogin";
+
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("username", loginRequest.getUsername());
+            requestBody.put("pwd", loginRequest.getPwd());
+            requestBody.put("servicecode", serviceCode);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    Map<String, String> data = (Map<String, String>) result.get("data");
+                    String ticket = data.get("ticket");
+
+                    Map<String, String> responseData = new HashMap<>();
+                    responseData.put("ticket", ticket);
+                    return ApiResponse.success("登录成功", responseData);
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
+            }
+
+            return ApiResponse.error("登录失败，请稍后重试");
+
+        } catch (Exception e) {
+            log.error("密码登录失败: {}", e.getMessage(), e);
+            return ApiResponse.error("登录失败: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/phone-login")
+    @Operation(
+            summary = "手机验证码登录",
+            description = "使用手机号和SM2加密验证码进行登录，对接方舟认证系统"
+    )
+    @Parameter(name = "phone", description = "手机号码", required = true, example = "13800138000")
+    @Parameter(name = "phoneCode", description = "短信验证码", required = true, example = "304802...")
+    @Parameter(name = "servicecode", description = "服务代码", required = true, example = "super_agent")
+    public ApiResponse<Map<String, String>> phoneLogin(@RequestBody PhoneLoginRequest loginRequest) {
+        log.info("手机验证码登录请求，手机号: {}", loginRequest.getPhone());
+
+        try {
+            String url = ssoServerUrl + "/agent/sso/doLogin";
+
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("phone", loginRequest.getPhone());
+            requestBody.put("phoneCode", loginRequest.getPhoneCode());
+            requestBody.put("servicecode", serviceCode);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    Map<String, String> data = (Map<String, String>) result.get("data");
+                    String ticket = data.get("ticket");
+
+                    Map<String, String> responseData = new HashMap<>();
+                    responseData.put("ticket", ticket);
+                    return ApiResponse.success("登录成功", responseData);
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
+            }
+
+            return ApiResponse.error("登录失败，请稍后重试");
+
+        } catch (Exception e) {
+            log.error("手机验证码登录失败: {}", e.getMessage(), e);
+            return ApiResponse.error("登录失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 发送短信验证码接口
+     */
+    @PostMapping("/send-sms")
+    @Operation(summary = "发送短信验证码", description = "发送短信验证码到指定手机号")
+    @Parameter(name = "phoneNumber", description = "手机号码", required = true, example = "13800138000")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "验证码发送成功",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = ApiResponse.class),
+            examples = @ExampleObject(
+                value = "{\n  \"code\": 200,\n  \"message\": \"验证码发送成功\"\n}"
+            )
+        )
+    )
+    public ApiResponse<String> sendSmsCode(@RequestParam String phoneNumber) {
+        log.info("发送短信验证码请求，手机号: {}", phoneNumber);
+
+        try {
+            String url = ssoServerUrl + "/sms/send?phoneNumber=" + phoneNumber;
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, null, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    return ApiResponse.success("验证码发送成功");
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
+            }
+
+            return ApiResponse.error("验证码发送失败，请稍后重试");
+
+        } catch (Exception e) {
+            log.error("发送短信验证码失败: {}", e.getMessage(), e);
+            return ApiResponse.error("验证码发送失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 用户注册接口
+     */
+    @PostMapping("/register")
+    @Operation(
+        summary = "用户注册",
+        description = "新用户注册接口"
+    )
+    public ApiResponse<Map<String, String>> register(@RequestBody RegisterRequest request) {
+        log.info("用户注册请求，用户名: {}, 手机号: {}", 
+                request.getUsername(), request.getPhone());
+        
+        try {
+            String url = ssoServerUrl + "/agent/sso/userRegister";
+            
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("username", request.getUsername());
+            requestBody.put("userPwd", request.getUserPwd());
+            requestBody.put("phone", request.getPhone());
+            requestBody.put("phoneCode", request.getPhoneCode());
+            requestBody.put("servicecode", serviceCode);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    Map<String, String> data = (Map<String, String>) result.get("data");
+                    String ticket = data.get("ticket");
+                    
+                    Map<String, String> responseData = new HashMap<>();
+                    responseData.put("ticket", ticket);
+                    return ApiResponse.success("注册成功", responseData);
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
+            }
+            
+            return ApiResponse.error("注册失败，请稍后重试");
+            
+        } catch (Exception e) {
+            log.error("用户注册失败: {}", e.getMessage(), e);
+            return ApiResponse.error("注册失败: " + e.getMessage());
+        }
+    }
+
+
 
     @GetMapping("/user/current")
     @Operation(summary = "获取当前用户信息", 
-            description = "获取当前登录用户的详细信息（临时实现，后续会被单点登录替换）")
+            description = "获取当前登录用户的详细信息")
     public ApiResponse<UserResponse> getCurrentUser() {
         log.info("获取当前用户信息请求");
         
         try {
-            // 临时实现：返回第一个用户作为当前用户
-            // TODO: 后续对接单点登录后，从SSO Token中获取用户信息
-            UserDTO currentUser = getCurrentUserFromTemporaryLogic();
+            // 这里需要实现从SSO Token中获取用户信息的逻辑
+            // 暂时返回模拟数据
+            UserDTO userDTO = new UserDTO();
+            userDTO.setId(1001L);
+            userDTO.setUsername("演示用户");
+            userDTO.setPhone("13800138000");
             
-            UserResponse response = userWebConvert.toResponse(currentUser);
+            UserResponse response = userWebConvert.toResponse(userDTO);
             return ApiResponse.success("获取当前用户信息成功", response);
             
         } catch (Exception e) {
@@ -49,43 +248,83 @@ public class AuthController {
             return ApiResponse.error("获取用户信息失败: " + e.getMessage());
         }
     }
-    
+
     /**
-     * 临时逻辑：获取当前用户
-     * 
-     * 这是一个临时实现，实际应该从以下来源获取：
-     * 1. JWT Token
-     * 2. Session
-     * 3. SSO Token
+     * 获取公钥信息接口
+     * 对接方舟认证系统，获取SM2加密所需的公钥
      */
-    private UserDTO getCurrentUserFromTemporaryLogic() {
+    @GetMapping("/public-key")
+    @Operation(
+        summary = "获取公钥信息", 
+        description = "获取SM2加密所需的公钥信息，用于前端密码加密"
+    )
+    public ApiResponse<Map<String, Object>> getPublicKey() {
+        log.info("获取公钥信息请求，serviceCode: {}", serviceCode);
+        
         try {
-            // 尝试获取数据库中的第一个用户
-            var pageResponse = userService.getUserPage(1, 1, null);
-            if (pageResponse != null && !pageResponse.getRecords().isEmpty()) {
-                UserDTO firstUser = pageResponse.getRecords().get(0);
-                log.info("使用临时逻辑返回用户: {} (ID: {})", firstUser.getUsername(), firstUser.getId());
-                return firstUser;
-            } else {
-                // 如果数据库中没有用户，创建一个临时用户
-                log.warn("数据库中没有用户，返回模拟用户数据");
-                return createMockUser();
+            String url = ssoServerUrl + "/getSysClientInfo";
+            
+            // 使用POST请求，将serviceCode作为表单参数
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            
+            MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+            formData.add("serviceCode", serviceCode);
+            
+            HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestEntity, Map.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    Map<String, Object> data = (Map<String, Object>) result.get("data");
+                    return ApiResponse.success("获取公钥成功", data);
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
             }
+            
+            return ApiResponse.error("获取公钥失败，请稍后重试");
+            
         } catch (Exception e) {
-            log.warn("获取数据库用户失败，返回模拟用户数据: {}", e.getMessage());
-            return createMockUser();
+            log.error("获取公钥信息失败: {}", e.getMessage(), e);
+            return ApiResponse.error("获取公钥失败: " + e.getMessage());
         }
     }
-    
-    /**
-     * 创建模拟用户数据
-     */
-    private UserDTO createMockUser() {
-        UserDTO mockUser = new UserDTO();
-        mockUser.setId(1001L);
-        mockUser.setUsername("演示用户");
-        mockUser.setPhone("13800138000");
-        mockUser.setStatus(UserStatusEnum.ACTIVE);
-        return mockUser;
+
+    @PostMapping("/reset-password")
+    @Operation(
+            summary = "找回密码",
+            description = "通过手机号和短信验证码重置密码"
+    )
+    public ApiResponse<String> resetPassword(@RequestBody ResetPasswordRequest resetRequest) {
+        log.info("找回密码请求，手机号: {}", resetRequest.getPhone());
+
+        try {
+            String url = ssoServerUrl + "/agent/sso/resetPassword";
+
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("phone", resetRequest.getPhone());
+            requestBody.put("phoneCode", resetRequest.getPhoneCode());
+            requestBody.put("newPassword", resetRequest.getNewPassword());
+            requestBody.put("servicecode", serviceCode);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    return ApiResponse.success("密码重置成功");
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
+            }
+
+            return ApiResponse.error("密码重置失败，请稍后重试");
+
+        } catch (Exception e) {
+            log.error("找回密码失败: {}", e.getMessage(), e);
+            return ApiResponse.error("密码重置失败: " + e.getMessage());
+        }
     }
 }
