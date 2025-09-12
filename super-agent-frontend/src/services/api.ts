@@ -166,4 +166,75 @@ export const paymentApi = {
   
 };
 
+// AI服务相关API
+export const aiApi = {
+  // 生成对话标题
+  generateChatTitle: (workspaceId: string, data: {
+    question: string;
+    async?: boolean;
+  }): Promise<AxiosResponse<ApiResponse<{
+    title: string;
+    async: boolean;
+    duration?: number;
+  }>>> => {
+    return api.post(`/v1/workspaces/${workspaceId}/chat-tasks/generate-title`, data);
+  },
+};
+
+// 对话任务相关API
+export const chatTaskApi = {
+  // 创建对话任务
+  createChatTask: (workspaceId: string, data: {
+    title: string;
+    description?: string;
+  }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post(`/v1/workspaces/${workspaceId}/chat-tasks`, data);
+  },
+  
+  // 获取对话任务列表
+  getChatTasks: (workspaceId: string, params: {
+    pageNum?: number;
+    pageSize?: number;
+    keyword?: string;
+  } = {}): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get(`/v1/workspaces/${workspaceId}/chat-tasks`, { params });
+  },
+  
+  // 获取对话任务详情
+  getChatTask: (workspaceId: string, taskId: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get(`/v1/workspaces/${workspaceId}/chat-tasks/${taskId}`);
+  },
+  
+  // 更新对话任务
+  updateChatTask: (workspaceId: string, taskId: string, data: {
+    title?: string;
+    description?: string;
+  }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.put(`/v1/workspaces/${workspaceId}/chat-tasks/${taskId}`, data);
+  },
+  
+  // 删除对话任务
+  deleteChatTask: (workspaceId: string, taskId: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.delete(`/v1/workspaces/${workspaceId}/chat-tasks/${taskId}`);
+  },
+  
+  // 收藏对话任务
+  favoriteChatTask: (workspaceId: string, taskId: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post(`/v1/workspaces/${workspaceId}/chat-tasks/${taskId}/favorite`);
+  },
+  
+  // 取消收藏对话任务
+  unfavoriteChatTask: (workspaceId: string, taskId: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.delete(`/v1/workspaces/${workspaceId}/chat-tasks/${taskId}/favorite`);
+  },
+  
+  // 获取收藏的对话任务
+  getFavoriteChatTasks: (workspaceId: string, params: {
+    pageNum?: number;
+    pageSize?: number;
+  } = {}): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get(`/v1/workspaces/${workspaceId}/chat-tasks/favorites`, { params });
+  },
+};
+
 export default api;
