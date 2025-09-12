@@ -4,7 +4,9 @@ import com.noah.superagent.common.dto.request.CreateOrderRequest;
 import com.noah.superagent.common.dto.response.PaymentResponse;
 import com.noah.superagent.common.dto.RefundRequest;
 import com.noah.superagent.common.dto.RefundResponse;
+import com.noah.superagent.dao.entity.SubscriptionOrderEntity;
 import com.github.binarywang.wxpay.bean.notify.SignatureHeader;
+import com.github.binarywang.wxpay.bean.result.WxPayOrderQueryV3Result;
 
 import java.util.List;
 
@@ -79,4 +81,23 @@ public interface PaymentService {
      * @return 处理结果
      */
     boolean handleWechatRefundCallback(String callbackData, SignatureHeader header);
+    
+    /**
+     * 批量同步处理中订单的状态
+     * 
+     * 查询所有处理中的订单（waiting, pending, refund_processing等），
+     * 从微信API获取最新状态并更新本地数据库
+     *
+     * @return 同步的订单数量
+     */
+    int syncPendingOrdersStatus();
+    
+    /**
+     * 事务性更新订单相关的所有表
+     * 
+     * @param order 订单实体
+     * @param newStatus 新状态
+     * @param wxResult 微信查询结果（可为null）
+     */
+    void updateAllRelatedTablesWithTransaction(SubscriptionOrderEntity order, String newStatus, WxPayOrderQueryV3Result wxResult);
 }

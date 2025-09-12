@@ -3,6 +3,7 @@ package com.noah.superagent.scheduler.initializer;
 import com.github.kagkarlsson.scheduler.Scheduler;
 import com.noah.superagent.scheduler.job.CreditExpiryCleanupJob;
 import com.noah.superagent.scheduler.job.DailyCreditBonusJob;
+import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 定时任务初始化器
- * 
+ * <p>
  * 应用启动时自动注册和启动定时任务
  *
  * @author 任相鹏
@@ -39,6 +40,9 @@ public class SchedulerTaskInitializer implements ApplicationRunner {
             
             // 检查并启动积分过期清理任务
             ensureTaskRunning(CreditExpiryCleanupJob.getJobTaskName(), "积分过期清理任务");
+            
+            // 检查并启动支付状态同步任务
+            ensureTaskRunning(PaymentStatusSyncJob.getJobTaskName(), "支付状态同步任务");
             
             log.info("所有定时任务初始化完成");
             
