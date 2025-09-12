@@ -29,6 +29,16 @@ alicloud:
           temperature: ${AI_TITLE_TEMPERATURE:0.5}
           top-p: ${AI_TITLE_TOP_P:0.9}
           max-tokens: ${AI_TITLE_MAX_TOKENS:50}
+      
+      # 对话专用模型配置
+      chat:
+        # 对话模型（使用较强的模型以提供更好的对话体验）
+        model: ${AI_CHAT_MODEL:qwen-plus}
+        # 对话参数
+        parameters:
+          temperature: ${AI_CHAT_TEMPERATURE:0.7}
+          top-p: ${AI_CHAT_TOP_P:0.9}
+          max-tokens: ${AI_CHAT_MAX_TOKENS:2000}
           
     # AI功能配置
     features:
@@ -51,6 +61,17 @@ alicloud:
         default-title: ${AI_DEFAULT_TITLE:新对话}
         # 标题最大长度
         max-length: ${AI_TITLE_MAX_LENGTH:20}
+      
+      # 对话功能配置
+      chat:
+        # 是否启用对话功能
+        enabled: ${AI_CHAT_ENABLED:true}
+        # 系统提示词
+        system-prompt: ${AI_CHAT_SYSTEM_PROMPT:你是Super Agent，一个智能助手。请用中文回答用户的问题，提供有用、准确和友好的回复。}
+        # 是否启用流式输出
+        stream-enabled: ${AI_CHAT_STREAM_ENABLED:true}
+        # 对话历史记录长度限制
+        history-limit: ${AI_CHAT_HISTORY_LIMIT:10}
         
     # 缓存配置
     cache:
