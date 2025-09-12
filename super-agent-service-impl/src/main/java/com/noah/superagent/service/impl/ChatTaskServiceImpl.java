@@ -1,10 +1,12 @@
 package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
+import com.mybatisflex.core.query.QueryWrapper;
+import com.noah.superagent.common.dto.response.PageResponse;
+import com.noah.superagent.common.enums.ChatTaskStatusEnum;
 import com.noah.superagent.common.enums.FavoriteEnum;
 import com.noah.superagent.convert.ChatTaskPersistenceConvert;
 import com.noah.superagent.dao.entity.ChatTaskEntity;
-import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.dao.mapper.ChatTaskMapper;
 import com.noah.superagent.model.ChatTaskDTO;
 import com.noah.superagent.service.ChatTaskService;
@@ -17,8 +19,10 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.noah.superagent.dao.entity.table.ChatTaskEntityTableDef.CHAT_TASK_ENTITY;
+
 /**
- * 对话任务服务实现
+ * 对话任务服务实现类
  *
  * @author 任相鹏
  * @since 1.0.0
@@ -34,14 +38,22 @@ public class ChatTaskServiceImpl implements ChatTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ChatTaskDTO createChatTask(ChatTaskDTO chatTaskDO) {
-        log.info("开始创建对话任务，标题: {}", chatTaskDO.getTitle());
+        log.info("创建对话任务: {}", chatTaskDO.getTitle());
         
         // DTO -> Entity
         ChatTaskEntity chatTaskEntity = chatTaskPersistenceConvert.toEntity(chatTaskDO);
-        // ID由MyBatis Flex的雪花算法自动生成
         
-        // 保存对话任务
-        int result = chatTaskMapper.insertSelective(chatTaskEntity);
+        // 设置默认值
+        if (chatTaskEntity.getStatus() == null) {
+            chatTaskEntity.setStatus(ChatTaskStatusEnum.IN_PROGRESS);
+        }
+        
+        if (chatTaskEntity.getIsFavorite() == null) {
+            chatTaskEntity.setIsFavorite(FavoriteEnum.NOT_FAVORITE);
+        }
+        
+        // 执行插入
+        int result = chatTaskMapper.insert(chatTaskEntity);
         if (result <= 0) {
             throw new RuntimeException("对话任务创建失败");
         }
@@ -53,11 +65,12 @@ public class ChatTaskServiceImpl implements ChatTaskService {
 
     @Override
     public ChatTaskDTO getChatTaskById(Long id) {
-        log.info("查询对话任务信息，ID: {}", id);
+        log.info("根据ID查询对话任务: {}", id);
         
+        // 查询对话任务
         ChatTaskEntity chatTaskEntity = chatTaskMapper.selectOneById(id);
         if (chatTaskEntity == null) {
-            throw new RuntimeException("对话任务不存在: " + id);
+            return null;
         }
         
         // Entity -> DTO
@@ -139,7 +152,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         
         log.info("对话任务删除成功，ID: {}", id);
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void favoriteChatTask(Long id) {
@@ -160,7 +173,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         
         log.info("对话任务收藏成功，ID: {}", id);
     }
-    
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void unfavoriteChatTask(Long id) {

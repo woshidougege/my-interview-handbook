@@ -4,6 +4,7 @@ import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import com.noah.superagent.scheduler.job.CreditExpiryCleanupJob;
 import com.noah.superagent.scheduler.job.DailyCreditBonusJob;
 import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
+import com.noah.superagent.scheduler.job.ScheduledChatTaskJob;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -40,5 +41,13 @@ public class SchedulerTaskConfig {
     @Bean
     public RecurringTask<Void> paymentStatusSyncTask(PaymentStatusSyncJob paymentStatusSyncJob) {
         return paymentStatusSyncJob.getTask();
+    }
+    
+    /**
+     * 注册定时对话任务
+     */
+    @Bean
+    public RecurringTask<Void> scheduledChatTask(ScheduledChatTaskJob scheduledChatTaskJob) {
+        return scheduledChatTaskJob.getTask();
     }
 }

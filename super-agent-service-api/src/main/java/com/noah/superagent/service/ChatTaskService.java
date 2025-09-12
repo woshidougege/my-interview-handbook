@@ -28,6 +28,7 @@ public interface ChatTaskService {
      */
     ChatTaskDTO getChatTaskById(Long id);
 
+
     /**
      * 分页查询对话任务
      *
