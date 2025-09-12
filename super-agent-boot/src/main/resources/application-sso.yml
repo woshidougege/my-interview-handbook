@@ -45,7 +45,7 @@ sa-token:
   # 是否打印启动成功标志
   is-print: true
   # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录) =-1
-  isConcurrent: false
+  isConcurrent: true
   # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
   isShare: false
   # 是否使用redis存储信息，默认false使用内存来存储信息，true使用spring redis存储信息（请配置spring redis），若配置下述alone-redis，则使用下述alone-redis存储信息（不必再配置spring redis）。
