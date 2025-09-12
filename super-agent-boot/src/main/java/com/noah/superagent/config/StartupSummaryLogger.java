@@ -125,6 +125,7 @@ public class StartupSummaryLogger implements ApplicationListener<ApplicationRead
         }
         sb.append(String.format("%s• Local          %s: %s%s%n", C_LABEL, C_RESET, C_VALUE + localBase, C_RESET));
         sb.append(String.format("%s• Network        %s: %s%s%n", C_LABEL, C_RESET, C_VALUE + netBase, C_RESET));
+        // DB-Scheduler UI 已禁用（需要JDK17+和Spring Boot 3.3+）
 
         // Condensed endpoints (only when URLS is on), with explanations
         if (isOn(env.getProperty("URLS", "false"))) {

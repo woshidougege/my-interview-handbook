@@ -32,3 +32,19 @@ db-scheduler:
   # 日志配置
   failure-logger-level: WARN
   failure-logger-log-stack-trace: true
+
+# DB Scheduler UI 配置
+# 注释掉：db-scheduler-ui 需要JDK17+和Spring Boot 3.3+，不兼容当前环境
+# db-scheduler-ui:
+#   history: true
+#   log-limit: 1000
+#   task-data: true
+#   read-only: false
+
+# DB Scheduler Log 配置
+db-scheduler-log:
+  # 启用日志记录
+  enabled: true
+  
+  # 使用以t开头的表名（符合项目表命名规范）
+  table-name: t_scheduled_execution_logs

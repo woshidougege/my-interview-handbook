@@ -28,6 +28,26 @@
             <artifactId>super-agent-scheduler</artifactId>
         </dependency>
 
+        <!-- DB Scheduler UI - Web管理界面 
+             注释掉：需要JDK17+和Spring Boot 3.3+，不兼容当前环境
+        <dependency>
+            <groupId>no.bekk.db-scheduler-ui</groupId>
+            <artifactId>db-scheduler-ui-starter</artifactId>
+        </dependency>
+        -->
+
+        <!-- DB Scheduler Log - 历史任务记录 -->
+        <dependency>
+            <groupId>io.rocketbase.extension</groupId>
+            <artifactId>db-scheduler-log-spring-boot-starter</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>db-scheduler</artifactId>
+                    <groupId>com.github.kagkarlsson</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
 
         <!-- OAuth2 SSO - 暂时禁用，后续开发SSO功能时启用 -->
         <!--
