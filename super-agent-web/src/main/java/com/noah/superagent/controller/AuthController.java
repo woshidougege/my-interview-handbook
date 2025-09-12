@@ -1,16 +1,13 @@
 package com.noah.superagent.controller;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.noah.superagent.common.dto.request.PasswordLoginRequest;
 import com.noah.superagent.common.dto.request.PhoneLoginRequest;
 import com.noah.superagent.common.dto.request.RegisterRequest;
 import com.noah.superagent.common.dto.request.ResetPasswordRequest;
 import com.noah.superagent.common.dto.response.UserResponse;
 import com.noah.superagent.convert.UserWebConvert;
-import com.noah.superagent.dao.entity.UserEntity;
 import com.noah.superagent.model.UserDTO;
 import com.noah.superagent.response.ApiResponse;
-import com.noah.superagent.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -33,9 +31,7 @@ import cn.hutool.core.util.URLUtil;
 import cn.hutool.core.lang.Validator;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 认证相关控制器 - 方舟认证系统对接
@@ -51,7 +47,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class AuthController {
 
     private final UserWebConvert userWebConvert;
-    private final UserService userService;
     private final RestTemplate restTemplate;
 
     @Value("${sso.server.url:http://192.168.1.65:10000/sso-server}")
@@ -60,6 +55,8 @@ public class AuthController {
     @Value("${sso.servicecode:super_agent}")
     private String serviceCode;
 
+    @Value("${sso.sm2-key:}")
+    private String sm2Key;
     /**
      * 创建 ParameterizedTypeReference 用于 Map<String, Object>
      */
@@ -161,6 +158,7 @@ public class AuthController {
         }
     }
 
+    @NotNull
     private ApiResponse<Map<String, String>> getMapApiResponse(String url, Map<String, String> requestBody) {
         HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
         ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -335,12 +333,11 @@ public class AuthController {
         try {
             // 这里需要实现从SSO Token中获取用户信息的逻辑
             // 暂时返回模拟数据
-            List<UserEntity> list = userService.list();
-
-            //TODO 开发中，暂时随机返回数据
-            int nextInt = ThreadLocalRandom.current().nextInt(0, list.size());
-            UserEntity userEntity = list.get(nextInt);
-            UserDTO userDTO = BeanUtil.copyProperties(userEntity, UserDTO.class);
+            UserDTO userDTO = new UserDTO();
+            userDTO.setId(1001L);
+            userDTO.setUsername("演示用户");
+            userDTO.setPhone("13800138000");
+            
             UserResponse response = userWebConvert.toResponse(userDTO);
             return ApiResponse.success("获取当前用户信息成功", response);
             
@@ -363,6 +360,13 @@ public class AuthController {
         log.info("获取公钥信息请求，serviceCode: {}", serviceCode);
         
         try {
+            // 如果配置文件中sm2-key不为空，则直接返回配置的值
+            if (StrUtil.isNotBlank(sm2Key)) {
+                Map<String, Object> data = new HashMap<>();
+                data.put("publicKey", sm2Key);
+                return ApiResponse.success("获取公钥成功", data);
+            }
+            
             String url = ssoServerUrl + "/getSysClientInfo";
             
             // 使用POST请求，将serviceCode作为表单参数
@@ -428,7 +432,7 @@ public class AuthController {
 
         } catch (Exception e) {
             log.error("找回密码失败: {}", e.getMessage(), e);
-            return ApiResponse.error("密码重置失败: " + e.getMessage());
+            return ApiResponse.error(e.getMessage());
         }
     }
 }
