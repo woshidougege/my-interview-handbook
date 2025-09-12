@@ -145,6 +145,25 @@ export const paymentApi = {
     return api.post(`/payment/cancel/${orderNo}`);
   },
   
+  // 获取用户订单列表
+  getUserOrders: (userId: number): Promise<AxiosResponse<ApiResponse<any[]>>> => {
+    return api.get(`/payment/orders/${userId}`);
+  },
+  
+  // 申请退款
+  applyRefund: (refundData: {
+    orderNo: string;
+    refundAmount: number;
+    refundReason?: string;
+  }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post('/payment/refund', refundData);
+  },
+  
+  // 查询退款状态
+  queryRefundStatus: (orderNo: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get(`/payment/refund/status/${orderNo}`);
+  },
+  
 };
 
 export default api;

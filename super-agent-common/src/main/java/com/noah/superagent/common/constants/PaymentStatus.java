@@ -38,7 +38,32 @@ public enum PaymentStatus {
     /**
      * 待支付（旧状态，兼容性保留）
      */
-    PENDING("pending", "等待支付");
+    PENDING("pending", "等待支付"),
+    
+    /**
+     * 退款处理中
+     */
+    REFUND_PROCESSING("refund_processing", "退款处理中"),
+    
+    /**
+     * 退款成功
+     */
+    REFUND_SUCCESS("refund_success", "退款成功"),
+    
+    /**
+     * 退款失败
+     */
+    REFUND_FAIL("refund_fail", "退款失败"),
+    
+    /**
+     * 退款关闭
+     */
+    REFUND_CLOSED("refund_closed", "退款关闭"),
+    
+    /**
+     * 退款异常
+     */
+    REFUND_ABNORMAL("refund_abnormal", "退款异常");
     
     private final String value;
     private final String description;
@@ -80,14 +105,31 @@ public enum PaymentStatus {
      * 判断是否为终态
      */
     public boolean isFinalStatus() {
-        return this == PAID || this == FAILED || this == EXPIRED || this == CANCELLED;
+        return this == PAID || this == FAILED || this == EXPIRED || this == CANCELLED 
+            || this == REFUND_SUCCESS || this == REFUND_FAIL || this == REFUND_CLOSED || this == REFUND_ABNORMAL;
     }
     
     /**
      * 判断是否为进行中状态
      */
     public boolean isProcessingStatus() {
-        return this == WAITING || this == PENDING;
+        return this == WAITING || this == PENDING || this == REFUND_PROCESSING;
+    }
+    
+    /**
+     * 判断是否为退款相关状态
+     */
+    public boolean isRefundStatus() {
+        return this == REFUND_PROCESSING || this == REFUND_SUCCESS || this == REFUND_FAIL 
+            || this == REFUND_CLOSED || this == REFUND_ABNORMAL;
+    }
+    
+    /**
+     * 静态方法：判断是否为退款相关状态
+     */
+    public static boolean isRefundStatus(String value) {
+        PaymentStatus status = fromValue(value);
+        return status != null && status.isRefundStatus();
     }
     
     /**

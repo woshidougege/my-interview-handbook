@@ -15,6 +15,19 @@ export const formatDate = (
 };
 
 /**
+ * 格式化日期时间（别名方法）
+ * @param date 日期字符串或Date对象
+ * @param format 格式化模板，默认为 'YYYY-MM-DD HH:mm:ss'
+ * @returns 格式化后的日期字符串
+ */
+export const formatDateTime = (
+  date: string | Date | undefined | null, 
+  format: string = 'YYYY-MM-DD HH:mm:ss'
+): string => {
+  return formatDate(date, format);
+};
+
+/**
  * 格式化数字，添加千分位分隔符
  * @param num 数字
  * @param precision 小数位数，默认为0
@@ -134,4 +147,17 @@ export const formatRelativeTime = (date: string | Date | undefined | null): stri
   if (diffInDays < 7) return `${diffInDays}天前`;
   
   return formatDate(date, 'YYYY-MM-DD');
+};
+
+// 默认导出包含所有格式化方法的对象
+export default {
+  formatDate,
+  formatDateTime,
+  formatNumber,
+  formatCurrency,
+  formatFileSize,
+  formatPercentage,
+  formatPhone,
+  formatEmail,
+  formatRelativeTime,
 };

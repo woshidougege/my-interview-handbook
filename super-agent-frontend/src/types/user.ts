@@ -74,3 +74,60 @@ export interface PageResponse<T = any> {
   size: number;
   pages: number;
 }
+
+// 支付状态类型定义
+export type PaymentStatusType = 
+  | 'waiting' 
+  | 'pending' 
+  | 'paid' 
+  | 'failed' 
+  | 'cancelled' 
+  | 'expired'
+  | 'refund_processing'
+  | 'refund_success'
+  | 'refund_fail'
+  | 'refund_closed'
+  | 'refund_abnormal';
+
+// 订单记录类型定义
+export interface OrderRecord {
+  orderNo: string;
+  status: PaymentStatusType;
+  amount: number;
+  paymentMethod: string;
+  createdAt: string;
+  expiredAt: string;
+  message: string;
+}
+
+// 退款请求类型定义
+export interface RefundRequest {
+  orderNo: string;
+  refundAmount: number;
+  refundReason?: string;
+}
+
+// 退款响应类型定义
+export interface RefundResponse {
+  orderNo: string;
+  refundNo: string;
+  refundId?: string;
+  refundStatus: string;
+  refundAmount: number;
+  totalAmount: number;
+  refundReason?: string;
+  refundTime?: string;
+  successTime?: string;
+  message: string;
+}
+
+// 支付状态事件类型定义
+export interface PaymentStatusEvent {
+  orderNo: string;
+  status: PaymentStatusType;
+  amount?: number;
+  paymentMethod?: string;
+  message: string;
+  eventTime: string;
+  extra?: any;
+}

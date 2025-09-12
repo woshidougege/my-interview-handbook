@@ -2,6 +2,8 @@ package com.noah.superagent.controller;
 
 import com.noah.superagent.common.dto.request.CreateOrderRequest;
 import com.noah.superagent.common.dto.response.PaymentResponse;
+import com.noah.superagent.common.dto.RefundRequest;
+import com.noah.superagent.common.dto.RefundResponse;
 import com.noah.superagent.common.dto.PaymentStatusEvent;
 import com.noah.superagent.common.constants.PaymentStatus;
 import com.noah.superagent.response.ApiResponse;
@@ -21,7 +23,9 @@ import javax.servlet.http.HttpServletRequest;
 import com.github.binarywang.wxpay.bean.notify.SignatureHeader;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -56,6 +60,19 @@ public class PaymentController {
         
         PaymentResponse response = paymentService.queryPaymentStatus(orderNo);
         return ApiResponse.success("查询成功", response);
+    }
+
+    @Operation(summary = "获取用户订单列表", description = "获取指定用户的所有订单")
+    @GetMapping("/orders/{userId}")
+    public ApiResponse<List<PaymentResponse>> getUserOrders(
+            @Parameter(description = "用户ID") @PathVariable @NotNull Long userId) {
+        try {
+            List<PaymentResponse> orders = paymentService.getUserOrders(userId);
+            return ApiResponse.success("查询成功", orders);
+        } catch (Exception e) {
+            log.error("查询用户订单列表失败: userId={}, error={}", userId, e.getMessage(), e);
+            return ApiResponse.error("查询订单列表失败: " + e.getMessage());
+        }
     }
 
     @Operation(summary = "微信支付V3回调", description = "微信支付V3异步通知回调")
@@ -96,41 +113,6 @@ public class PaymentController {
         }
     }
     
-    /**
-     * 测试回调接口 - 用于验证外网是否能访问到
-     */
-    @Operation(summary = "测试回调接口", description = "测试外网是否能访问到回调接口")
-    @PostMapping("/test/callback")
-    public String testCallback(@RequestBody(required = false) String body, HttpServletRequest request) {
-        log.info("===== 测试回调接口被调用 =====");
-        log.info("请求URI: {}", request.getRequestURI());
-        log.info("请求方法: {}", request.getMethod());
-        log.info("来源IP: {}", getClientIpAddress(request));
-        log.info("Content-Type: {}", request.getContentType());
-        log.info("User-Agent: {}", request.getHeader("User-Agent"));
-        log.info("请求体: {}", body);
-        
-        // 打印所有请求头
-        log.info("----- 所有请求头 -----");
-        request.getHeaderNames().asIterator().forEachRemaining(headerName -> {
-            log.info("{}: {}", headerName, request.getHeader(headerName));
-        });
-        log.info("=====================");
-        
-        return "TEST_SUCCESS";
-    }
-    
-    /**
-     * 获取客户端真实IP地址
-     */
-    private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
-        if (xForwardedForHeader == null) {
-            return request.getRemoteAddr();
-        } else {
-            return xForwardedForHeader.split(",")[0];
-        }
-    }
 
     @Operation(summary = "取消订单", description = "取消未支付的订单")
     @PostMapping("/cancel/{orderNo}")
@@ -228,39 +210,67 @@ public class PaymentController {
         ));
     }
     
-    @Operation(summary = "测试SSE推送", description = "手动测试SSE事件推送")
-    @PostMapping("/test/sse/{orderNo}")
-    public ApiResponse<String> testSsePush(
+    
+    @Operation(summary = "申请退款", description = "对已支付的订单申请退款")
+    @PostMapping("/refund")
+    public ApiResponse<RefundResponse> applyRefund(@RequestBody @Valid RefundRequest request) {
+        try {
+            RefundResponse response = paymentService.applyRefund(request);
+            return ApiResponse.success("退款申请提交成功", response);
+        } catch (Exception e) {
+            log.error("申请退款失败: orderNo={}, error={}", request.getOrderNo(), e.getMessage(), e);
+            return ApiResponse.error("退款申请失败: " + e.getMessage());
+        }
+    }
+    
+    @Operation(summary = "查询退款状态", description = "查询订单的退款状态")
+    @GetMapping("/refund/status/{orderNo}")
+    public ApiResponse<RefundResponse> queryRefundStatus(
             @Parameter(description = "订单号") @PathVariable @NotBlank String orderNo) {
         try {
-            log.info("手动测试SSE推送: orderNo={}", orderNo);
+            RefundResponse response = paymentService.queryRefundStatus(orderNo);
+            return ApiResponse.success("查询成功", response);
+        } catch (Exception e) {
+            log.error("查询退款状态失败: orderNo={}, error={}", orderNo, e.getMessage(), e);
+            return ApiResponse.error("查询退款状态失败: " + e.getMessage());
+        }
+    }
+    
+    @Operation(summary = "微信退款回调", description = "微信支付V3退款异步通知回调")
+    @PostMapping("/wechat/refund/notify")
+    public String wechatRefundNotify(@RequestBody String notifyData, HttpServletRequest request) {
+        try {
+            // 获取微信V3签名验证所需的请求头
+            String signature = request.getHeader("Wechatpay-Signature");
+            String timestamp = request.getHeader("Wechatpay-Timestamp");
+            String nonce = request.getHeader("Wechatpay-Nonce");
+            String serial = request.getHeader("Wechatpay-Serial");
             
-            // 查询订单状态
-            PaymentResponse currentStatus = paymentService.queryPaymentStatus(orderNo);
-            log.info("查询到订单状态: orderNo={}, status={}", orderNo, 
-                currentStatus != null ? currentStatus.getStatus() : "null");
+            // 验证必要的头信息
+            if (signature == null || timestamp == null || nonce == null || serial == null) {
+                log.error("微信退款回调缺少必要的签名头信息");
+                return "FAIL";
+            }
             
-            if (currentStatus != null) {
-                // 构造测试事件
-                PaymentStatusEvent testEvent = PaymentStatusEvent.builder()
-                        .orderNo(orderNo)
-                        .status(currentStatus.getStatus())
-                        .amount(currentStatus.getAmount())
-                        .paymentMethod(currentStatus.getPaymentMethod())
-                        .message("手动测试推送 - " + PaymentStatus.getStatusDescription(currentStatus.getStatus()))
-                        .eventTime(LocalDateTime.now())
-                        .build();
-                
-                // 手动推送事件
-                paymentSseManager.sendPaymentStatusEvent(orderNo, testEvent);
-                
-                return ApiResponse.success("SSE推送测试完成: " + currentStatus.getStatus());
+            // 构造签名头对象
+            SignatureHeader header = new SignatureHeader();
+            header.setTimeStamp(timestamp);
+            header.setNonce(nonce);
+            header.setSerial(serial);
+            header.setSignature(signature);
+            
+            // 处理微信退款回调
+            boolean success = paymentService.handleWechatRefundCallback(notifyData, header);
+            
+            if (success) {
+                return "SUCCESS";
             } else {
-                return ApiResponse.success("订单不存在或状态为空");
+                log.error("微信退款回调处理失败");
+                return "FAIL";
             }
         } catch (Exception e) {
-            log.error("SSE推送测试失败: orderNo={}, error={}", orderNo, e.getMessage(), e);
-            return ApiResponse.error("测试失败: " + e.getMessage());
+            log.error("微信退款回调处理异常: {}", e.getMessage(), e);
+            return "FAIL";
         }
     }
 }

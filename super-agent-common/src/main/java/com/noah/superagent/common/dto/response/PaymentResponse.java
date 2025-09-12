@@ -41,5 +41,8 @@ public class PaymentResponse {
     private LocalDateTime expiredAt;
 
     @Schema(description = "创建时间")
-    private LocalDateTime createdTime;
+    private LocalDateTime createdAt;
+    
+    @Schema(description = "响应消息")
+    private String message;
 }

@@ -3,6 +3,8 @@ package com.noah.superagent.service.impl;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.noah.superagent.common.dto.request.CreateOrderRequest;
 import com.noah.superagent.common.dto.response.PaymentResponse;
+import com.noah.superagent.common.dto.RefundRequest;
+import com.noah.superagent.common.dto.RefundResponse;
 import com.noah.superagent.common.dto.PaymentStatusEvent;
 import com.noah.superagent.common.constants.PaymentStatus;
 import org.springframework.context.ApplicationEventPublisher;
@@ -23,7 +25,10 @@ import com.github.binarywang.wxpay.bean.result.enums.TradeTypeEnum;
 import com.github.binarywang.wxpay.bean.result.WxPayOrderQueryV3Result;
 import com.github.binarywang.wxpay.bean.notify.WxPayNotifyV3Result;
 import com.github.binarywang.wxpay.bean.notify.WxPayNotifyV3Result.DecryptNotifyResult;
+import com.github.binarywang.wxpay.bean.notify.WxPayRefundNotifyV3Result;
 import com.github.binarywang.wxpay.bean.notify.SignatureHeader;
+import com.github.binarywang.wxpay.bean.request.WxPayRefundV3Request;
+import com.github.binarywang.wxpay.bean.result.WxPayRefundV3Result;
 import com.github.binarywang.wxpay.exception.WxPayException;
 import com.github.binarywang.wxpay.service.WxPayService;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +38,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -99,7 +107,7 @@ public class PaymentServiceImpl implements PaymentService {
             response.setPaymentMethod("wechat");
             response.setStatus(PaymentStatus.WAITING.getValue());
             response.setExpiredAt(order.getExpiredAt());
-            response.setCreatedTime(order.getCreateTime());
+            response.setCreatedAt(order.getCreateTime());
 
             return response;
 
@@ -136,7 +144,7 @@ public class PaymentServiceImpl implements PaymentService {
         response.setPaymentMethod(order.getPaymentMethod());
         response.setStatus(order.getStatus());
         response.setExpiredAt(order.getExpiredAt());
-        response.setCreatedTime(order.getCreateTime());
+        response.setCreatedAt(order.getCreateTime());
 
         return response;
     }
@@ -471,6 +479,232 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (Exception e) {
             log.error("激活订阅失败", e);
             throw e;
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public RefundResponse applyRefund(RefundRequest request) {
+        try {
+            // 1. 查询订单
+            SubscriptionOrderEntity order = findOrderByOrderNo(request.getOrderNo());
+            if (order == null) {
+                throw new RuntimeException("订单不存在: " + request.getOrderNo());
+            }
+            
+            // 2. 检查订单状态是否可以退款
+            if (!PaymentStatus.PAID.getValue().equals(order.getStatus())) {
+                throw new RuntimeException("订单状态不允许退款: " + order.getStatus());
+            }
+            
+            // 3. 检查退款金额
+            if (request.getRefundAmount().compareTo(order.getAmount()) > 0) {
+                throw new RuntimeException("退款金额不能超过订单金额");
+            }
+            
+            // 4. 生成退款单号
+            String refundNo = "REFUND_" + System.currentTimeMillis() + "_" + 
+                             Integer.toHexString((int)(Math.random() * 0x1000000)).toUpperCase();
+            
+            // 5. 调用微信退款API
+            WxPayRefundV3Request wxRefundRequest = buildWxRefundRequest(order, request, refundNo);
+            WxPayRefundV3Result wxRefundResult = wxPayService.refundV3(wxRefundRequest);
+            
+            // 6. 更新订单状态
+            order.setStatus(PaymentStatus.REFUND_PROCESSING.getValue());
+            subscriptionOrderMapper.update(order);
+            
+            // 7. 发布退款状态事件
+            sendPaymentStatusEvent(order.getOrderNo(), PaymentStatus.REFUND_PROCESSING.getValue(), 
+                                 request.getRefundAmount(), "wechat", "退款处理中");
+            
+            // 8. 构建响应
+            RefundResponse response = new RefundResponse();
+            response.setOrderNo(order.getOrderNo());
+            response.setRefundNo(refundNo);
+            response.setRefundId(wxRefundResult.getRefundId());
+            response.setRefundStatus(PaymentStatus.REFUND_PROCESSING.getValue());
+            response.setRefundAmount(request.getRefundAmount());
+            response.setTotalAmount(order.getAmount());
+            response.setRefundReason(request.getRefundReason());
+            response.setRefundTime(LocalDateTime.now());
+            response.setMessage("退款申请提交成功");
+            return response;
+                    
+        } catch (WxPayException e) {
+            log.error("微信退款API调用失败: orderNo={}, error={}", request.getOrderNo(), e.getMessage(), e);
+            throw new RuntimeException("退款申请失败: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("申请退款异常: orderNo={}", request.getOrderNo(), e);
+            throw new RuntimeException("退款申请失败: " + e.getMessage());
+        }
+    }
+    
+    @Override
+    public RefundResponse queryRefundStatus(String orderNo) {
+        try {
+            // 1. 查询订单
+            SubscriptionOrderEntity order = findOrderByOrderNo(orderNo);
+            if (order == null) {
+                throw new RuntimeException("订单不存在: " + orderNo);
+            }
+            
+            // 2. 如果不是退款状态，直接返回
+            if (!PaymentStatus.isRefundStatus(order.getStatus())) {
+                RefundResponse response = new RefundResponse();
+                response.setOrderNo(orderNo);
+                response.setRefundStatus(order.getStatus());
+                response.setMessage("该订单无退款记录");
+                return response;
+            }
+            
+            // 3. 查询微信退款状态 - 需要使用退款单号而不是订单号
+            // 这里先暂时返回基本信息，实际应该存储退款单号用于查询
+            
+            // 4. 构建响应
+            RefundResponse response = new RefundResponse();
+            response.setOrderNo(orderNo);
+            response.setRefundNo("REFUND_" + orderNo);
+            response.setRefundStatus(order.getStatus());
+            response.setRefundAmount(order.getAmount());
+            response.setTotalAmount(order.getAmount());
+            response.setMessage("退款状态查询成功");
+            
+            return response;
+                    
+        } catch (Exception e) {
+            log.error("查询退款状态异常: orderNo={}", orderNo, e);
+            throw new RuntimeException("查询退款状态失败: " + e.getMessage());
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean handleWechatRefundCallback(String callbackData, SignatureHeader header) {
+        try {
+            if (callbackData == null || callbackData.trim().isEmpty()) {
+                log.error("微信退款回调数据为空");
+                return false;
+            }
+            
+            // 使用微信支付SDK解密V3退款回调数据
+            WxPayRefundNotifyV3Result notifyResult = wxPayService.parseRefundNotifyV3Result(callbackData, header);
+            
+            if (notifyResult == null || notifyResult.getResult() == null) {
+                log.error("解密微信退款V3回调数据失败");
+                return false;
+            }
+            
+            WxPayRefundNotifyV3Result.DecryptNotifyResult result = notifyResult.getResult();
+            String orderNo = result.getOutTradeNo();
+            String refundStatus = result.getRefundStatus();
+            
+            // 更新订单退款状态
+            SubscriptionOrderEntity order = findOrderByOrderNo(orderNo);
+            if (order != null) {
+                String localStatus = mapWechatRefundStatusToLocal(refundStatus);
+                order.setStatus(localStatus);
+                subscriptionOrderMapper.update(order);
+                
+                // 发布退款状态变更事件
+                // 将微信返回的分转换为元（BigDecimal）
+                BigDecimal refundAmount = new BigDecimal(result.getAmount().getRefund()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+                sendPaymentStatusEvent(orderNo, localStatus, refundAmount, 
+                                     "wechat", PaymentStatus.getStatusDescription(localStatus));
+            }
+            
+            return true;
+            
+        } catch (WxPayException e) {
+            log.error("微信退款SDK解析回调数据失败: {}", e.getMessage(), e);
+            return false;
+        } catch (Exception e) {
+            log.error("处理微信退款回调异常: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * 构建微信退款请求
+     */
+    private WxPayRefundV3Request buildWxRefundRequest(SubscriptionOrderEntity order, 
+                                                     RefundRequest request, String refundNo) {
+        WxPayRefundV3Request wxRequest = new WxPayRefundV3Request();
+        wxRequest.setOutTradeNo(order.getOrderNo());
+        wxRequest.setOutRefundNo(refundNo);
+        wxRequest.setReason(request.getRefundReason() != null ? request.getRefundReason() : "用户申请退款");
+        wxRequest.setNotifyUrl(request.getNotifyUrl());
+        
+        // 设置金额信息
+        WxPayRefundV3Request.Amount amount = new WxPayRefundV3Request.Amount();
+        amount.setRefund(request.getRefundAmount().multiply(new BigDecimal("100")).intValue()); // 转为分
+        amount.setTotal(order.getAmount().multiply(new BigDecimal("100")).intValue()); // 转为分
+        amount.setCurrency("CNY");
+        wxRequest.setAmount(amount);
+        
+        return wxRequest;
+    }
+    
+    /**
+     * 映射微信退款状态到本地状态
+     */
+    private String mapWechatRefundStatusToLocal(String wechatStatus) {
+        if (wechatStatus == null) {
+            return PaymentStatus.REFUND_FAIL.getValue();
+        }
+        
+        switch (wechatStatus) {
+            case "SUCCESS":
+                return PaymentStatus.REFUND_SUCCESS.getValue();
+            case "REFUNDCLOSE":
+                return PaymentStatus.REFUND_CLOSED.getValue();
+            case "PROCESSING":
+                return PaymentStatus.REFUND_PROCESSING.getValue();
+            case "ABNORMAL":
+                return PaymentStatus.REFUND_ABNORMAL.getValue();
+            default:
+                log.warn("未知的微信退款状态: {}", wechatStatus);
+                return PaymentStatus.REFUND_FAIL.getValue();
+        }
+    }
+    
+    /**
+     * 根据订单号查找订单
+     */
+    private SubscriptionOrderEntity findOrderByOrderNo(String orderNo) {
+        QueryWrapper wrapper = QueryWrapper.create()
+                .where(SubscriptionOrderEntity::getOrderNo).eq(orderNo);
+        return subscriptionOrderMapper.selectOneByQuery(wrapper);
+    }
+    
+    @Override
+    public List<PaymentResponse> getUserOrders(Long userId) {
+        try {
+            // 查询用户的所有订单
+            QueryWrapper wrapper = QueryWrapper.create()
+                    .where(SubscriptionOrderEntity::getUserId).eq(userId)
+                    .orderBy(SubscriptionOrderEntity::getCreateTime, false); // 按创建时间降序
+            
+            List<SubscriptionOrderEntity> orders = subscriptionOrderMapper.selectListByQuery(wrapper);
+            
+            List<PaymentResponse> responses = new ArrayList<>();
+            for (SubscriptionOrderEntity order : orders) {
+                PaymentResponse response = new PaymentResponse();
+                response.setOrderNo(order.getOrderNo());
+                response.setStatus(order.getStatus());
+                response.setAmount(order.getAmount());
+                response.setPaymentMethod("wechat");
+                response.setCreatedAt(order.getCreateTime());
+                response.setExpiredAt(order.getExpiredAt());
+                response.setMessage(PaymentStatus.getStatusDescription(order.getStatus()));
+                responses.add(response);
+            }
+            
+            return responses;
+            
+        } catch (Exception e) {
+            log.error("查询用户订单列表失败: userId={}", userId, e);
+            throw new RuntimeException("查询订单列表失败: " + e.getMessage());
         }
     }
 }
