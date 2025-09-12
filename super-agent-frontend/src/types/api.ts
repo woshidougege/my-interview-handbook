@@ -90,6 +90,7 @@ export interface WorkspaceInfo {
 }
 
 export interface WorkspaceCreateRequest {
+  userId: string;
   name: string;
   description?: string;
 }
@@ -111,6 +112,7 @@ export interface ChatTaskInfo {
 }
 
 export interface ChatTaskCreateRequest {
+  workspaceId: string;
   title: string;
   description?: string;
 }

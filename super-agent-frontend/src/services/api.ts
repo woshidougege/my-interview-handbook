@@ -363,6 +363,7 @@ export const chatTaskApi = {
 
   // 向后兼容的API
   createChatTask: (workspaceId: string, data: {
+    workspaceId: string;
     title: string;
     description?: string;
   }): Promise<AxiosResponse<ApiResponse<any>>> => {

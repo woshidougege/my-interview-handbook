@@ -25,7 +25,7 @@ import {
   MessageOutlined
 } from '@ant-design/icons';
 import AppLayout from '@/components/Layout/AppLayout';
-import { aiApi, chatTaskApi, workspaceApi } from '@/services/api';
+import { aiApi, chatTaskApi, workspaceApi, userApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
 
 const { Sider, Content } = Layout;
@@ -43,6 +43,7 @@ const ChatPage: React.FC = () => {
   const [editingSession, setEditingSession] = useState<ChatTask | null>(null);
   const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string; description?: string } | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [generatingTitleForSession, setGeneratingTitleForSession] = useState<string | null>(null);
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -126,8 +127,13 @@ const ChatPage: React.FC = () => {
         setCurrentWorkspace(workspace);
         return workspace;
       } else {
+        // 获取当前用户信息
+        const userResponse = await userApi.getCurrentUser();
+        const currentUser = userResponse.data.data;
+        
         // 创建新的工作空间
         const createResponse = await workspaceApi.createWorkspace({
+          userId: currentUser.id,
           name: '我的工作空间',
           description: 'Super Agent 默认工作空间'
         });
@@ -145,23 +151,18 @@ const ChatPage: React.FC = () => {
 
   // 创建新会话
   const createNewSession = async (firstQuestion: string, workspace: { id: string; name: string; description?: string }) => {
-    setTitleGenerating(true);
     try {
-      // 先生成标题
-      const titleResponse = await aiApi.generateChatTitle(workspace.id, {
-        question: firstQuestion,
-        async: false
-      });
-      
-      const generatedTitle = titleResponse.data.data.title;
-      
-      // 创建会话任务
+      // 先用默认标题创建会话任务，立即显示
+      const defaultTitle = `新对话 - ${new Date().toLocaleTimeString()}`;
       const sessionResponse = await chatTaskApi.createChatTask(workspace.id, {
-        title: generatedTitle,
+        workspaceId: workspace.id,
+        title: defaultTitle,
         description: `会话开始于: ${firstQuestion.substring(0, 50)}...`
       });
       
       const newSession = sessionResponse.data.data;
+      
+      // 立即更新UI显示新会话
       setSessions(prev => [newSession, ...prev]);
       
       // 设置当前会话
@@ -177,13 +178,54 @@ const ChatPage: React.FC = () => {
       setCurrentSession(chatSession);
       setMessages([]);
       
+      // 异步生成真实标题并更新
+      generateAndUpdateTitle(workspace.id, newSession.id, firstQuestion);
+      
       return chatSession;
     } catch (err) {
       console.error('创建会话失败:', err);
       message.error('创建会话失败');
       throw err;
+    }
+  };
+
+  // 异步生成并更新标题
+  const generateAndUpdateTitle = async (workspaceId: string, sessionId: string, question: string) => {
+    try {
+      setTitleGenerating(true);
+      setGeneratingTitleForSession(sessionId);
+      
+      // 生成标题
+      const titleResponse = await aiApi.generateChatTitle(workspaceId, {
+        question: question,
+        async: false
+      });
+      
+      const generatedTitle = titleResponse.data.data.title;
+      
+      // 更新会话标题
+      await chatTaskApi.updateChatTask(workspaceId, sessionId, {
+        title: generatedTitle
+      });
+      
+      // 更新UI中的标题
+      setSessions(prev => prev.map(s => 
+        s.id === sessionId ? { ...s, title: generatedTitle } : s
+      ));
+      
+      // 如果是当前会话，也更新当前会话的标题
+      setCurrentSession(prev => 
+        prev && prev.id === sessionId 
+          ? { ...prev, title: generatedTitle }
+          : prev
+      );
+      
+    } catch (err) {
+      console.error('生成标题失败:', err);
+      // 标题生成失败不影响正常对话，只是用默认标题
     } finally {
       setTitleGenerating(false);
+      setGeneratingTitleForSession(null);
     }
   };
 
@@ -370,11 +412,17 @@ const ChatPage: React.FC = () => {
                 icon={<PlusOutlined />} 
                 block 
                 size="large"
-                onClick={() => message.info('请在输入框中输入问题开始新的对话')}
-                  loading={titleGenerating}
-                >
-                  新建对话
-                </Button>
+                onClick={() => {
+                  // 重置会话状态，回到大输入框界面
+                  setCurrentSession(null);
+                  setMessages([]);
+                  setInputValue('');
+                  message.success('已创建新对话，请在下方输入框中开始对话');
+                }}
+                loading={titleGenerating}
+              >
+                新建对话
+              </Button>
             </div>
             
             <div style={{ padding: '0 16px 16px' }}>
@@ -437,17 +485,30 @@ const ChatPage: React.FC = () => {
                                 autoFocus
                               />
                             ) : (
-                              <Text 
-                                strong 
-                                style={{ 
-                                  fontSize: '14px',
-                                  lineHeight: '20px',
-                                  color: currentSession?.id === session.id ? '#1890ff' : '#333'
-                                }}
-                                ellipsis={{ tooltip: session.title }}
-                              >
-                                {session.title}
-                              </Text>
+                              <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                <Text 
+                                  strong 
+                                  style={{ 
+                                    fontSize: '14px',
+                                    lineHeight: '20px',
+                                    color: currentSession?.id === session.id ? '#1890ff' : '#333',
+                                    opacity: generatingTitleForSession === session.id ? 0.6 : 1,
+                                    flex: 1
+                                  }}
+                                  ellipsis={{ tooltip: session.title }}
+                                >
+                                  {session.title}
+                                </Text>
+                                {generatingTitleForSession === session.id && (
+                                  <Spin 
+                                    size="small" 
+                                    style={{ 
+                                      marginLeft: '8px',
+                                      fontSize: '12px'
+                                    }}
+                                  />
+                                )}
+                              </div>
                             )}
                             
                             <Space size="small">
