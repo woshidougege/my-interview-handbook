@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { 
   Layout, 
@@ -25,7 +25,7 @@ import {
   MessageOutlined
 } from '@ant-design/icons';
 import AppLayout from '@/components/Layout/AppLayout';
-import { aiApi, chatTaskApi } from '@/services/api';
+import { aiApi, chatTaskApi, workspaceApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
 
 const { Sider, Content } = Layout;
@@ -40,121 +40,186 @@ const ChatPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [titleGenerating, setTitleGenerating] = useState(false);
-  const [newSessionModalVisible, setNewSessionModalVisible] = useState(false);
   const [editingSession, setEditingSession] = useState<ChatTask | null>(null);
+  const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string; description?: string } | null>(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
   
-  const inputRef = useRef<any>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // 模拟工作空间ID（实际应用中应该从上下文或路由获取）
-  const workspaceId = '1234567890123456789';
-
-  // 页面加载时获取会话列表
-  useEffect(() => {
-    loadSessions();
-  }, []);
-
-  // 滚动到消息底部
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   // 加载会话列表
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
+    if (!currentWorkspace?.id) return;
+    
     setSessionsLoading(true);
     try {
-      const response = await chatTaskApi.getChatTasks(workspaceId, {
+      const response = await chatTaskApi.getChatTasks(currentWorkspace.id, {
         pageNum: 1,
         pageSize: 50
       });
       setSessions(response.data.data.records || []);
     } catch (error) {
+      console.error('加载会话列表失败:', error);
       message.error('加载会话列表失败');
     } finally {
       setSessionsLoading(false);
     }
+  }, [currentWorkspace?.id]);
+
+  // 页面加载时尝试获取现有工作空间和会话列表
+  useEffect(() => {
+    loadExistingWorkspace();
+  }, []);
+
+  // 当工作空间准备好后加载会话列表
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      loadSessions();
+    }
+  }, [currentWorkspace, loadSessions]);
+
+  // 滚动到消息底部
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // 加载现有工作空间（如果有的话）
+  const loadExistingWorkspace = async () => {
+    setWorkspaceLoading(true);
+    try {
+      // 尝试获取现有工作空间
+      const response = await workspaceApi.getWorkspaces();
+      
+      if (response.data.data && response.data.data.length > 0) {
+        // 使用第一个工作空间
+        setCurrentWorkspace(response.data.data[0]);
+      } else {
+        // 没有工作空间，但不在这里创建，等用户提问时再创建
+        setCurrentWorkspace(null);
+      }
+    } catch (error) {
+      console.error('获取工作空间失败:', error);
+      // 不显示错误消息，因为可能是第一次使用
+      setCurrentWorkspace(null);
+    } finally {
+      setWorkspaceLoading(false);
+    }
   };
 
-  // 创建新会话
-  const createNewSession = async (firstQuestion?: string) => {
-    if (firstQuestion) {
-      setTitleGenerating(true);
-      try {
-        // 先生成标题
-        const titleResponse = await aiApi.generateChatTitle(workspaceId, {
-          question: firstQuestion,
-          async: false
+  // 确保工作空间存在（在用户提问时调用）
+  const ensureWorkspace = async () => {
+    if (currentWorkspace?.id) {
+      return currentWorkspace;
+    }
+
+    try {
+      // 先尝试获取现有工作空间
+      const response = await workspaceApi.getWorkspaces();
+      
+      if (response.data.data && response.data.data.length > 0) {
+        // 使用第一个工作空间
+        const workspace = response.data.data[0];
+        setCurrentWorkspace(workspace);
+        return workspace;
+      } else {
+        // 创建新的工作空间
+        const createResponse = await workspaceApi.createWorkspace({
+          name: '我的工作空间',
+          description: 'Super Agent 默认工作空间'
         });
-        
-        const generatedTitle = titleResponse.data.data.title;
-        
-        // 创建会话任务
-        const sessionResponse = await chatTaskApi.createChatTask(workspaceId, {
-          title: generatedTitle,
-          description: `会话开始于: ${firstQuestion.substring(0, 50)}...`
-        });
-        
-        const newSession = sessionResponse.data.data;
-        setSessions(prev => [newSession, ...prev]);
-        
-        // 设置当前会话
-        const chatSession: ChatSession = {
-          id: newSession.id,
-          title: newSession.title,
-          messages: [],
-          workspaceId: newSession.workspaceId,
-          createdAt: newSession.createdAt,
-          updatedAt: newSession.updatedAt
-        };
-        
-        setCurrentSession(chatSession);
-        setMessages([]);
-        
-        message.success('新会话创建成功');
-        return chatSession;
-      } catch (error) {
-        message.error('创建会话失败');
-        throw error;
-      } finally {
-        setTitleGenerating(false);
+        const workspace = createResponse.data.data;
+        setCurrentWorkspace(workspace);
+        return workspace;
       }
-    } else {
-      setNewSessionModalVisible(true);
+    } catch (error) {
+      console.error('创建工作空间失败:', error);
+      message.error('创建工作空间失败');
+      throw error;
+    }
+  };
+
+
+  // 创建新会话
+  const createNewSession = async (firstQuestion: string, workspace: { id: string; name: string; description?: string }) => {
+    setTitleGenerating(true);
+    try {
+      // 先生成标题
+      const titleResponse = await aiApi.generateChatTitle(workspace.id, {
+        question: firstQuestion,
+        async: false
+      });
+      
+      const generatedTitle = titleResponse.data.data.title;
+      
+      // 创建会话任务
+      const sessionResponse = await chatTaskApi.createChatTask(workspace.id, {
+        title: generatedTitle,
+        description: `会话开始于: ${firstQuestion.substring(0, 50)}...`
+      });
+      
+      const newSession = sessionResponse.data.data;
+      setSessions(prev => [newSession, ...prev]);
+      
+      // 设置当前会话
+      const chatSession: ChatSession = {
+        id: newSession.id,
+        title: newSession.title,
+        messages: [],
+        workspaceId: newSession.workspaceId,
+        createdAt: newSession.createdAt,
+        updatedAt: newSession.updatedAt
+      };
+      
+      setCurrentSession(chatSession);
+      setMessages([]);
+      
+      return chatSession;
+    } catch (err) {
+      console.error('创建会话失败:', err);
+      message.error('创建会话失败');
+      throw err;
+    } finally {
+      setTitleGenerating(false);
     }
   };
 
   // 发送消息
   const sendMessage = async () => {
     if (!inputValue.trim()) return;
-
+    
+    setLoading(true);
+    
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
       content: inputValue.trim(),
       timestamp: new Date().toISOString()
     };
-
-    // 如果没有当前会话，先创建一个
-    let session = currentSession;
-    if (!session) {
-      try {
-        session = await createNewSession(userMessage.content);
-      } catch (error) {
-        return;
-      }
-    }
-
-    // 添加用户消息
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    
+    const questionText = inputValue.trim();
     setInputValue('');
-    setLoading(true);
-
+    
     try {
+      // 如果没有当前会话，需要先确保工作空间存在，然后创建会话
+      let session = currentSession;
+      if (!session) {
+        // 确保工作空间存在
+        const workspace = await ensureWorkspace();
+        // 创建新会话
+        session = await createNewSession(questionText, workspace);
+        if (!session) {
+          return;
+        }
+      }
+
+      // 添加用户消息
+      const newMessages = [...messages, userMessage];
+      setMessages(newMessages);
+      
       // 模拟AI回复（实际应用中应该调用真实的AI接口）
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
       
@@ -166,7 +231,8 @@ const ChatPage: React.FC = () => {
       };
 
       setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
+    } catch (err) {
+      console.error('发送消息失败:', err);
       message.error('发送消息失败');
     } finally {
       setLoading(false);
@@ -187,7 +253,7 @@ const ChatPage: React.FC = () => {
       id: session.id,
       title: session.title,
       messages: [], // 实际应用中应该加载历史消息
-      workspaceId: session.workspaceId,
+      workspaceId: session.workspaceId || currentWorkspace?.id || '',
       createdAt: session.createdAt,
       updatedAt: session.updatedAt
     };
@@ -199,11 +265,13 @@ const ChatPage: React.FC = () => {
   // 收藏/取消收藏会话
   const toggleFavorite = async (session: ChatTask, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentWorkspace?.id) return;
+
     try {
       if (session.favorite) {
-        await chatTaskApi.unfavoriteChatTask(workspaceId, session.id);
+        await chatTaskApi.unfavoriteChatTask(currentWorkspace.id, session.id);
       } else {
-        await chatTaskApi.favoriteChatTask(workspaceId, session.id);
+        await chatTaskApi.favoriteChatTask(currentWorkspace.id, session.id);
       }
       
       setSessions(prev => prev.map(s => 
@@ -212,6 +280,7 @@ const ChatPage: React.FC = () => {
       
       message.success(session.favorite ? '已取消收藏' : '已收藏');
     } catch (error) {
+      console.error('操作失败:', error);
       message.error('操作失败');
     }
   };
@@ -219,13 +288,14 @@ const ChatPage: React.FC = () => {
   // 删除会话
   const deleteSession = async (session: ChatTask, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentWorkspace?.id) return;
     
     Modal.confirm({
       title: '确认删除',
       content: `确定要删除会话"${session.title}"吗？`,
       onOk: async () => {
         try {
-          await chatTaskApi.deleteChatTask(workspaceId, session.id);
+          await chatTaskApi.deleteChatTask(currentWorkspace.id, session.id);
           setSessions(prev => prev.filter(s => s.id !== session.id));
           
           if (currentSession?.id === session.id) {
@@ -235,6 +305,7 @@ const ChatPage: React.FC = () => {
           
           message.success('会话已删除');
         } catch (error) {
+          console.error('删除失败:', error);
           message.error('删除失败');
         }
       }
@@ -249,10 +320,10 @@ const ChatPage: React.FC = () => {
 
   // 保存编辑的标题
   const saveSessionTitle = async (newTitle: string) => {
-    if (!editingSession || !newTitle.trim()) return;
+    if (!editingSession || !newTitle.trim() || !currentWorkspace?.id) return;
     
     try {
-      await chatTaskApi.updateChatTask(workspaceId, editingSession.id, {
+      await chatTaskApi.updateChatTask(currentWorkspace.id, editingSession.id, {
         title: newTitle.trim()
       });
       
@@ -267,6 +338,7 @@ const ChatPage: React.FC = () => {
       setEditingSession(null);
       message.success('标题已更新');
     } catch (error) {
+      console.error('更新失败:', error);
       message.error('更新失败');
     }
   };
@@ -298,20 +370,37 @@ const ChatPage: React.FC = () => {
                 icon={<PlusOutlined />} 
                 block 
                 size="large"
-                onClick={() => createNewSession()}
-                loading={titleGenerating}
-              >
-                新建对话
-              </Button>
+                onClick={() => message.info('请在输入框中输入问题开始新的对话')}
+                  loading={titleGenerating}
+                >
+                  新建对话
+                </Button>
             </div>
             
             <div style={{ padding: '0 16px 16px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <Title level={5} style={{ margin: '0 0 8px 0', color: '#333' }}>
+                  工作空间
+                </Title>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                  <Button size="small" type="primary">全部</Button>
+                  <Button size="small">收藏</Button>
+                </div>
+              </div>
+              
               <Title level={5} style={{ margin: '0 0 12px 0', color: '#666' }}>
                 对话历史
               </Title>
               
-              <Spin spinning={sessionsLoading}>
-                {sessions.length === 0 ? (
+              <Spin spinning={sessionsLoading || workspaceLoading}>
+                {workspaceLoading ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <Spin />
+                    <div style={{ marginTop: '16px', color: '#666' }}>
+                      正在初始化工作空间...
+                    </div>
+                  </div>
+                ) : sessions.length === 0 ? (
                   <Empty 
                     description="暂无对话记录" 
                     style={{ margin: '40px 0' }}
@@ -568,33 +657,126 @@ const ChatPage: React.FC = () => {
                 </div>
               </>
             ) : (
-              // 欢迎页面
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: '100%',
-                flexDirection: 'column',
-                background: '#fafafa'
-              }}>
-                <MessageOutlined style={{ fontSize: '72px', color: '#bfbfbf', marginBottom: '24px' }} />
-                <Title level={2} style={{ color: '#666', marginBottom: '16px' }}>
-                  欢迎使用 Super Agent
-                </Title>
-                <Paragraph style={{ fontSize: '16px', color: '#999', textAlign: 'center', marginBottom: '32px' }}>
-                  您的数字分身，按照您的目标自主规划、执行并交付<br />
-                  开始新对话，体验AI助手的强大能力
-                </Paragraph>
-                <Button 
-                  type="primary" 
-                  size="large"
-                  icon={<PlusOutlined />}
-                  onClick={() => createNewSession()}
-                  loading={titleGenerating}
-                >
-                  开始新对话
-                </Button>
-              </div>
+              <>
+                {/* 欢迎页面 - 显示输入框 */}
+                <div style={{ 
+                  flex: 1,
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  background: '#fafafa'
+                }}>
+                  {/* 欢迎内容区域 */}
+                  <div style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: '40px'
+                  }}>
+                    <MessageOutlined style={{ fontSize: '72px', color: '#bfbfbf', marginBottom: '24px' }} />
+                    <Title level={2} style={{ color: '#666', marginBottom: '16px' }}>
+                      Super Agent
+                    </Title>
+                    <Paragraph style={{ fontSize: '16px', color: '#999', textAlign: 'center', marginBottom: '40px' }}>
+                      您的数字分身，按照您的目标自主规划、执行并交付<br />
+                      开始新对话，体验AI助手的强能力
+                    </Paragraph>
+                    
+                    {/* 大输入框 */}
+                    <div style={{ 
+                      width: '100%', 
+                      maxWidth: '600px',
+                      marginBottom: '40px'
+                    }}>
+                      <div style={{
+                        position: 'relative',
+                        border: '2px solid #d9d9d9',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        background: '#fff',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        <TextArea
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          placeholder="输入您的问题，开始与AI助手对话..."
+                          autoSize={{ minRows: 3, maxRows: 8 }}
+                          style={{ 
+                            border: 'none',
+                            resize: 'none',
+                            fontSize: '16px',
+                            lineHeight: '1.6'
+                          }}
+                          disabled={loading}
+                        />
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                          marginTop: '12px'
+                        }}>
+                          <Button
+                            type="primary"
+                            size="large"
+                            icon={<SendOutlined />}
+                          onClick={sendMessage}
+                          loading={loading}
+                          disabled={!inputValue.trim()}
+                          style={{ 
+                            borderRadius: '8px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          发送
+                        </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 功能提示 */}
+                    <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                      <Text style={{ fontSize: '16px', color: '#333' }}>
+                        需要Super Agent帮您做哪些事？
+                      </Text>
+                    </div>
+                    
+                    {/* 功能标签 */}
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '16px', 
+                      flexWrap: 'wrap',
+                      justifyContent: 'center'
+                    }}>
+                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>🔧</div>
+                        <Text style={{ fontSize: '12px', color: '#666' }}>软件操作</Text>
+                      </div>
+                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>📊</div>
+                        <Text style={{ fontSize: '12px', color: '#666' }}>深度推理</Text>
+                      </div>
+                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>✂️</div>
+                        <Text style={{ fontSize: '12px', color: '#666' }}>幻灯片制作</Text>
+                      </div>
+                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>📈</div>
+                        <Text style={{ fontSize: '12px', color: '#666' }}>数据分析</Text>
+                      </div>
+                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>💻</div>
+                        <Text style={{ fontSize: '12px', color: '#666' }}>网站开发</Text>
+                      </div>
+                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                        <Text style={{ fontSize: '12px', color: '#666' }}>更多</Text>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </>
             )}
           </Content>
         </Layout>
