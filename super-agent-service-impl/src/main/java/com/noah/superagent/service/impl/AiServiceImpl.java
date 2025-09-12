@@ -67,12 +67,10 @@ public class AiServiceImpl implements AiService {
         log.info("AI服务初始化 - 启用状态: {}, API密钥配置: {}", 
                 aiEnabled, apiKey != null && !apiKey.isEmpty() ? "已配置" : "未配置");
         
-        // 初始化DashScope API Key
-        if (apiKey != null && !apiKey.trim().isEmpty()) {
-            System.setProperty("DASHSCOPE_API_KEY", apiKey);
-            log.info("DashScope API Key已设置");
-        } else {
+        if (apiKey == null || apiKey.trim().isEmpty()) {
             log.warn("DashScope API Key未配置，请设置环境变量ALICLOUD_AI_API_KEY");
+        } else {
+            log.info("DashScope API Key配置完成，将在API调用时显式传递");
         }
     }
 
@@ -136,11 +134,13 @@ public class AiServiceImpl implements AiService {
             
             // 构建生成参数
             GenerationParam param = GenerationParam.builder()
+                    .apiKey(apiKey)  // 显式设置API key
                     .model(titleModel)
                     .messages(Collections.singletonList(userMessage))
                     .temperature(titleTemperature.floatValue())
                     .topP(titleTopP)
                     .maxTokens(titleMaxTokens)
+                    .resultFormat(GenerationParam.ResultFormat.MESSAGE)  // 设置结果格式
                     .build();
             
             // 调用生成接口

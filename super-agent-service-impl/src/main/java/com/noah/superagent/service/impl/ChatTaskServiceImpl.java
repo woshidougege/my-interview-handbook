@@ -40,13 +40,18 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         ChatTaskEntity chatTaskEntity = chatTaskPersistenceConvert.toEntity(chatTaskDO);
         // ID由MyBatis Flex的雪花算法自动生成
         
+        // 自动生成会话ID（contextId），用于与下游平台通信
+        if (!StringUtils.hasText(chatTaskEntity.getContextId())) {
+            chatTaskEntity.setContextId("ctx_" + System.currentTimeMillis() + "_" + System.nanoTime());
+        }
+        
         // 保存对话任务
         int result = chatTaskMapper.insertSelective(chatTaskEntity);
         if (result <= 0) {
             throw new RuntimeException("对话任务创建失败");
         }
         
-        log.info("对话任务创建成功，ID: {}", chatTaskEntity.getId());
+        log.info("对话任务创建成功，ID: {}, ContextId: {}", chatTaskEntity.getId(), chatTaskEntity.getContextId());
         // Entity -> DTO
         return chatTaskPersistenceConvert.fromEntity(chatTaskEntity);
     }
