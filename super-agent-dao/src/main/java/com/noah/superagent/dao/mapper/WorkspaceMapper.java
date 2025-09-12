@@ -6,7 +6,6 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.noah.superagent.common.enums.WorkspaceStatusEnum;
 import com.noah.superagent.dao.entity.WorkspaceEntity;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -81,5 +80,12 @@ public interface WorkspaceMapper extends BaseMapper<WorkspaceEntity> {
      * @param keyword 关键词
      * @return 分页结果
      */
-    Page<WorkspaceEntity> selectPlanPage(Page<WorkspaceEntity> page, @Param("keyword") String keyword);
+    default Page<WorkspaceEntity> selectWorkspacePage(Page<WorkspaceEntity> page, String keyword) {
+        QueryWrapper query = QueryWrapper.create()
+                .where(WorkspaceEntity::getName).like(keyword, keyword != null)
+                .or(WorkspaceEntity::getDescription).like(keyword, keyword != null)
+                .orderBy(WorkspaceEntity::getCreateTime).desc();
+        
+        return paginate(page, query);
+    }
 }
