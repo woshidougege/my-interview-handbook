@@ -13,7 +13,8 @@ import {
   message,
   Modal,
   Tooltip,
-  Empty
+  Empty,
+  Badge
 } from 'antd';
 import { 
   SendOutlined, 
@@ -22,11 +23,14 @@ import {
   StarFilled,
   EditOutlined,
   DeleteOutlined,
-  MessageOutlined
+  MessageOutlined,
+  WifiOutlined,
+  DisconnectOutlined
 } from '@ant-design/icons';
 import AppLayout from '@/components/Layout/AppLayout';
 import { aiApi, chatTaskApi, workspaceApi, userApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
+import sseService, { ConnectionStatus } from '@/services/sseService';
 
 const { Sider, Content } = Layout;
 const { TextArea } = Input;
@@ -44,6 +48,12 @@ const ChatPage: React.FC = () => {
   const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string; description?: string } | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [generatingTitleForSession, setGeneratingTitleForSession] = useState<string | null>(null);
+  
+  // SSE相关状态
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
+  const [currentStreamMessage, setCurrentStreamMessage] = useState<string>('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [userId] = useState(() => `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -71,6 +81,97 @@ const ChatPage: React.FC = () => {
     }
   }, [currentWorkspace?.id]);
 
+  // SSE连接处理函数
+  const establishSseConnection = async (sessionId: string, workspaceId: string) => {
+    // SSE连接状态回调
+    const handleConnectionStatusChange = (status: ConnectionStatus) => {
+      setConnectionStatus(status);
+      
+      if (status === ConnectionStatus.CONNECTED) {
+        console.log('实时连接已建立');
+      } else if (status === ConnectionStatus.DISCONNECTED) {
+        console.log('实时连接已断开');
+      } else if (status === ConnectionStatus.ERROR) {
+        console.error('实时连接错误');
+      }
+    };
+
+    // SSE消息处理回调
+    const handleSseMessage = (sseMessage: { eventType: string; content: string }) => {
+      console.log('收到SSE消息:', sseMessage);
+      
+      // 根据事件类型处理消息
+      switch (sseMessage.eventType) {
+        case 'connected':
+          console.log('SSE连接已建立:', sseMessage.content);
+          break;
+        case 'ai_thinking':
+          console.log('AI正在思考:', sseMessage.content);
+          break;
+        case 'error':
+          message.error(`AI服务错误: ${sseMessage.content}`);
+          setLoading(false);
+          setIsStreaming(false);
+          setCurrentStreamMessage('');
+          break;
+      }
+    };
+
+    // 流式消息块处理
+    const handleStreamChunk = (chunk: string) => {
+      setIsStreaming(true);
+      setCurrentStreamMessage(prev => prev + chunk);
+    };
+
+    // 流式消息结束处理
+    const handleStreamEnd = () => {
+      setCurrentStreamMessage(prevStreamMessage => {
+        if (prevStreamMessage.trim()) {
+          const aiMessage: ChatMessage = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: prevStreamMessage,
+            timestamp: new Date().toISOString()
+          };
+          setMessages(prev => [...prev, aiMessage]);
+        }
+        return ''; // 清空流式消息
+      });
+      
+      setIsStreaming(false);
+      setLoading(false);
+    };
+
+    // 错误处理
+    const handleError = (error: string) => {
+      console.error('SSE错误:', error);
+      message.error(`连接错误: ${error}`);
+      setLoading(false);
+      setIsStreaming(false);
+    };
+
+    // 建立SSE连接
+    await sseService.connect(
+      userId, 
+      workspaceId, 
+      sessionId,
+      {
+        onConnectionChange: handleConnectionStatusChange,
+        onMessage: handleSseMessage,
+        onStreamChunk: handleStreamChunk,
+        onStreamEnd: handleStreamEnd,
+        onError: handleError
+      }
+    );
+  };
+
+  // 组件卸载时断开SSE连接
+  useEffect(() => {
+    return () => {
+      sseService.disconnect();
+    };
+  }, []);
+
   // 页面加载时尝试获取现有工作空间和会话列表
   useEffect(() => {
     loadExistingWorkspace();
@@ -86,7 +187,7 @@ const ChatPage: React.FC = () => {
   // 滚动到消息底部
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, currentStreamMessage]);
 
   // 加载现有工作空间（如果有的话）
   const loadExistingWorkspace = async () => {
@@ -234,6 +335,8 @@ const ChatPage: React.FC = () => {
     if (!inputValue.trim()) return;
     
     setLoading(true);
+    setIsStreaming(true);
+    setCurrentStreamMessage('');
     
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -254,30 +357,44 @@ const ChatPage: React.FC = () => {
         // 创建新会话
         session = await createNewSession(questionText, workspace);
         if (!session) {
+          setLoading(false);
+          setIsStreaming(false);
           return;
         }
       }
 
-      // 添加用户消息
+      // 添加用户消息到UI
       const newMessages = [...messages, userMessage];
       setMessages(newMessages);
       
-      // 模拟AI回复（实际应用中应该调用真实的AI接口）
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+      // 如果SSE连接未建立，先建立连接
+      if (!sseService.isConnected()) {
+        console.log('建立SSE连接...');
+        await establishSseConnection(session.id, session.workspaceId || currentWorkspace?.id || '');
+        
+        // 等待连接建立
+        let retries = 0;
+        while (!sseService.isConnected() && retries < 10) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          retries++;
+        }
+        
+        if (!sseService.isConnected()) {
+          message.error('无法建立实时连接，请稍后重试');
+          setLoading(false);
+          setIsStreaming(false);
+          return;
+        }
+      }
       
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `这是对"${userMessage.content}"的回复。在实际应用中，这里会调用真实的AI服务来生成回复。`,
-        timestamp: new Date().toISOString()
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
+      // 通过SSE服务发送消息到AI服务
+      await sseService.sendMessage(questionText);
+      
     } catch (err) {
       console.error('发送消息失败:', err);
       message.error('发送消息失败');
-    } finally {
       setLoading(false);
+      setIsStreaming(false);
     }
   };
 
@@ -392,6 +509,12 @@ const ChatPage: React.FC = () => {
         <meta name="description" content="Super Agent AI对话功能" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
+        <style jsx>{`
+          @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+          }
+        `}</style>
       </Head>
       
       <AppLayout>
@@ -563,11 +686,35 @@ const ChatPage: React.FC = () => {
                 <div style={{ 
                   padding: '16px 24px', 
                   borderBottom: '1px solid #e8e8e8',
-                  background: '#fff'
+                  background: '#fff',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
                 }}>
                   <Title level={4} style={{ margin: 0 }}>
                     {currentSession.title}
                   </Title>
+                  
+                  {/* 实时连接状态 */}
+                  <Badge 
+                    status={
+                      connectionStatus === ConnectionStatus.CONNECTED ? 'success' :
+                      connectionStatus === ConnectionStatus.CONNECTING ? 'processing' :
+                      connectionStatus === ConnectionStatus.ERROR ? 'error' : 'default'
+                    }
+                    text={
+                      <span style={{ fontSize: '12px', color: '#666' }}>
+                        {connectionStatus === ConnectionStatus.CONNECTED && <WifiOutlined />}
+                        {connectionStatus === ConnectionStatus.DISCONNECTED && <DisconnectOutlined />}
+                        {connectionStatus === ConnectionStatus.ERROR && <DisconnectOutlined />}
+                        {connectionStatus === ConnectionStatus.CONNECTING && <WifiOutlined />}
+                        {' '}
+                        {connectionStatus === ConnectionStatus.CONNECTED ? '已连接' :
+                         connectionStatus === ConnectionStatus.CONNECTING ? '连接中' :
+                         connectionStatus === ConnectionStatus.ERROR ? '连接错误' : '未连接'}
+                      </span>
+                    }
+                  />
                 </div>
 
                 {/* 消息列表 */}
@@ -663,7 +810,48 @@ const ChatPage: React.FC = () => {
                         </div>
                       ))}
                       
-                      {loading && (
+                      {/* 流式消息显示 */}
+                      {isStreaming && currentStreamMessage && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', maxWidth: '70%' }}>
+                            <Avatar style={{ backgroundColor: '#1890ff', marginRight: '12px', flexShrink: 0 }}>
+                              AI
+                            </Avatar>
+                            <Card
+                              size="small"
+                              style={{
+                                backgroundColor: '#fff',
+                                borderRadius: '12px',
+                                maxWidth: '100%',
+                                wordBreak: 'break-word'
+                              }}
+                              bodyStyle={{ padding: '12px 16px' }}
+                            >
+                              <Paragraph 
+                                style={{ 
+                                  margin: 0, 
+                                  color: '#333',
+                                  fontSize: '14px',
+                                  lineHeight: '1.6'
+                                }}
+                              >
+                                {currentStreamMessage}
+                                <span style={{ 
+                                  display: 'inline-block',
+                                  width: '2px',
+                                  height: '16px',
+                                  backgroundColor: '#1890ff',
+                                  marginLeft: '2px',
+                                  animation: 'blink 1s infinite'
+                                }} />
+                              </Paragraph>
+                            </Card>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* 加载状态 */}
+                      {loading && !isStreaming && (
                         <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                             <Avatar style={{ backgroundColor: '#1890ff', marginRight: '12px' }}>
@@ -676,7 +864,7 @@ const ChatPage: React.FC = () => {
                             >
                               <Spin size="small" />
                               <Text style={{ marginLeft: '8px', color: '#666' }}>
-                                正在思考中...
+                                正在连接AI服务...
                               </Text>
                             </Card>
                           </div>
@@ -715,6 +903,7 @@ const ChatPage: React.FC = () => {
                       发送
                     </Button>
                   </Space.Compact>
+                  
                 </div>
               </>
             ) : (
@@ -763,7 +952,11 @@ const ChatPage: React.FC = () => {
                           value={inputValue}
                           onChange={(e) => setInputValue(e.target.value)}
                           onKeyPress={handleKeyPress}
-                          placeholder="输入您的问题，开始与AI助手对话..."
+                          placeholder={
+                            connectionStatus === ConnectionStatus.CONNECTED 
+                              ? "输入您的问题，开始与AI助手对话..." 
+                              : "等待实时连接..."
+                          }
                           autoSize={{ minRows: 3, maxRows: 8 }}
                           style={{ 
                             border: 'none',
@@ -793,6 +986,7 @@ const ChatPage: React.FC = () => {
                           发送
                         </Button>
                         </div>
+                        
                       </div>
                     </div>
                     

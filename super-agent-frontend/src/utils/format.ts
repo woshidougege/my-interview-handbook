@@ -149,8 +149,10 @@ export const formatRelativeTime = (date: string | Date | undefined | null): stri
   return formatDate(date, 'YYYY-MM-DD');
 };
 
+// formatWebSocketTimestamp 函数已删除，改用 SSE 后不再需要
+
 // 默认导出包含所有格式化方法的对象
-export default {
+const formatUtils = {
   formatDate,
   formatDateTime,
   formatNumber,
@@ -161,3 +163,5 @@ export default {
   formatEmail,
   formatRelativeTime,
 };
+
+export default formatUtils;
