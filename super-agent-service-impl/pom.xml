@@ -46,6 +46,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- 阿里云百炼SDK -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>dashscope-sdk-java</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
