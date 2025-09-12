@@ -254,6 +254,7 @@ const UserProfile: React.FC = () => {
       <SubscriptionModal
         visible={subscriptionVisible}
         onClose={() => setSubscriptionVisible(false)}
+        currentSubscription={currentSubscription}
       />
     </>
   );

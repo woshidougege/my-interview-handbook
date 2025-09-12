@@ -17,6 +17,7 @@ import { subscriptionApi } from '../services/api';
 interface SubscriptionModalProps {
   visible: boolean;
   onClose: () => void;
+  currentSubscription?: any; // 当前订阅状态
 }
 
 interface PlanFeature {
@@ -36,7 +37,7 @@ interface Plan {
   features: PlanFeature[];
 }
 
-const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose }) => {
+const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose, currentSubscription }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [paymentVisible, setPaymentVisible] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<{
@@ -385,6 +386,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose 
           amount={selectedPlan.amount}
           billingCycle={billingCycle}
           onSuccess={handlePaymentSuccess}
+          currentSubscription={currentSubscription}
         />
       )}
     </Modal>
