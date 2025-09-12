@@ -1,0 +1,98 @@
+# AI服务配置文件
+# 包含所有与AI服务相关的配置项
+
+# 阿里云百炼AI配置
+alicloud:
+  ai:
+    # 是否启用AI服务
+    enabled: ${AI_ENABLED:true}
+    
+    # API访问配置
+    api:
+      # API访问密钥（从环境变量获取）
+      api-key: ${ALICLOUD_AI_API_KEY:}
+      # API访问地址
+      endpoint: ${ALICLOUD_AI_ENDPOINT:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      # 请求超时时间（秒）
+      timeout: ${ALICLOUD_AI_TIMEOUT:30}
+      # 重试次数
+      retry-count: ${ALICLOUD_AI_RETRY_COUNT:3}
+      
+    # 模型配置
+    models:
+      # 标题生成专用模型配置
+      title-generation:
+        # 标题生成模型（通常使用较快的模型）
+        model: ${AI_TITLE_MODEL:qwen-plus}
+        # 标题生成参数
+        parameters:
+          temperature: ${AI_TITLE_TEMPERATURE:0.5}
+          top-p: ${AI_TITLE_TOP_P:0.9}
+          max-tokens: ${AI_TITLE_MAX_TOKENS:50}
+          
+    # AI功能配置
+    features:
+      # 标题生成功能配置
+      title-generation:
+        # 是否启用标题生成
+        enabled: ${AI_TITLE_GENERATION_ENABLED:true}
+        # 标题生成提示词模板
+        prompt-template: |
+          请根据用户的问题生成一个简洁、准确的会话标题。标题应该：
+          1. 不超过20个字符
+          2. 准确概括问题的核心内容
+          3. 简洁明了，易于理解
+          4. 不包含特殊符号
+          
+          用户问题：{question}
+          
+          请直接返回标题，不要包含其他内容：
+        # 默认标题（当生成失败时使用）
+        default-title: ${AI_DEFAULT_TITLE:新对话}
+        # 标题最大长度
+        max-length: ${AI_TITLE_MAX_LENGTH:20}
+        
+    # 缓存配置
+    cache:
+      # 是否启用缓存
+      enabled: ${AI_CACHE_ENABLED:true}
+      # 标题生成缓存配置
+      title-generation:
+        # 缓存过期时间（秒）
+        ttl: ${AI_TITLE_CACHE_TTL:3600}
+        # 缓存最大条目数
+        max-size: ${AI_TITLE_CACHE_MAX_SIZE:1000}
+        
+    # 限流配置
+    rate-limit:
+      # 是否启用限流
+      enabled: ${AI_RATE_LIMIT_ENABLED:true}
+      # 标题生成限流配置
+      title-generation:
+        # 每分钟最大请求数
+        requests-per-minute: ${AI_TITLE_RATE_LIMIT_RPM:60}
+        # 每用户每分钟最大请求数
+        requests-per-user-per-minute: ${AI_TITLE_RATE_LIMIT_USER_RPM:10}
+        
+    # 监控配置
+    monitoring:
+      # 是否启用监控
+      enabled: ${AI_MONITORING_ENABLED:true}
+      # 指标收集配置
+      metrics:
+        # 成功率统计
+        success-rate-enabled: true
+        # 响应时间统计
+        response-time-enabled: true
+        # 错误计数统计
+        error-count-enabled: true
+        
+    # 异步处理配置
+    async:
+      # AI服务专用线程池配置
+      ai-service:
+        core-pool-size: ${ASYNC_AI_CORE_POOL_SIZE:2}
+        max-pool-size: ${ASYNC_AI_MAX_POOL_SIZE:4}
+        queue-capacity: ${ASYNC_AI_QUEUE_CAPACITY:100}
+        keep-alive-seconds: ${ASYNC_AI_KEEP_ALIVE:60}
+        thread-name-prefix: "ai-service-"

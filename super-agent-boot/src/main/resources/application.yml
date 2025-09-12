@@ -50,29 +50,30 @@ spring:
       - classpath:application-payment.yml     # 支付系统配置
       - classpath:application-scheduler.yml   # 任务调度配置
       - classpath:application-sso.yml         # 单点登录配置
+      - classpath:application-ai.yml          # AI服务配置
 
 # 应用信息配置
 info:
   app:
-    name: ${spring.application.name}
-    description: Super Agent 用户管理和计费平台
-    version: ${APP_VERSION:1.0.0}
-    encoding: UTF-8
+    name: "@project.name@"
+    description: "@project.description@"
+    version: "@project.version@"
+    encoding: "@project.build.sourceEncoding@"
     java:
-      version: ${java.version}
+      version: "@java.version@"
     build:
-      timestamp: ${BUILD_TIMESTAMP:@timestamp@}
+      timestamp: "@maven.build.timestamp@"
 
 # 管理端点配置
 management:
   endpoints:
     web:
       exposure:
-        include: ${MANAGEMENT_ENDPOINTS:health,info,metrics}
-      base-path: ${MANAGEMENT_BASE_PATH:/actuator}
+        include: "health,info,metrics"
+      base-path: "/actuator"
   endpoint:
     health:
-      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when-authorized}
+      show-details: "when-authorized"
   info:
     env:
-      enabled: ${MANAGEMENT_INFO_ENV_ENABLED:true}
+      enabled: true

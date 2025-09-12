@@ -1,0 +1,224 @@
+{
+  "properties": [
+    {
+      "name": "info.app.name",
+      "type": "java.lang.String",
+      "description": "应用程序名称"
+    },
+    {
+      "name": "info.app.description",
+      "type": "java.lang.String",
+      "description": "应用程序描述"
+    },
+    {
+      "name": "info.app.version",
+      "type": "java.lang.String",
+      "description": "应用程序版本"
+    },
+    {
+      "name": "info.app.encoding",
+      "type": "java.lang.String",
+      "description": "应用程序编码"
+    },
+    {
+      "name": "info.app.java.version",
+      "type": "java.lang.String",
+      "description": "Java版本"
+    },
+    {
+      "name": "info.app.build.timestamp",
+      "type": "java.lang.String",
+      "description": "构建时间戳"
+    },
+    {
+      "name": "management.endpoints.web.exposure.include",
+      "type": "java.lang.String",
+      "description": "要公开的端点列表，用逗号分隔",
+      "defaultValue": "health,info"
+    },
+    {
+      "name": "management.endpoints.web.base-path",
+      "type": "java.lang.String",
+      "description": "管理端点的基础路径",
+      "defaultValue": "/actuator"
+    },
+    {
+      "name": "management.endpoint.health.show-details",
+      "type": "java.lang.String",
+      "description": "何时显示健康检查详情",
+      "defaultValue": "never"
+    },
+    {
+      "name": "management.info.env.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用环境信息",
+      "defaultValue": false
+    },
+    {
+      "name": "alicloud.ai.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用AI服务",
+      "defaultValue": true
+    },
+    {
+      "name": "alicloud.ai.api.api-key",
+      "type": "java.lang.String",
+      "description": "阿里云百炼API密钥"
+    },
+    {
+      "name": "alicloud.ai.api.endpoint",
+      "type": "java.lang.String",
+      "description": "API访问地址",
+      "defaultValue": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    },
+    {
+      "name": "alicloud.ai.api.timeout",
+      "type": "java.lang.Integer",
+      "description": "请求超时时间（秒）",
+      "defaultValue": 30
+    },
+    {
+      "name": "alicloud.ai.api.retry-count",
+      "type": "java.lang.Integer",
+      "description": "重试次数",
+      "defaultValue": 3
+    },
+    {
+      "name": "alicloud.ai.models.title-generation.model",
+      "type": "java.lang.String",
+      "description": "标题生成模型",
+      "defaultValue": "qwen-turbo"
+    },
+    {
+      "name": "alicloud.ai.models.title-generation.parameters.temperature",
+      "type": "java.lang.Double",
+      "description": "生成文本的随机性",
+      "defaultValue": 0.5
+    },
+    {
+      "name": "alicloud.ai.models.title-generation.parameters.top-p",
+      "type": "java.lang.Double",
+      "description": "核采样参数",
+      "defaultValue": 0.9
+    },
+    {
+      "name": "alicloud.ai.models.title-generation.parameters.max-tokens",
+      "type": "java.lang.Integer",
+      "description": "最大输出token数",
+      "defaultValue": 50
+    },
+    {
+      "name": "alicloud.ai.features.title-generation.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用标题生成",
+      "defaultValue": true
+    },
+    {
+      "name": "alicloud.ai.features.title-generation.prompt-template",
+      "type": "java.lang.String",
+      "description": "标题生成提示词模板"
+    },
+    {
+      "name": "alicloud.ai.features.title-generation.default-title",
+      "type": "java.lang.String",
+      "description": "默认标题（当生成失败时使用）",
+      "defaultValue": "新对话"
+    },
+    {
+      "name": "alicloud.ai.features.title-generation.max-length",
+      "type": "java.lang.Integer",
+      "description": "标题最大长度",
+      "defaultValue": 20
+    },
+    {
+      "name": "alicloud.ai.cache.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用缓存",
+      "defaultValue": true
+    },
+    {
+      "name": "alicloud.ai.cache.title-generation.ttl",
+      "type": "java.lang.Long",
+      "description": "缓存过期时间（秒）",
+      "defaultValue": 3600
+    },
+    {
+      "name": "alicloud.ai.cache.title-generation.max-size",
+      "type": "java.lang.Integer",
+      "description": "缓存最大条目数",
+      "defaultValue": 1000
+    },
+    {
+      "name": "alicloud.ai.rate-limit.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用限流",
+      "defaultValue": true
+    },
+    {
+      "name": "alicloud.ai.rate-limit.title-generation.requests-per-minute",
+      "type": "java.lang.Integer",
+      "description": "每分钟最大请求数",
+      "defaultValue": 60
+    },
+    {
+      "name": "alicloud.ai.rate-limit.title-generation.requests-per-user-per-minute",
+      "type": "java.lang.Integer",
+      "description": "每用户每分钟最大请求数",
+      "defaultValue": 10
+    },
+    {
+      "name": "alicloud.ai.monitoring.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用监控",
+      "defaultValue": true
+    },
+    {
+      "name": "alicloud.ai.monitoring.metrics.success-rate-enabled",
+      "type": "java.lang.Boolean",
+      "description": "成功率统计",
+      "defaultValue": true
+    },
+    {
+      "name": "alicloud.ai.monitoring.metrics.response-time-enabled",
+      "type": "java.lang.Boolean",
+      "description": "响应时间统计",
+      "defaultValue": true
+    },
+    {
+      "name": "alicloud.ai.monitoring.metrics.error-count-enabled",
+      "type": "java.lang.Boolean",
+      "description": "错误计数统计",
+      "defaultValue": true
+    },
+    {
+      "name": "alicloud.ai.async.ai-service.core-pool-size",
+      "type": "java.lang.Integer",
+      "description": "AI服务线程池核心线程数",
+      "defaultValue": 2
+    },
+    {
+      "name": "alicloud.ai.async.ai-service.max-pool-size",
+      "type": "java.lang.Integer",
+      "description": "AI服务线程池最大线程数",
+      "defaultValue": 4
+    },
+    {
+      "name": "alicloud.ai.async.ai-service.queue-capacity",
+      "type": "java.lang.Integer",
+      "description": "AI服务线程池队列容量",
+      "defaultValue": 100
+    },
+    {
+      "name": "alicloud.ai.async.ai-service.keep-alive-seconds",
+      "type": "java.lang.Integer",
+      "description": "AI服务线程池线程存活时间",
+      "defaultValue": 60
+    },
+    {
+      "name": "alicloud.ai.async.ai-service.thread-name-prefix",
+      "type": "java.lang.String",
+      "description": "AI服务线程池线程名前缀",
+      "defaultValue": "ai-service-"
+    }
+  ]
+}
