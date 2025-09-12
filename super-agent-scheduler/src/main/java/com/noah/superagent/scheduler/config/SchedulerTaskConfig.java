@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>
  * 将定时任务注册为Spring Bean，让db-scheduler能够自动发现
  *
- * @author Noah
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Configuration

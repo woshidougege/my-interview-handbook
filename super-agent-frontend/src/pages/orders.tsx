@@ -4,7 +4,7 @@ import { ColumnsType } from 'antd/es/table';
 import Layout from '@/components/Layout/AppLayout';
 import { paymentApi, userApi } from '@/services/api';
 import format from '@/utils/format';
-import PaymentSSEListener from '@/utils/paymentSSE';
+import { PaymentSSEListener } from '@/utils/paymentSSE';
 import { OrderRecord, PaymentStatusType, PaymentStatusEvent } from '@/types/user';
 
 interface RefundModalProps {

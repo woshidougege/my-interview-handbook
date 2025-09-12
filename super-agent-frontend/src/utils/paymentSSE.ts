@@ -181,3 +181,6 @@ paymentListener.startListening({
 // 在组件卸载时记得停止监听
 // paymentListener.stopListening();
 */
+
+// 同时支持命名导出和默认导出
+export default PaymentSSEListener;

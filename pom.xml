@@ -55,6 +55,10 @@
         
         <!-- 调度版本 -->
         <db-scheduler.version>15.6.0</db-scheduler.version>
+        <!-- DB Scheduler UI 版本（兼容Spring Boot 2.x） -->
+        <db-scheduler-ui.version>2.0.0</db-scheduler-ui.version>
+        <!-- DB Scheduler 日志版本（用于历史任务记录） -->
+        <db-scheduler-log.version>0.7.0</db-scheduler-log.version>
         
         <!-- API文档版本 -->
         <springdoc.version>1.8.0</springdoc.version>
@@ -83,6 +87,12 @@
         
         <!-- 微信支付SDK版本 -->
         <weixin-java.version>4.7.0</weixin-java.version>
+        
+        <!-- 阿里云百炼SDK版本 -->
+        <dashscope-sdk.version>2.21.8</dashscope-sdk.version>
+        
+        <!-- HTTP客户端版本 -->
+        <okhttp.version>4.12.0</okhttp.version>
         
         <!-- 解决微信支付SDK依赖冲突的版本 -->
         <guava.version>32.1.2-jre</guava.version>
@@ -188,6 +198,22 @@
                 <groupId>com.github.kagkarlsson</groupId>
                 <artifactId>db-scheduler-spring-boot-starter</artifactId>
                 <version>${db-scheduler.version}</version>
+            </dependency>
+
+            <!-- db-scheduler-ui Web界面（兼容Spring Boot 2.x）
+                 注释掉：需要JDK17+和Spring Boot 3.3+，不兼容当前环境
+            <dependency>
+                <groupId>no.bekk.db-scheduler-ui</groupId>
+                <artifactId>db-scheduler-ui-starter</artifactId>
+                <version>${db-scheduler-ui.version}</version>
+            </dependency>
+            -->
+
+            <!-- db-scheduler 历史任务记录（用于任务执行历史追踪） -->
+            <dependency>
+                <groupId>io.rocketbase.extension</groupId>
+                <artifactId>db-scheduler-log-spring-boot-starter</artifactId>
+                <version>${db-scheduler-log.version}</version>
             </dependency>
 
             <!-- MapStruct -->
@@ -437,6 +463,32 @@
                 <version>${commons-io.version}</version>
             </dependency>
 
+            <!-- 阿里云百炼SDK -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>dashscope-sdk-java</artifactId>
+                <version>${dashscope-sdk.version}</version>
+                <exclusions>
+                    <!-- 排除低版本的依赖，使用我们统一管理的版本 -->
+                    <exclusion>
+                        <groupId>com.squareup.okhttp3</groupId>
+                        <artifactId>okhttp</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.squareup.okhttp3</groupId>
+                        <artifactId>logging-interceptor</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.squareup.okhttp3</groupId>
+                        <artifactId>okhttp-sse</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-simple</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
             <!-- 🔧 统一Kotlin标准库版本，解决OkHttp依赖冲突 -->
             <dependency>
                 <groupId>org.jetbrains.kotlin</groupId>
@@ -464,6 +516,23 @@
                 <groupId>org.checkerframework</groupId>
                 <artifactId>checker-qual</artifactId>
                 <version>3.48.3</version>
+            </dependency>
+
+            <!-- 🔧 统一OkHttp版本，解决DashScope SDK依赖问题 -->
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp</artifactId>
+                <version>${okhttp.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>logging-interceptor</artifactId>
+                <version>${okhttp.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp-sse</artifactId>
+                <version>${okhttp.version}</version>
             </dependency>
 
             <!-- 🔧 统一OkIO版本，配合OkHttp -->

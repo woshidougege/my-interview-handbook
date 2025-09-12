@@ -23,6 +23,7 @@ interface PaymentModalProps {
   amount: number;
   billingCycle: 'monthly' | 'yearly';
   onSuccess?: () => void;
+  currentSubscription?: any; // 当前订阅状态
 }
 
 interface PaymentData {
@@ -47,7 +48,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   planName,
   amount,
   billingCycle,
-  onSuccess
+  onSuccess,
+  currentSubscription
 }) => {
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
@@ -57,7 +59,44 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [sseListener, setSseListener] = useState<PaymentSSEListener | null>(null);
   const sseListenerRef = useRef<PaymentSSEListener | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [testOrderNo, setTestOrderNo] = useState<string>('ORDER_1757580221659_71A178E7');
+
+  // 根据订阅数据获取当前状态信息
+  const getCurrentSubscriptionInfo = () => {
+    if (!currentSubscription) {
+      return {
+        statusText: '免费版用户',
+        validUntil: '暂无有效期'
+      };
+    }
+
+    // 根据planId判断套餐类型
+    let planTypeName = '免费版';
+    if (currentSubscription.planId === '2') {
+      planTypeName = '基础版';
+    } else if (currentSubscription.planId === '3') {
+      planTypeName = '高级版';
+    }
+
+    // 根据status判断状态
+    const isActive = currentSubscription.status === 1;
+    const statusText = isActive ? `${planTypeName}会员` : '免费版用户';
+    
+    // 格式化有效期
+    let validUntil = '暂无有效期';
+    if (isActive && currentSubscription.endTime) {
+      const endDate = new Date(currentSubscription.endTime);
+      validUntil = `会员有效期到${endDate.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })}`;
+    }
+
+    return { statusText, validUntil };
+  };
 
   // 获取用户信息
   useEffect(() => {
@@ -286,10 +325,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <div style={{ flex: 1 }}>
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ fontSize: '14px', color: '#ccc', marginBottom: '4px' }}>
-                  当前状态：免费版用户
+                  当前状态：{getCurrentSubscriptionInfo().statusText}
                 </div>
                 <div style={{ fontSize: '14px', color: '#ccc' }}>
-                  开通时长：会员有效期到2026-09-02 17:09:25
+                  开通时长：{getCurrentSubscriptionInfo().validUntil}
                 </div>
               </div>
 
@@ -409,45 +448,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
         )}
 
-        {/* 开发测试按钮 */}
-        {process.env.NODE_ENV === 'development' && (
-          <div style={{ 
-            textAlign: 'center', 
-            marginTop: '20px',
-            padding: '15px',
-            backgroundColor: '#f5f5f5',
-            borderRadius: '4px'
-          }}>
-            <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-              开发测试工具
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              <Input
-                size="small"
-                placeholder="输入订单号进行SSE测试"
-                value={testOrderNo}
-                onChange={(e) => setTestOrderNo(e.target.value)}
-                style={{ width: '300px' }}
-              />
-            </div>
-            <Button 
-              size="small" 
-              type="dashed"
-              disabled={!testOrderNo.trim()}
-              onClick={() => {
-                const orderNo = testOrderNo.trim();
-                if (!orderNo) {
-                  message.error('请输入订单号');
-                  return;
-                }
-                startPaymentSSEListener(orderNo);
-                message.info('已开始监听测试订单: ' + orderNo);
-              }}
-            >
-              🧪 测试SSE连接
-            </Button>
-          </div>
-        )}
 
         <div style={{ 
           textAlign: 'center', 

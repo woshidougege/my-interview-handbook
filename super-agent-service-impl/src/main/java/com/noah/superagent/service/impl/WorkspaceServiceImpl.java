@@ -71,8 +71,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         Page<WorkspaceEntity> page = new Page<>(pageNum, pageSize);
         
         // 执行分页查询
-        // TODO: 实现具体的分页查询逻辑
-        Page<WorkspaceEntity> workspacePage = workspaceMapper.selectPlanPage(page, keyword);
+        Page<WorkspaceEntity> workspacePage = workspaceMapper.selectWorkspacePage(page, keyword);
         
         // 转换结果
         return new PageResponse<>(

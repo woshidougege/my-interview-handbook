@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout, Typography, Space, Menu } from 'antd';
 import { useRouter } from 'next/router';
-import { HomeOutlined, ShoppingOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { HomeOutlined, ShoppingOutlined, UnorderedListOutlined, MessageOutlined } from '@ant-design/icons';
 import UserProfile from '../UserProfile';
 
 const { Header } = Layout;
@@ -15,6 +15,11 @@ const AppHeader: React.FC = () => {
       key: '/',
       icon: <HomeOutlined />,
       label: '首页',
+    },
+    {
+      key: '/chat',
+      icon: <MessageOutlined />,
+      label: 'AI对话',
     },
     {
       key: '/orders',

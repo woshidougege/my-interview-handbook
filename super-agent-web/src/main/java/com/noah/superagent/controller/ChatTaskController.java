@@ -4,14 +4,14 @@ import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
 import com.noah.superagent.common.dto.request.ChatTaskUpdateRequest;
+import com.noah.superagent.common.dto.request.ChatTitleGenerateRequest;
 import com.noah.superagent.common.dto.response.ChatTaskResponse;
-import com.noah.superagent.common.dto.request.ChatMessageRequest;
-import com.noah.superagent.common.dto.response.ChatMessageResponse;
+import com.noah.superagent.common.dto.response.ChatTitleGenerateResponse;
 import com.noah.superagent.convert.ChatTaskWebConvert;
 import com.noah.superagent.model.ChatTaskDTO;
 import com.noah.superagent.service.ChatTaskService;
+import com.noah.superagent.service.AiService;
 import com.noah.superagent.response.ApiResponse;
-import com.noah.superagent.websocket.ChatWebSocketHandler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,7 +21,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.UUID;
 
 /**
  * 对话任务管理控制器
@@ -39,9 +38,9 @@ public class ChatTaskController {
 
     private final ChatTaskService chatTaskService;
     
-    private final ChatTaskWebConvert chatTaskWebConvert;
+    private final AiService aiService;
     
-    private final ChatWebSocketHandler chatWebSocketHandler;
+    private final ChatTaskWebConvert chatTaskWebConvert;
 
     @PostMapping
     @Operation(summary = "创建对话任务", description = "创建新对话任务")
@@ -59,61 +58,6 @@ public class ChatTaskController {
         ChatTaskResponse response = chatTaskWebConvert.toResponse(resultDO);
         
         return ApiResponse.success("对话任务创建成功", response);
-    }
-    
-    @PostMapping("/send-message")
-    @Operation(summary = "发送对话消息", description = "发送对话消息，支持新建对话和已有对话")
-    public ApiResponse<ChatMessageResponse> sendChatMessage(
-            @Parameter(description = "工作空间ID", example = "1234567890123456789")
-            @PathVariable("workspaceId") Long workspaceId,
-            @Valid @RequestBody ChatMessageRequest request) {
-        log.info("接收发送对话消息请求，工作空间ID: {}, 对话任务ID: {}", workspaceId, request.getChatTaskId());
-        
-        ChatTaskDTO chatTaskDO;
-        boolean isNewChat = false;
-        
-        // 如果chatTaskId为空，创建新的对话任务
-        if (request.getChatTaskId() == null) {
-            log.info("创建新的对话任务");
-            chatTaskDO = new ChatTaskDTO();
-            chatTaskDO.setWorkspaceId(workspaceId);
-            chatTaskDO.setContextId(UUID.randomUUID().toString());
-            chatTaskDO.setTitle("新对话");
-            chatTaskDO.setContent("");
-            chatTaskDO.setStatus(com.noah.superagent.common.enums.ChatTaskStatusEnum.IN_PROGRESS);
-            chatTaskDO.setIsFavorite(com.noah.superagent.common.enums.FavoriteEnum.NOT_FAVORITE);
-            chatTaskDO = chatTaskService.createChatTask(chatTaskDO);
-            isNewChat = true;
-        } else {
-            // 获取现有的对话任务
-            chatTaskDO = chatTaskService.getChatTaskById(request.getChatTaskId());
-            if (chatTaskDO == null) {
-                return ApiResponse.error("对话任务不存在");
-            }
-            
-            // 检查对话任务是否属于指定的工作空间
-            if (!workspaceId.equals(chatTaskDO.getWorkspaceId())) {
-                return ApiResponse.error("对话任务不属于指定的工作空间");
-            }
-        }
-        
-        // 调用下游AI处理消息
-        String aiResponse = chatWebSocketHandler.processMessage(request.getMessage(), null);
-        
-        // 更新对话任务内容
-        String updatedContent = chatTaskDO.getContent() == null ? "" : chatTaskDO.getContent();
-        updatedContent += "\n用户: " + request.getMessage() + "\nAI: " + aiResponse;
-        chatTaskDO.setContent(updatedContent);
-        chatTaskService.updateChatTask(chatTaskDO);
-        
-        // 构造响应
-        ChatMessageResponse response = new ChatMessageResponse();
-        response.setChatTaskId(chatTaskDO.getId());
-        response.setContextId(chatTaskDO.getContextId());
-        response.setResponse(aiResponse);
-        
-        log.info("对话消息发送完成，对话任务ID: {}, 是否新对话: {}", chatTaskDO.getId(), isNewChat);
-        return ApiResponse.success(isNewChat ? "新对话创建并发送消息成功" : "消息发送成功", response);
     }
 
     @GetMapping("/{id}")
@@ -226,5 +170,52 @@ public class ChatTaskController {
         );
         
         return ApiResponse.success("查询成功", response);
+    }
+    
+    @PostMapping("/generate-title")
+    @Operation(summary = "生成对话标题", description = "根据用户问题生成对话标题")
+    public ApiResponse<ChatTitleGenerateResponse> generateChatTitle(
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
+            @PathVariable("workspaceId") Long workspaceId,
+            @Valid @RequestBody ChatTitleGenerateRequest request) {
+        log.info("接收生成对话标题请求，工作空间ID: {}，问题: {}", workspaceId, request.getQuestion());
+        
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            if (Boolean.TRUE.equals(request.getAsync())) {
+                // 异步处理
+                aiService.generateChatTitleAsync(request.getQuestion(), new AiService.TitleGenerationCallback() {
+                    @Override
+                    public void onSuccess(String title) {
+                        log.info("异步标题生成成功: {}", title);
+                        // TODO: 可以通过WebSocket或消息队列通知前端
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        log.error("异步标题生成失败: {}", error);
+                        // TODO: 可以通过WebSocket或消息队列通知前端
+                    }
+                });
+                
+                ChatTitleGenerateResponse response = ChatTitleGenerateResponse.createAsyncResponse();
+                return ApiResponse.success("标题生成任务已提交", response);
+            } else {
+                // 同步处理
+                String title = aiService.generateChatTitle(request.getQuestion());
+                long duration = System.currentTimeMillis() - startTime;
+                
+                ChatTitleGenerateResponse response = ChatTitleGenerateResponse.createSyncResponse(title, duration);
+                return ApiResponse.success("标题生成成功", response);
+            }
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("生成对话标题失败，耗时: {}ms，错误: {}", duration, e.getMessage(), e);
+            
+            // 返回默认标题而不是抛出异常
+            ChatTitleGenerateResponse response = ChatTitleGenerateResponse.createSyncResponse("新对话", duration);
+            return ApiResponse.success("已使用默认标题", response);
+        }
     }
 }
