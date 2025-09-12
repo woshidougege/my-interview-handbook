@@ -6,7 +6,7 @@ sa-token:
     # sso-server前端访问地址
     auth-url: http://192.168.1.66:10001/index.html
     # sso-server后端接口地址
-    server-url: http://192.168.1.65:10000/sso-server
+    server-url: http://192.168.1.65:10000/sso-server/
     # 业务系统标识 注：需登录认证中心-基础管理系统-权限管理-系统管理-（页签）单点登录-右侧按钮（详情）ServieCode
     servicecode: super_agent
     # 业务系统公钥 注：需登录认证中心-基础管理系统-权限管理-系统管理-（页签）单点登录-右侧按钮（详情）公钥
