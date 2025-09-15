@@ -1,6 +1,6 @@
 package com.noah.superagent.response;
 
-import com.noah.superagent.dao.entity.UserSubscriptionEntity;
+import com.noah.superagent.model.UserSubscriptionDTO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -16,7 +16,7 @@ import lombok.Data;
 public class UserSubscriptionWithCreditResponse {
 
     @Schema(description = "用户订阅信息")
-    private UserSubscriptionEntity subscription;
+    private UserSubscriptionDTO subscription;
 
     @Schema(description = "用户可用积分总数", example = "1500")
     private Long availableCredits;

@@ -17,7 +17,7 @@ import { subscriptionApi } from '../services/api';
 interface SubscriptionModalProps {
   visible: boolean;
   onClose: () => void;
-  currentSubscription?: any; // 当前订阅状态
+  currentSubscription?: { id: string; planName: string; status: string } | null; // 当前订阅状态
 }
 
 interface PlanFeature {
@@ -55,6 +55,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
+
   const loadPlans = async () => {
     try {
       setLoading(true);
@@ -62,7 +63,13 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       const apiPlans = response.data.data || [];
       
       // 转换API数据为组件需要的格式  
-      const formattedPlans: Plan[] = apiPlans.map((plan: Record<string, any>) => ({
+      const formattedPlans: Plan[] = apiPlans.map((plan: {
+        id: number;
+        planName: string;
+        monthlyPrice?: number;
+        yearlyPrice?: number;
+        features?: PlanFeature[];
+      }) => ({
         id: plan.id.toString(),
         name: plan.planName,
         price: { 
@@ -73,11 +80,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
         buttonText: plan.planName === '免费版' ? '当前计划' : '订阅',
         buttonType: plan.planName === '免费版' ? 'default' as const : 'primary' as const,
         isCreditsOnly: plan.planName.includes('积分'),
-        features: plan.features ? JSON.parse(plan.features).map((text: string) => ({
-          text,
-          included: true,
-          highlight: text.includes('积分') || text.includes('专属')
-        })) : []
+        features: plan.features || []
       }));
       
       setPlans(formattedPlans);
@@ -101,7 +104,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       buttonText: '当前计划',
       buttonType: 'default' as const,
       features: [
-        { text: '新用户赠送1000积分（90天有效）', included: true, highlight: false },
+        { text: '新用户赠送1000积分（90天有效）', included: true, highlight: true },
         { text: '每日登录赠300积分', included: true, highlight: false }
       ]
     },

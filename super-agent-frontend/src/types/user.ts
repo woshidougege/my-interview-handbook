@@ -33,15 +33,29 @@ export interface CreditTransaction {
   createTime: string;
 }
 
+// 套餐功能特性类型定义
+export interface PlanFeature {
+  text: string;
+  highlight: boolean;
+  included: boolean;
+}
+
 // 订阅套餐类型定义
 export interface SubscriptionPlan {
   id: string;
   planName: string;
   description: string;
+  features: PlanFeature[];
   price: number;
+  monthlyPrice: number;
+  yearlyPrice: number;
   creditAmount: number;
+  monthlyCreditAmount: number;
+  yearlyCreditAmount: number;
+  dailyRefreshCredit: number;
   validityDays: number;
-  enabled: number;
+  enabled: boolean;
+  isRecommended: boolean;
   sortOrder: number;
 }
 

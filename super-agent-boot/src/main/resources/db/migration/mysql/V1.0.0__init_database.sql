@@ -178,19 +178,19 @@ INSERT INTO `t_subscription_plan` (
     `validity_days`, `enabled`, `is_recommended`, `sort_order`
 ) VALUES 
 (1, '免费版', '适合轻度使用的个人用户', 
- '["新用户赠送1000积分（90天有效)","每日登录赠300积分","分享新用户奖励500积分","公共数字分身（限制体验）"]', 
+ '[{"text":"新用户赠送1000积分（90天有效)","highlight":true},{"text":"每日登录赠300积分","highlight":false},{"text":"分享新用户奖励500积分","highlight":false},{"text":"公共数字分身（限制体验）","highlight":true}]', 
  0.00, 0.00, 0.00, 1000.00, 0.00, 0.00, 0, 90, 1, 0, 1),
 
 (2, '基础版', '适合中度使用的专业用户', 
- '["一次性获得1900永久积分","享受所有免费版权益","访问限定天","公共数字分身","幻灯片制作","网站开发","数据分析","图片、视频生成"]', 
+ '[{"text":"一次性获得1900永久积分","highlight":true},{"text":"享受所有免费版权益","highlight":false},{"text":"访问限定天","highlight":false},{"text":"公共数字分身","highlight":false},{"text":"幻灯片制作","highlight":false},{"text":"网站开发","highlight":false},{"text":"数据分析","highlight":false},{"text":"图片、视频生成","highlight":true}]', 
  39.00, 39.00, 388.00, 1900.00, 1900.00, 1900.00, 0, 30, 1, 1, 2),
 
 (3, '高级版', '适合重度使用的企业用户', 
- '["一次性获得19000永久积分","享受所有免费版权益","访问限定天","专属数字分身","幻灯片制作","网站开发","数据分析","图片、视频生成","本机电脑操控"]', 
+ '[{"text":"一次性获得19000永久积分","highlight":true},{"text":"享受所有免费版权益","highlight":false},{"text":"访问限定天","highlight":false},{"text":"专属数字分身","highlight":true},{"text":"幻灯片制作","highlight":false},{"text":"网站开发","highlight":false},{"text":"数据分析","highlight":false},{"text":"图片、视频生成","highlight":true},{"text":"本机电脑操控","highlight":true}]', 
  199.00, 199.00, 1983.00, 19000.00, 19000.00, 19000.00, 0, 30, 1, 0, 3),
 
 (4, '额外购买积分', '直接购买永久积分，无订阅期限', 
- '["10000永久积分（无期限）","约生成10-14个PPT","约生成7-9个深度研究报告","约生成2-4个网站","约生成10-14个图片"]', 
+ '[{"text":"10000永久积分（无期限）","highlight":true},{"text":"约生成10-14个PPT","highlight":false},{"text":"约生成7-9个深度研究报告","highlight":false},{"text":"约生成2-4个网站","highlight":false},{"text":"约生成10-14个图片","highlight":false}]', 
  59.00, 59.00, 59.00, 10000.00, 10000.00, 10000.00, 0, 0, 1, 0, 4);
 
 -- 8. 订阅订单表
