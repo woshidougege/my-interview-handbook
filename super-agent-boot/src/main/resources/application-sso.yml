@@ -43,7 +43,8 @@ sa-token:
       # 静态资源
       "/chat.html",
       "/static/**",
-      "/ws/**"
+      "/ws/**",
+      "/api/v1/**"
     ]
     isHttp: true
   # 是否打印启动成功标志

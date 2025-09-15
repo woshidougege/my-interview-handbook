@@ -34,5 +34,10 @@ public class ChatTaskResponse extends BaseResponse {
 
     @Schema(description = "状态: IN_PROGRESS-进行中 COMPLETED-已完成 ARCHIVED-已归档", example = "IN_PROGRESS")
     private ChatTaskStatusEnum status;
-
+    
+    @Schema(description = "是否存在关联的定时任务", example = "true")
+    private Boolean hasScheduledTask;
+    
+    @Schema(description = "关联的定时任务ID")
+    private Long scheduledTaskId;
 }

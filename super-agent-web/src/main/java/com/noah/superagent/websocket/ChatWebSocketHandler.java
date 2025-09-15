@@ -16,14 +16,19 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     // 存储所有活跃的WebSocket会话
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+    
+    // 存储用户ID与会话ID的映射关系
+    private static final Map<String, String> userSessionMap = new ConcurrentHashMap<>();
 
     // 用于JSON处理
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -70,7 +75,46 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         sessions.remove(session.getId());
+        // 移除用户与会话的映射关系
+        userSessionMap.values().removeIf(sessionId -> sessionId.equals(session.getId()));
         System.out.println("WebSocket连接已关闭: " + session.getId());
+    }
+
+    /**
+     * 关联用户ID与WebSocket会话
+     * @param userId 用户ID
+     * @param session WebSocket会话
+     */
+    public static void associateUserWithSession(String userId, WebSocketSession session) {
+        userSessionMap.put(userId, session.getId());
+    }
+
+    /**
+     * 向特定用户推送消息
+     * @param userId 用户ID
+     * @param message 消息内容
+     */
+    public static void pushMessageToUser(String userId, String message) {
+        String sessionId = userSessionMap.get(userId);
+        if (sessionId != null) {
+            WebSocketSession session = sessions.get(sessionId);
+            if (session != null && session.isOpen()) {
+                try {
+                    session.sendMessage(new TextMessage(message));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
+     * 向多个用户推送消息
+     * @param userIds 用户ID列表
+     * @param message 消息内容
+     */
+    public static void pushMessageToUsers(List<String> userIds, String message) {
+        userIds.forEach(userId -> pushMessageToUser(userId, message));
     }
 
     /**
@@ -79,7 +123,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
      * @param session WebSocket会话
      * @return 模型响应结果
      */
-    private String processMessage(String message, WebSocketSession session) {
+    public String processMessage(String message, WebSocketSession session) {
         try {
             // 检查是否是摘要请求
             if (message.startsWith("摘要:") || message.startsWith("summary:")) {

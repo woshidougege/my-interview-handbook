@@ -6,6 +6,8 @@ import com.noah.superagent.common.dto.response.ChatTaskResponse;
 import com.noah.superagent.model.ChatTaskDTO;
 import org.mapstruct.Mapper;
 
+import java.util.List;
+
 /**
  * 对话任务Web层转换器
  * 负责 Request <-> DTO <-> Response 转换
@@ -20,4 +22,5 @@ public interface ChatTaskWebConvert extends BaseWebConvert<
         ChatTaskResponse,         // 响应类型
         ChatTaskDTO              // 数据传输对象类型
 > {
+    
 }

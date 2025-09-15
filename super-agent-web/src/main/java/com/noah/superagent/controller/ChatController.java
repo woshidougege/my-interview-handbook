@@ -3,7 +3,7 @@ package com.noah.superagent.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.noah.superagent.common.enums.SseEventType;
 import com.noah.superagent.common.dto.SseMessageDto;
-import com.noah.superagent.request.ChatMessageRequest;
+import com.noah.superagent.common.dto.request.ChatMessageRequest;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.response.ChatMessageResponse;
 import com.noah.superagent.service.AiService;
@@ -54,17 +54,17 @@ public class ChatController {
      */
     @PostMapping("/send")
     public ApiResponse<ChatMessageResponse> sendMessage(@Validated @RequestBody ChatMessageRequest request) {
-        log.info("收到聊天消息 - 工作空间: {}, 会话: {}, 内容长度: {}", 
-                request.getWorkspaceId(), request.getSessionId(), request.getContent().length());
+        log.info("收到聊天消息 - 工作空间: {}, 对话任务: {}, 内容长度: {}", 
+                request.getWorkspaceId(), request.getChatTaskId(), request.getMessage().length());
         
         long startTime = System.currentTimeMillis();
         
         try {
             // 调用AI服务获取回复
             String aiResponse = aiService.getAiResponse(
-                    request.getContent(),
-                    request.getWorkspaceId(),
-                    request.getSessionId()
+                    request.getMessage(),
+                    String.valueOf(request.getWorkspaceId()),
+                    request.getChatTaskId() != null ? String.valueOf(request.getChatTaskId()) : null
             );
             
             // 构建响应
@@ -72,31 +72,29 @@ public class ChatController {
                     .messageId(UUID.randomUUID().toString())
                     .content(aiResponse)
                     .senderType("assistant")
-                    .workspaceId(request.getWorkspaceId())
-                    .sessionId(request.getSessionId())
-                    .userId(request.getUserId())
+                    .workspaceId(String.valueOf(request.getWorkspaceId()))
+                    .sessionId(request.getChatTaskId() != null ? String.valueOf(request.getChatTaskId()) : null)
                     .timestamp(LocalDateTime.now())
                     .success(true)
                     .build();
             
             long duration = System.currentTimeMillis() - startTime;
-            log.info("聊天消息处理完成 - 工作空间: {}, 会话: {}, 耗时: {}ms, 回复长度: {}", 
-                    request.getWorkspaceId(), request.getSessionId(), duration, aiResponse.length());
+            log.info("聊天消息处理完成 - 工作空间: {}, 对话任务: {}, 耗时: {}ms, 回复长度: {}", 
+                    request.getWorkspaceId(), request.getChatTaskId(), duration, aiResponse.length());
             
             return ApiResponse.success(response);
             
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.error("聊天消息处理失败 - 工作空间: {}, 会话: {}, 耗时: {}ms, 错误: {}", 
-                     request.getWorkspaceId(), request.getSessionId(), duration, e.getMessage(), e);
+            log.error("聊天消息处理失败 - 工作空间: {}, 对话任务: {}, 耗时: {}ms, 错误: {}", 
+                     request.getWorkspaceId(), request.getChatTaskId(), duration, e.getMessage(), e);
             
             ChatMessageResponse errorResponse = ChatMessageResponse.builder()
                     .messageId(UUID.randomUUID().toString())
                     .content("抱歉，AI服务暂时不可用，请稍后再试。")
                     .senderType("system")
-                    .workspaceId(request.getWorkspaceId())
-                    .sessionId(request.getSessionId())
-                    .userId(request.getUserId())
+                    .workspaceId(String.valueOf(request.getWorkspaceId()))
+                    .sessionId(request.getChatTaskId() != null ? String.valueOf(request.getChatTaskId()) : null)
                     .timestamp(LocalDateTime.now())
                     .success(false)
                     .errorMessage(e.getMessage())
@@ -111,22 +109,22 @@ public class ChatController {
     /**
      * 建立SSE连接
      * 
-     * @param sessionId 会话ID
+     * @param chatTaskId 对话任务ID
      * @param workspaceId 工作空间ID
      * @return SSE发射器
      */
-    @GetMapping(value = "/sse/{sessionId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter connect(@PathVariable String sessionId,
+    @GetMapping(value = "/sse/{chatTaskId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter connect(@PathVariable String chatTaskId,
                              @RequestParam String workspaceId,
                              @RequestParam(required = false) String userId) {
         
-        log.info("建立SSE连接 - 会话: {}, 工作空间: {}, 用户: {}", sessionId, workspaceId, userId);
+        log.info("建立SSE连接 - 对话任务: {}, 工作空间: {}, 用户: {}", chatTaskId, workspaceId, userId);
         
         // 创建SSE发射器，设置30分钟超时
         SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
         
         // 生成连接ID
-        String connectionId = sessionId + "_" + System.currentTimeMillis();
+        String connectionId = chatTaskId + "_" + System.currentTimeMillis();
         
         // 存储连接
         activeConnections.put(connectionId, emitter);
@@ -154,7 +152,7 @@ public class ChatController {
                     .eventType(SseEventType.CONNECTED)
                     .content("连接建立成功")
                     .workspaceId(workspaceId)
-                    .sessionId(sessionId)
+                    .sessionId(chatTaskId)
                     .userId(userId)
                     .timestamp(LocalDateTime.now())
                     .build();
@@ -162,7 +160,7 @@ public class ChatController {
             sendSseMessage(emitter, connectMessage);
             
             // 启动心跳
-            startHeartbeat(connectionId, emitter, sessionId);
+            startHeartbeat(connectionId, emitter, chatTaskId);
             
         } catch (Exception e) {
             log.error("发送连接确认消息失败 - 连接ID: {}", connectionId, e);
@@ -176,23 +174,23 @@ public class ChatController {
     /**
      * 处理AI对话流式响应
      * 
-     * @param sessionId 会话ID
+     * @param chatTaskId 对话任务ID
      * @param message 用户消息
      * @param workspaceId 工作空间ID
      */
-    @PostMapping("/stream/{sessionId}")
-    public void streamAiResponse(@PathVariable String sessionId,
+    @PostMapping("/stream/{chatTaskId}")
+    public void streamAiResponse(@PathVariable String chatTaskId,
                                 @RequestParam String message,
                                 @RequestParam String workspaceId,
                                 @RequestParam(required = false) String userId) {
         
-        log.info("开始AI流式对话 - 会话: {}, 工作空间: {}, 用户: {}, 消息长度: {}", 
-                sessionId, workspaceId, userId, message.length());
+        log.info("开始AI流式对话 - 对话任务: {}, 工作空间: {}, 用户: {}, 消息长度: {}", 
+                chatTaskId, workspaceId, userId, message.length());
         
         // 查找对应的SSE连接
-        SseEmitter emitter = findEmitterBySessionId(sessionId);
+        SseEmitter emitter = findEmitterByChatTaskId(chatTaskId);
         if (emitter == null) {
-            log.warn("未找到会话对应的SSE连接 - 会话: {}", sessionId);
+            log.warn("未找到对话任务对应的SSE连接 - 对话任务: {}", chatTaskId);
             return;
         }
         
@@ -203,7 +201,7 @@ public class ChatController {
                     .eventType(SseEventType.AI_THINKING)
                     .content("AI正在思考中...")
                     .workspaceId(workspaceId)
-                    .sessionId(sessionId)
+                    .sessionId(chatTaskId)
                     .userId(userId)
                     .timestamp(LocalDateTime.now())
                     .build();
@@ -214,7 +212,7 @@ public class ChatController {
             aiService.getAiResponseStream(
                 message,
                 workspaceId,
-                sessionId,
+                chatTaskId,
                 // onChunk: 处理流式数据片段
                 (chunk) -> {
                     try {
@@ -223,14 +221,14 @@ public class ChatController {
                                 .eventType(SseEventType.AI_CHUNK)
                                 .content(chunk)
                                 .workspaceId(workspaceId)
-                                .sessionId(sessionId)
+                                .sessionId(chatTaskId)
                                 .userId(userId)
                                 .timestamp(LocalDateTime.now())
                                 .build();
                                 
                         sendSseMessage(emitter, chunkMessage);
                     } catch (Exception e) {
-                        log.error("发送AI chunk消息失败 - 会话: {}", sessionId, e);
+                        log.error("发送AI chunk消息失败 - 对话任务: {}", chatTaskId, e);
                     }
                 },
                 // onComplete: 流式响应完成
@@ -241,15 +239,15 @@ public class ChatController {
                                 .eventType(SseEventType.AI_COMPLETE)
                                 .content("")
                                 .workspaceId(workspaceId)
-                                .sessionId(sessionId)
+                                .sessionId(chatTaskId)
                                 .userId(userId)
                                 .timestamp(LocalDateTime.now())
                                 .build();
                                 
                         sendSseMessage(emitter, completeMessage);
-                        log.info("AI流式对话完成 - 会话: {}", sessionId);
+                        log.info("AI流式对话完成 - 对话任务: {}", chatTaskId);
                     } catch (Exception e) {
-                        log.error("发送AI完成消息失败 - 会话: {}", sessionId, e);
+                        log.error("发送AI完成消息失败 - 对话任务: {}", chatTaskId, e);
                     }
                 },
                 // onError: 错误处理
@@ -261,21 +259,21 @@ public class ChatController {
                                 .content("AI服务错误")
                                 .errorMessage(error)
                                 .workspaceId(workspaceId)
-                                .sessionId(sessionId)
+                                .sessionId(chatTaskId)
                                 .userId(userId)
                                 .timestamp(LocalDateTime.now())
                                 .build();
                                 
                         sendSseMessage(emitter, errorMessage);
-                        log.error("AI流式对话错误 - 会话: {}, 错误: {}", sessionId, error);
+                        log.error("AI流式对话错误 - 对话任务: {}, 错误: {}", chatTaskId, error);
                     } catch (Exception e) {
-                        log.error("发送AI错误消息失败 - 会话: {}", sessionId, e);
+                        log.error("发送AI错误消息失败 - 对话任务: {}", chatTaskId, e);
                     }
                 }
             );
             
         } catch (Exception e) {
-            log.error("处理AI流式对话请求失败 - 会话: {}", sessionId, e);
+            log.error("处理AI流式对话请求失败 - 对话任务: {}", chatTaskId, e);
             try {
                 SseMessageDto errorMessage = SseMessageDto.builder()
                         .messageId(UUID.randomUUID().toString())
@@ -283,14 +281,14 @@ public class ChatController {
                         .content("处理请求失败")
                         .errorMessage(e.getMessage())
                         .workspaceId(workspaceId)
-                        .sessionId(sessionId)
+                        .sessionId(chatTaskId)
                         .userId(userId)
                         .timestamp(LocalDateTime.now())
                         .build();
                         
                 sendSseMessage(emitter, errorMessage);
             } catch (Exception sendException) {
-                log.error("发送错误消息失败 - 会话: {}", sessionId, sendException);
+                log.error("发送错误消息失败 - 对话任务: {}", chatTaskId, sendException);
             }
         }
     }
@@ -310,11 +308,11 @@ public class ChatController {
     }
 
     /**
-     * 根据会话ID查找SSE发射器
+     * 根据对话任务ID查找SSE发射器
      */
-    private SseEmitter findEmitterBySessionId(String sessionId) {
+    private SseEmitter findEmitterByChatTaskId(String chatTaskId) {
         return activeConnections.entrySet().stream()
-                .filter(entry -> entry.getKey().startsWith(sessionId + "_"))
+                .filter(entry -> entry.getKey().startsWith(chatTaskId + "_"))
                 .map(Map.Entry::getValue)
                 .findFirst()
                 .orElse(null);
@@ -323,7 +321,7 @@ public class ChatController {
     /**
      * 启动心跳
      */
-    private void startHeartbeat(String connectionId, SseEmitter emitter, String sessionId) {
+    private void startHeartbeat(String connectionId, SseEmitter emitter, String chatTaskId) {
         heartbeatScheduler.scheduleAtFixedRate(() -> {
             if (activeConnections.containsKey(connectionId)) {
                 try {
@@ -331,7 +329,7 @@ public class ChatController {
                             .messageId(UUID.randomUUID().toString())
                             .eventType(SseEventType.HEARTBEAT)
                             .content("ping")
-                            .sessionId(sessionId)
+                            .sessionId(chatTaskId)
                             .timestamp(LocalDateTime.now())
                             .build();
                             

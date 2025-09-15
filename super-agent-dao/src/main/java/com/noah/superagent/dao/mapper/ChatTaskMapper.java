@@ -38,6 +38,18 @@ public interface ChatTaskMapper extends BaseMapper<ChatTaskEntity> {
 
         return paginate(page, query);
     }
+    
+    /**
+     * 分页查询收藏的对话任务
+     */
+    default Page<ChatTaskEntity> selectFavoriteChatTaskPage(Page<ChatTaskEntity> page, Long workspaceId, FavoriteEnum isFavorite) {
+        QueryWrapper query = QueryWrapper.create()
+                .where(ChatTaskEntity::getWorkspaceId).eq(workspaceId)
+                .and(ChatTaskEntity::getIsFavorite).eq(isFavorite)
+                .orderBy(ChatTaskEntity::getCreateTime).desc();
+
+        return paginate(page, query);
+    }
 
     /**
      * 根据会话ID查询对话任务

@@ -39,6 +39,10 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>com.noah</groupId>
+            <artifactId>super-agent-web</artifactId>
+        </dependency>
 
         <!-- Lombok - 通过 service-impl -> common 模块传递依赖获得 -->
     </dependencies>

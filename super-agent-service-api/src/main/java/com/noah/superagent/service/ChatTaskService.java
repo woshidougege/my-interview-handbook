@@ -3,6 +3,9 @@ package com.noah.superagent.service;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.model.ChatTaskDTO;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 对话任务服务接口
  * 业务层操作DO对象，与前端DTO解耦
@@ -27,6 +30,7 @@ public interface ChatTaskService {
      * @return 对话任务信息
      */
     ChatTaskDTO getChatTaskById(Long id);
+
 
     /**
      * 分页查询对话任务
@@ -87,4 +91,12 @@ public interface ChatTaskService {
      * @return 对话任务分页列表
      */
     PageResponse<ChatTaskDTO> getChatTaskPageByWorkspaceId(Long workspaceId, Integer pageNum, Integer pageSize, String keyword);
+    
+    /**
+     * 批量查询对话任务的定时任务状态
+     * 
+     * @param chatTaskIds 对话任务ID列表
+     * @return 对话任务ID到定时任务ID的映射
+     */
+    Map<Long, Long> getChatTaskScheduledStatus(List<Long> chatTaskIds);
 }

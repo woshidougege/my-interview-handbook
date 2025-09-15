@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -154,7 +153,6 @@ public class AuthController {
         }
     }
 
-    @NotNull
     private ApiResponse<Map<String, String>> getMapApiResponse(String url, Map<String, String> requestBody) {
         HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
         ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
