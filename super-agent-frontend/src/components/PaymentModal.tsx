@@ -104,7 +104,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       try {
         const userResponse = await userApi.getCurrentUser();
         const user = userResponse.data.data;
-        setUserId(user.id);
+        setUserId(user.userId);
       } catch (error) {
         console.error('获取用户信息失败:', error);
         message.error('获取用户信息失败，请重新登录');

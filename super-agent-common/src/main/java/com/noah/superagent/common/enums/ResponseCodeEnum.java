@@ -25,10 +25,11 @@ public enum ResponseCodeEnum {
     // ========== 业务错误 ==========
     BUSINESS_ERROR(1001, "业务处理失败"),
     PHONE_EXISTS(1002, "手机号已存在"),
-    USER_NOT_FOUND(1003, "用户不存在"),
+    USER_NOT_FOUND(1003, "用户不存在"), // 已弃用，SSO模式下用户肯定存在
     INSUFFICIENT_CREDITS(1004, "积分余额不足"),
     PLAN_NOT_FOUND(1005, "套餐不存在"),
     SUBSCRIPTION_EXPIRED(1006, "订阅已过期"),
+    CREDIT_ACCOUNT_NOT_FOUND(1007, "用户积分账户不存在"),
     
     // ========== 系统错误 ==========
     INTERNAL_ERROR(500, "系统内部错误"),

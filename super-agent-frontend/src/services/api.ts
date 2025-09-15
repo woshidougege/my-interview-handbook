@@ -132,10 +132,11 @@ export const subscriptionApi = {
     return api.get(API_ENDPOINTS.SUBSCRIPTION.LIST);
   },
   
-  // 获取当前订阅
-  getCurrentSubscription: (userId?: string): ApiPromise<SubscriptionInfo> => {
-    const params = userId ? { userId } : {};
-    return api.get(API_ENDPOINTS.SUBSCRIPTION.CURRENT, { params });
+  // 获取当前订阅和积分信息（已整合积分数量）
+  getCurrentSubscription: (): ApiPromise<any> => {
+    // 注意：该接口现在同时返回订阅信息和积分数量，不再需要单独调用积分接口
+    // 返回格式: { subscription: SubscriptionInfo, availableCredits: number, hasCreditAccount: boolean }
+    return api.get(API_ENDPOINTS.SUBSCRIPTION.CURRENT);
   },
   
   // 获取套餐列表
@@ -164,66 +165,54 @@ export const subscriptionApi = {
   },
 };
 
-// ========== 用户相关API ==========
+// ========== 用户相关API（基于SSO） ==========
 export const userApi = {
-  // 获取用户资料
-  getProfile: (): ApiPromise<any> => {
-    return api.get(API_ENDPOINTS.USER.PROFILE);
+  // 获取当前用户信息（直接从SSO）
+  getCurrentUser: (): Promise<any> => {
+    // 直接调用SSO的getuser接口，不走后端API
+    return fetch(API_ENDPOINTS.SSO.GET_USER, {
+      method: 'GET',
+      headers: {
+        'satoken': document.cookie.split('; ')
+          .find(row => row.startsWith('satoken='))?.split('=')[1] || '',
+      },
+    }).then(response => response.json())
+    .then(result => {
+      // 字段映射：统一SSO字段名和前端使用的字段名
+      if (result.code === 200 && result.data) {
+        const user = result.data;
+        // 映射字段名
+        user.username = user.userName;  // userName -> username
+        user.phone = user.phonenumber;  // phonenumber -> phone
+        user.id = user.userId;          // userId -> id (向后兼容)
+      }
+      // 为了兼容现有代码的 data.data 结构，包装一下返回结果
+      return { data: result };
+    });
   },
   
-  // 更新用户资料
-  updateProfile: (data: UserProfileRequest): ApiPromise<any> => {
-    return api.put(API_ENDPOINTS.USER.UPDATE_PROFILE, data);
-  },
-  
-  // 获取公钥
+  // 获取加密公钥
   getPublicKey: (): ApiPromise<PublicKeyResponse> => {
     return api.get(API_ENDPOINTS.USER.GET_PUBLIC_KEY);
   },
 
-  // 向后兼容的API
-  getCurrentUser: (): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.get(API_ENDPOINTS.LEGACY.AUTH_USER_CURRENT);
+  // 向后兼容的API（逐步废弃）
+  getProfile: (): Promise<any> => {
+    // 重定向到SSO获取用户信息
+    return this.getCurrentUser();
+  },
+  
+  updateProfile: (data: UserProfileRequest): ApiPromise<any> => {
+    // SSO模式下，用户信息由SSO管理，不支持更新
+    throw new Error('用户信息更新请在SSO系统中进行');
   },
   
   updateUser: (data: any): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.put(API_ENDPOINTS.LEGACY.USERS_UPDATE, data);
+    // SSO模式下，用户信息由SSO管理，不支持更新
+    throw new Error('用户信息更新请在SSO系统中进行');
   },
 };
 
-// ========== 积分相关API ==========
-export const creditApi = {
-  // 获取积分余额
-  getBalance: (): ApiPromise<CreditBalance> => {
-    return api.get(API_ENDPOINTS.USER_CREDIT.BALANCE);
-  },
-  
-  // 获取积分历史记录
-  getHistory: (params: PageRequest): ApiPromise<PageResponse<CreditTransaction>> => {
-    return api.get(API_ENDPOINTS.USER_CREDIT.HISTORY, { params });
-  },
-  
-  // 消费积分
-  consume: (data: CreditConsumeRequest): ApiPromise<void> => {
-    return api.post(API_ENDPOINTS.USER_CREDIT.CONSUME, data);
-  },
-  
-  // 充值积分
-  recharge: (data: CreditRechargeRequest): ApiPromise<void> => {
-    return api.post(API_ENDPOINTS.USER_CREDIT.RECHARGE, data);
-  },
-
-  // 向后兼容的API
-  getUserCredit: (userId: string): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.get(API_ENDPOINTS.LEGACY.USER_CREDIT(userId));
-  },
-  
-  getCreditTransactions: (userId: string, pageNum: number = 1, pageSize: number = 10): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.get(API_ENDPOINTS.LEGACY.USER_CREDIT_TRANSACTIONS(userId), {
-      params: { pageNum, pageSize }
-    });
-  },
-};
 
 // ========== 支付相关API ==========
 export const paymentApi = {
@@ -409,28 +398,6 @@ export const chatTaskApi = {
   },
 };
 
-// ========== 积分管理相关API（管理员） ==========
-export const creditManagementApi = {
-  // 获取用户列表
-  getUsers: (params: PageRequest): ApiPromise<PageResponse<any>> => {
-    return api.get(API_ENDPOINTS.CREDIT_MANAGEMENT.USERS, { params });
-  },
-  
-  // 调整用户积分
-  adjustCredit: (data: {
-    userId: string;
-    amount: number;
-    type: 'ADD' | 'SUBTRACT';
-    reason: string;
-  }): ApiPromise<void> => {
-    return api.post(API_ENDPOINTS.CREDIT_MANAGEMENT.ADJUST, data);
-  },
-  
-  // 获取积分统计
-  getStatistics: (): ApiPromise<any> => {
-    return api.get(API_ENDPOINTS.CREDIT_MANAGEMENT.STATISTICS);
-  },
-};
 
 // ========== 资源使用相关API ==========
 export const resourceUsageApi = {
@@ -456,6 +423,6 @@ export const resourceUsageApi = {
   }): ApiPromise<PageResponse<ResourceUsageReport>> => {
     return api.get(API_ENDPOINTS.RESOURCE_USAGE.HISTORY, { params });
   },
-};
-
+  };
+  
 export default api;

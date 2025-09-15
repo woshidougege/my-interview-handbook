@@ -13,7 +13,7 @@ import {
   WalletOutlined
 } from '@ant-design/icons';
 import { UserInfo, UserCredit } from '@/types/user';
-import { userApi, creditApi } from '@/services/api';
+import { userApi, subscriptionApi } from '@/services/api';
 import { formatNumber } from '@/utils/format';
 
 
@@ -44,10 +44,19 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
       const user = userResponse.data.data;
       setUserInfo(user);
       
-      // 获取积分信息
-      const creditResponse = await creditApi.getUserCredit(user.id);
-      const credit = creditResponse.data.data;
-      setCreditInfo(credit);
+      // 获取积分信息（从订阅接口）
+      try {
+        const subscriptionResponse = await subscriptionApi.getCurrentSubscription();
+        const data = subscriptionResponse.data.data;
+        
+        const creditInfo = {
+          availableCredits: data.availableCredits || 0,
+          hasCreditAccount: data.hasCreditAccount || false
+        };
+        setCreditInfo(creditInfo);
+      } catch (error) {
+        console.log('获取积分信息失败:', error);
+      }
       
       // 填充表单
       form.setFieldsValue({

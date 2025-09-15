@@ -1,0 +1,74 @@
+/* 登录弹窗样式 */
+.loginModal :global(.ant-modal-content) {
+  padding: 0 !important;
+  background: #525252 !important;
+  border-radius: 12px !important;
+  border: none !important;
+}
+
+.loginModal :global(.ant-tabs-tab) {
+  color: #fff !important;
+}
+
+.loginModal :global(.ant-tabs-tab:hover) {
+  color: #1890ff !important;
+}
+
+.loginModal :global(.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  color: #fff !important;
+}
+
+.loginModal :global(.ant-tabs-ink-bar) {
+  background-color: #1890ff !important;
+  height: 3px !important;
+}
+
+.loginModal :global(.ant-tabs-nav) {
+  border-bottom: 1px solid #444 !important;
+  margin-bottom: 24px !important;
+}
+
+.loginModal :global(.ant-input) {
+  background-color: #404040 !important;
+  border: 1px solid #555 !important;
+  color: #fff !important;
+}
+
+.loginModal :global(.ant-input:hover) {
+  border-color: #1890ff !important;
+}
+
+.loginModal :global(.ant-input:focus) {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+.loginModal :global(.ant-input-password) {
+  background-color: #404040 !important;
+  border: 1px solid #555 !important;
+}
+
+.loginModal :global(.ant-input-affix-wrapper) {
+  background-color: #404040 !important;
+  border: 1px solid #555 !important;
+}
+
+.loginModal :global(.ant-input-affix-wrapper:hover) {
+  border-color: #1890ff !important;
+}
+
+.loginModal :global(.ant-input-affix-wrapper:focus-within) {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+.loginModal :global(.ant-btn-primary) {
+  background-color: #1890ff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3) !important;
+}
+
+.loginModal :global(.ant-btn-primary:hover) {
+  background-color: #40a9ff !important;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4) !important;
+}

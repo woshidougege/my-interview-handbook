@@ -4,9 +4,6 @@ import com.noah.superagent.common.dto.request.PasswordLoginRequest;
 import com.noah.superagent.common.dto.request.PhoneLoginRequest;
 import com.noah.superagent.common.dto.request.RegisterRequest;
 import com.noah.superagent.common.dto.request.ResetPasswordRequest;
-import com.noah.superagent.common.dto.response.UserResponse;
-import com.noah.superagent.convert.UserWebConvert;
-import com.noah.superagent.model.UserDTO;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -45,16 +42,15 @@ import java.util.Map;
 @Tag(name = "认证管理", description = "用户认证相关接口（方舟认证系统对接）")
 public class AuthController {
 
-    private final UserWebConvert userWebConvert;
     private final RestTemplate restTemplate;
 
-    @Value("${sso.server.url:http://192.168.1.65:10000/sso-server}")
+    @Value("${sa-token.sso.server-url:}")
     private String ssoServerUrl;
 
-    @Value("${sso.servicecode:super_agent}")
+    @Value("${sa-token.sso.servicecode:super_agent}")
     private String serviceCode;
 
-    @Value("${sso.sm2-key:}")
+    @Value("${sa-token.sso.sm2-key:}")
     private String sm2Key;
     /**
      * 创建 ParameterizedTypeReference 用于 Map<String, Object>
@@ -320,30 +316,6 @@ public class AuthController {
         }
     }
 
-
-
-    @GetMapping("/user/current")
-    @Operation(summary = "获取当前用户信息", 
-            description = "获取当前登录用户的详细信息")
-    public ApiResponse<UserResponse> getCurrentUser() {
-        log.info("获取当前用户信息请求");
-        
-        try {
-            // 这里需要实现从SSO Token中获取用户信息的逻辑
-            // 暂时返回模拟数据
-            UserDTO userDTO = new UserDTO();
-            userDTO.setId(1001L);
-            userDTO.setUsername("演示用户");
-            userDTO.setPhone("13800138000");
-            
-            UserResponse response = userWebConvert.toResponse(userDTO);
-            return ApiResponse.success("获取当前用户信息成功", response);
-            
-        } catch (Exception e) {
-            log.error("获取当前用户信息失败: {}", e.getMessage(), e);
-            return ApiResponse.error("获取用户信息失败: " + e.getMessage());
-        }
-    }
 
     /**
      * 获取公钥信息接口

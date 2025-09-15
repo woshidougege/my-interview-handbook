@@ -41,13 +41,13 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: 'auth/change-password',
   },
 
-  // ========== 用户相关 ==========
-  // 后端: @RequestMapping("/api/v1/users") -> 前端直接用: users/*
+  // ========== 用户相关（基于SSO） ==========
+  // 注意：用户信息现在完全来自SSO，不再有用户CRUD操作
   USER: {
-    BASE: 'users',
-    PROFILE: 'users/profile',
-    UPDATE_PROFILE: 'users/profile',
-    GET_PUBLIC_KEY: 'users/public-key',
+    // 获取当前用户信息（来自SSO）
+    CURRENT: 'auth/user/current',
+    // 获取加密公钥
+    GET_PUBLIC_KEY: 'auth/public-key',
   },
 
   // ========== 工作空间相关 ==========
@@ -105,24 +105,7 @@ export const API_ENDPOINTS = {
     PLANS: 'subscription/plans',
   },
 
-  // ========== 用户积分相关 ==========
-  // 后端: @RequestMapping("/api/v1/user-credit") -> 前端直接用: user-credit/*
-  USER_CREDIT: {
-    BASE: 'user-credit',
-    BALANCE: 'user-credit/balance',
-    HISTORY: 'user-credit/history',
-    CONSUME: 'user-credit/consume',
-    RECHARGE: 'user-credit/recharge',
-  },
 
-  // ========== 积分管理相关（管理员） ==========
-  // 后端: @RequestMapping("/api/v1/admin/credit-management") -> 前端直接用: admin/credit-management/*
-  CREDIT_MANAGEMENT: {
-    BASE: 'admin/credit-management',
-    USERS: 'admin/credit-management/users',
-    ADJUST: 'admin/credit-management/adjust',
-    STATISTICS: 'admin/credit-management/statistics',
-  },
 
   // ========== 资源使用相关 ==========
   // 后端: @RequestMapping("/api/v1/resource-usage") -> 前端直接用: resource-usage/*
@@ -145,7 +128,7 @@ export const API_ENDPOINTS = {
     AUTH_GET_SYS_CLIENT_INFO: 'auth/get-sys-client-info',
     AUTH_PUBLIC_KEY: 'auth/public-key',
     AUTH_USER_CURRENT: 'auth/user/current',
-    USERS_UPDATE: 'users/update',
+    // USERS_UPDATE: 'users/update', // 已废弃：SSO模式下不支持用户信息更新
     SUBSCRIPTION_PLANS: 'subscription/plans',
     PAYMENT_CREATE: 'payment/create',
     PAYMENT_STATUS: (orderNo: string) => `payment/status/${orderNo}`,
@@ -154,6 +137,14 @@ export const API_ENDPOINTS = {
     PAYMENT_REFUND: 'payment/refund',
     PAYMENT_REFUND_STATUS: (orderNo: string) => `payment/refund/status/${orderNo}`,
     CREDIT_RECHARGE: 'credit/recharge',
+  },
+
+  // ========== SSO单点登录相关 ==========
+  // 这些接口由SSO SDK直接提供，需要包含完整的后端地址
+  SSO: {
+    DO_LOGIN_BY_TICKET: (ticket: string) => `http://localhost:8081/super-agent/sso/doLoginByTicket?ticket=${ticket}`,
+    GET_USER: 'http://localhost:8081/super-agent/sso/getuser',
+    GET_MENU: 'http://localhost:8081/super-agent/sso/getmenu',
   },
 } as const;
 

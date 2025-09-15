@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 public class UserSubscriptionEntity extends BaseEntity {
 
     /**
-     * 用户ID
+     * 用户ID（SSO用户ID会自动转换为Long）
      */
     private Long userId;
 

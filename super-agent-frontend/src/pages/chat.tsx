@@ -234,7 +234,7 @@ const ChatPage: React.FC = () => {
         
         // 创建新的工作空间
         const createResponse = await workspaceApi.createWorkspace({
-          userId: currentUser.id,
+          userId: currentUser.userId,
           name: '我的工作空间',
           description: 'Super Agent 默认工作空间'
         });

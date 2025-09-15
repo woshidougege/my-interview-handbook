@@ -54,7 +54,7 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         // 1. 查询用户积分汇总账户
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
         if (creditAccount == null) {
-            throw new BusinessException(ResponseCodeEnum.USER_NOT_FOUND, "用户积分账户不存在");
+            throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
         }
         
         // 2. 检查总积分是否足够
