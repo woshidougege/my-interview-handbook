@@ -6,6 +6,9 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.ExternalDocumentation;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -68,6 +71,23 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(info)
                 .servers(servers)
-                .externalDocs(externalDocs);
+                .externalDocs(externalDocs)
+                .components(new Components()
+                        // 添加Cookie认证方案 - satoken
+                        .addSecuritySchemes("satoken", new SecurityScheme()
+                                .type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.COOKIE)
+                                .name("satoken")
+                                .description("SSO认证Token，请输入您的satoken值"))
+                        // 添加Bearer Token认证方案（备用）
+                        .addSecuritySchemes("bearerAuth", new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")
+                                .description("Bearer Token认证")))
+                // 设置全局安全要求
+                .addSecurityItem(new SecurityRequirement()
+                        .addList("satoken")
+                        .addList("bearerAuth"));
     }
 }
