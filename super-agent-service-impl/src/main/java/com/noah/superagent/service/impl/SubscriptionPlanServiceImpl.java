@@ -33,7 +33,7 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
         return subscriptionPlanMapper.selectAll()
                 .stream()
                 .filter(plan -> EnabledEnum.ENABLED.equals(plan.getEnabled()))
-                .map(convert::entityToDto)
+                .map(convert::fromEntity)
                 .collect(Collectors.toList());
     }
 }

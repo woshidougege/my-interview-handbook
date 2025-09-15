@@ -1,11 +1,14 @@
 package com.noah.superagent.dao.entity;
 
+import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Table;
+import com.mybatisflex.core.handler.Fastjson2TypeHandler;
 import com.noah.superagent.common.enums.EnabledEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 订阅套餐表
@@ -29,9 +32,10 @@ public class SubscriptionPlanEntity extends BaseEntity {
     private String description;
 
     /**
-     * 套餐特性描述（JSON格式）
+     * 套餐特性描述列表
      */
-    private String features;
+    @Column(typeHandler = Fastjson2TypeHandler.class)
+    private List<PlanFeature> features;
 
     /**
      * 套餐价格（兼容字段）
