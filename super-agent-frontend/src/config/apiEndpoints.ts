@@ -138,6 +138,14 @@ export const API_ENDPOINTS = {
     PAYMENT_REFUND_STATUS: (orderNo: string) => `payment/refund/status/${orderNo}`,
     CREDIT_RECHARGE: 'credit/recharge',
   },
+
+  // ========== SSO单点登录相关 ==========
+  // 这些接口由SSO SDK直接提供，需要包含完整的后端地址
+  SSO: {
+    DO_LOGIN_BY_TICKET: (ticket: string) => `http://localhost:8081/super-agent/sso/doLoginByTicket?ticket=${ticket}`,
+    GET_USER: 'http://localhost:8081/super-agent/sso/getuser',
+    GET_MENU: 'http://localhost:8081/super-agent/sso/getmenu',
+  },
 } as const;
 
 // 工具函数：构建完整的API URL

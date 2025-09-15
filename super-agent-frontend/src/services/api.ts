@@ -167,9 +167,28 @@ export const subscriptionApi = {
 
 // ========== 用户相关API（基于SSO） ==========
 export const userApi = {
-  // 获取当前用户信息（来自SSO）
-  getCurrentUser: (): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.get(API_ENDPOINTS.USER.CURRENT);
+  // 获取当前用户信息（直接从SSO）
+  getCurrentUser: (): Promise<any> => {
+    // 直接调用SSO的getuser接口，不走后端API
+    return fetch(API_ENDPOINTS.SSO.GET_USER, {
+      method: 'GET',
+      headers: {
+        'satoken': document.cookie.split('; ')
+          .find(row => row.startsWith('satoken='))?.split('=')[1] || '',
+      },
+    }).then(response => response.json())
+    .then(result => {
+      // 字段映射：统一SSO字段名和前端使用的字段名
+      if (result.code === 200 && result.data) {
+        const user = result.data;
+        // 映射字段名
+        user.username = user.userName;  // userName -> username
+        user.phone = user.phonenumber;  // phonenumber -> phone
+        user.id = user.userId;          // userId -> id (向后兼容)
+      }
+      // 为了兼容现有代码的 data.data 结构，包装一下返回结果
+      return { data: result };
+    });
   },
   
   // 获取加密公钥
@@ -178,9 +197,9 @@ export const userApi = {
   },
 
   // 向后兼容的API（逐步废弃）
-  getProfile: (): ApiPromise<any> => {
-    // 重定向到获取当前用户信息
-    return api.get(API_ENDPOINTS.USER.CURRENT);
+  getProfile: (): Promise<any> => {
+    // 重定向到SSO获取用户信息
+    return this.getCurrentUser();
   },
   
   updateProfile: (data: UserProfileRequest): ApiPromise<any> => {

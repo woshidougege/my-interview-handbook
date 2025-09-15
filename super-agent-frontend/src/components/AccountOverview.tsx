@@ -19,7 +19,7 @@ import {
   UserOutlined
 } from '@ant-design/icons';
 import { UserInfo, UserCredit, CreditTransaction } from '@/types/user';
-import { userApi, creditApi } from '@/services/api';
+import { userApi, subscriptionApi } from '@/services/api';
 import { formatDate, formatNumber } from '@/utils/format';
 
 const { Title, Text } = Typography;
@@ -47,15 +47,22 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
       const user = userResponse.data.data;
       setUserInfo(user);
       
-      // 获取用户积分信息
-      const creditResponse = await creditApi.getUserCredit(user.id);
-      const credit = creditResponse.data.data;
-      setCreditInfo(credit);
+      // 获取订阅和积分信息（合并接口）
+      try {
+        const subscriptionResponse = await subscriptionApi.getCurrentSubscription();
+        const data = subscriptionResponse.data.data;
+        
+        const creditInfo = {
+          availableCredits: data.availableCredits || 0,
+          hasCreditAccount: data.hasCreditAccount || false
+        };
+        setCreditInfo(creditInfo);
+      } catch (error) {
+        console.log('获取积分信息失败:', error);
+      }
       
-      // 获取积分交易记录
-      const transactionResponse = await creditApi.getCreditTransactions(user.id, 1, 10);
-      const transactionList = transactionResponse.data.data.records || [];
-      setTransactions(transactionList);
+      // 积分交易记录功能暂时关闭（需要后端提供新接口）
+      setTransactions([]);
       
     } catch (error: any) {
       message.error('加载数据失败: ' + (error.message || '未知错误'));

@@ -13,9 +13,11 @@ import {
   CrownOutlined
 } from '@ant-design/icons';
 import { UserInfo, UserCredit } from '@/types/user';
-import { userApi, creditApi, subscriptionApi } from '@/services/api';
+import { userApi, subscriptionApi } from '@/services/api';
 import UserSettings from './UserSettings';
 import SubscriptionModal from './SubscriptionModal';
+import { useRouter } from 'next/router';
+import { deleteCookie } from '@/utils/cookieHelper';
 
 
 const UserProfile: React.FC = () => {
@@ -25,6 +27,7 @@ const UserProfile: React.FC = () => {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [subscriptionVisible, setSubscriptionVisible] = useState(false);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     loadUserData();
@@ -39,19 +42,21 @@ const UserProfile: React.FC = () => {
       const user = userResponse.data.data;
       setUserInfo(user);
       
-      // 获取积分信息
-      const creditResponse = await creditApi.getUserCredit(user.id);
-      const credit = creditResponse.data.data;
-      setCreditInfo(credit);
-      
-      // 获取当前订阅状态
+      // 获取当前订阅和积分信息（合并接口）
       try {
-        const subscriptionResponse = await subscriptionApi.getCurrentSubscription(user.id);
-        const subscription = subscriptionResponse.data.data;
-        setCurrentSubscription(subscription);
+        const subscriptionResponse = await subscriptionApi.getCurrentSubscription();
+        const data = subscriptionResponse.data.data;
+        setCurrentSubscription(data.subscription);
+        
+        // 从订阅接口中提取积分信息
+        const creditInfo = {
+          availableCredits: data.availableCredits || 0,
+          hasCreditAccount: data.hasCreditAccount || false
+        };
+        setCreditInfo(creditInfo);
       } catch (error) {
         // 订阅信息获取失败不影响其他功能
-        console.log('获取订阅信息失败:', error);
+        console.log('获取订阅和积分信息失败:', error);
       }
       
     } catch (error) {
@@ -62,7 +67,29 @@ const UserProfile: React.FC = () => {
   };
 
   const handleLogout = () => {
-    message.info('退出登录功能开发中');
+    try {
+      // 清除localStorage中的认证信息
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userInfo');
+      
+      // 清除SSO相关的cookies
+      deleteCookie('satoken');
+      deleteCookie('satoken-timeout');
+      deleteCookie('satoken-active-timeout');
+      
+      // 显示退出成功消息
+      message.success('退出登录成功');
+      
+      // 跳转到登录页面
+      setTimeout(() => {
+        router.push('/login');
+      }, 1000);
+      
+    } catch (error) {
+      console.error('退出登录失败:', error);
+      message.error('退出登录失败，请重试');
+    }
   };
 
   const menuItems = [

@@ -177,18 +177,18 @@ const Orders: React.FC = () => {
 
   // 获取订单列表
   const fetchOrders = useCallback(async () => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.userId) return;
 
     setLoading(true);
     try {
-      const response = await paymentApi.getUserOrders(currentUser.id);
+      const response = await paymentApi.getUserOrders(currentUser.userId);
       setOrders(response.data.data || []);
     } catch (error: any) {
       message.error(error.message || '获取订单列表失败');
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.userId]);
 
   // 启动SSE监听（用于退款状态更新）
   const startSSEListening = useCallback((orderNo: string) => {
@@ -367,10 +367,10 @@ const Orders: React.FC = () => {
   }, [fetchCurrentUser]);
 
   useEffect(() => {
-    if (currentUser?.id) {
+    if (currentUser?.userId) {
       fetchOrders();
     }
-  }, [currentUser?.id, fetchOrders]);
+  }, [currentUser?.userId, fetchOrders]);
 
   // 为退款处理中的订单启动SSE监听
   useEffect(() => {
