@@ -164,30 +164,32 @@ export const subscriptionApi = {
   },
 };
 
-// ========== 用户相关API ==========
+// ========== 用户相关API（基于SSO） ==========
 export const userApi = {
-  // 获取用户资料
-  getProfile: (): ApiPromise<any> => {
-    return api.get(API_ENDPOINTS.USER.PROFILE);
+  // 获取当前用户信息（来自SSO）
+  getCurrentUser: (): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.get(API_ENDPOINTS.USER.CURRENT);
   },
   
-  // 更新用户资料
-  updateProfile: (data: UserProfileRequest): ApiPromise<any> => {
-    return api.put(API_ENDPOINTS.USER.UPDATE_PROFILE, data);
-  },
-  
-  // 获取公钥
+  // 获取加密公钥
   getPublicKey: (): ApiPromise<PublicKeyResponse> => {
     return api.get(API_ENDPOINTS.USER.GET_PUBLIC_KEY);
   },
 
-  // 向后兼容的API
-  getCurrentUser: (): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.get(API_ENDPOINTS.LEGACY.AUTH_USER_CURRENT);
+  // 向后兼容的API（逐步废弃）
+  getProfile: (): ApiPromise<any> => {
+    // 重定向到获取当前用户信息
+    return api.get(API_ENDPOINTS.USER.CURRENT);
+  },
+  
+  updateProfile: (data: UserProfileRequest): ApiPromise<any> => {
+    // SSO模式下，用户信息由SSO管理，不支持更新
+    throw new Error('用户信息更新请在SSO系统中进行');
   },
   
   updateUser: (data: any): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.put(API_ENDPOINTS.LEGACY.USERS_UPDATE, data);
+    // SSO模式下，用户信息由SSO管理，不支持更新
+    throw new Error('用户信息更新请在SSO系统中进行');
   },
 };
 
@@ -456,6 +458,6 @@ export const resourceUsageApi = {
   }): ApiPromise<PageResponse<ResourceUsageReport>> => {
     return api.get(API_ENDPOINTS.RESOURCE_USAGE.HISTORY, { params });
   },
-};
-
+  };
+  
 export default api;

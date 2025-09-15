@@ -41,13 +41,13 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: 'auth/change-password',
   },
 
-  // ========== 用户相关 ==========
-  // 后端: @RequestMapping("/api/v1/users") -> 前端直接用: users/*
+  // ========== 用户相关（基于SSO） ==========
+  // 注意：用户信息现在完全来自SSO，不再有用户CRUD操作
   USER: {
-    BASE: 'users',
-    PROFILE: 'users/profile',
-    UPDATE_PROFILE: 'users/profile',
-    GET_PUBLIC_KEY: 'users/public-key',
+    // 获取当前用户信息（来自SSO）
+    CURRENT: 'auth/user/current',
+    // 获取加密公钥
+    GET_PUBLIC_KEY: 'auth/public-key',
   },
 
   // ========== 工作空间相关 ==========
@@ -145,7 +145,7 @@ export const API_ENDPOINTS = {
     AUTH_GET_SYS_CLIENT_INFO: 'auth/get-sys-client-info',
     AUTH_PUBLIC_KEY: 'auth/public-key',
     AUTH_USER_CURRENT: 'auth/user/current',
-    USERS_UPDATE: 'users/update',
+    // USERS_UPDATE: 'users/update', // 已废弃：SSO模式下不支持用户信息更新
     SUBSCRIPTION_PLANS: 'subscription/plans',
     PAYMENT_CREATE: 'payment/create',
     PAYMENT_STATUS: (orderNo: string) => `payment/status/${orderNo}`,

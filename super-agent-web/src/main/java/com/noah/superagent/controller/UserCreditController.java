@@ -3,6 +3,7 @@ package com.noah.superagent.controller;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
 import com.noah.superagent.common.dto.response.CreditTransactionResponse;
+import com.noah.superagent.util.UserContext;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.service.UserCreditService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,13 +32,12 @@ public class UserCreditController {
 
     private final UserCreditService userCreditService;
 
-    @GetMapping("/{userId}")
-    @Operation(summary = "查询用户积分账户", 
-            description = "根据用户ID查询用户的积分账户信息，包括总积分、免费积分、包月积分、永久积分等")
-    public ApiResponse<UserCreditResponse> getUserCredit(
-            @Parameter(description = "用户ID", required = true, example = "1234567890123456789")
-            @PathVariable @Min(1) Long userId) {
+    @GetMapping
+    @Operation(summary = "查询当前用户积分账户", 
+            description = "查询当前登录用户的积分账户信息，包括总积分、免费积分、包月积分、永久积分等")
+    public ApiResponse<UserCreditResponse> getUserCredit() {
         
+        Long userId = UserContext.requireCurrentUserId();
         log.info("查询用户积分账户 - userId: {}", userId);
         
         try {
@@ -49,17 +49,16 @@ public class UserCreditController {
         }
     }
 
-    @GetMapping("/{userId}/transactions")
-    @Operation(summary = "查询用户积分交易记录", 
-            description = "分页查询用户的积分交易记录，包括充值、消费、过期等各种交易类型")
+    @GetMapping("/transactions")
+    @Operation(summary = "查询当前用户积分交易记录", 
+            description = "分页查询当前登录用户的积分交易记录，包括充值、消费、过期等各种交易类型")
     public ApiResponse<PageResponse<CreditTransactionResponse>> getCreditTransactions(
-            @Parameter(description = "用户ID", required = true, example = "1234567890123456789")
-            @PathVariable @Min(1) Long userId,
             @Parameter(description = "页码", example = "1")
             @RequestParam(value = "pageNum", defaultValue = "1") @Min(1) Integer pageNum,
             @Parameter(description = "每页数量", example = "10")
             @RequestParam(value = "pageSize", defaultValue = "10") @Min(1) Integer pageSize) {
         
+        Long userId = UserContext.requireCurrentUserId();
         log.info("查询用户积分交易记录 - userId: {}, pageNum: {}, pageSize: {}", userId, pageNum, pageSize);
         
         try {
@@ -73,13 +72,12 @@ public class UserCreditController {
     }
 
 
-    @GetMapping("/{userId}/available")
-    @Operation(summary = "查询用户可用积分", 
-            description = "快速查询用户当前可用的积分总额")
-    public ApiResponse<Long> getAvailableCredits(
-            @Parameter(description = "用户ID", required = true, example = "1234567890123456789")
-            @PathVariable @Min(1) Long userId) {
+    @GetMapping("/available")
+    @Operation(summary = "查询当前用户可用积分", 
+            description = "快速查询当前登录用户可用的积分总额")
+    public ApiResponse<Long> getAvailableCredits() {
         
+        Long userId = UserContext.requireCurrentUserId();
         log.info("查询用户可用积分 - userId: {}", userId);
         
         try {
@@ -91,13 +89,12 @@ public class UserCreditController {
         }
     }
 
-    @GetMapping("/{userId}/exists")
-    @Operation(summary = "检查用户积分账户是否存在", 
-            description = "检查指定用户是否已创建积分账户")
-    public ApiResponse<Boolean> hasUserCredit(
-            @Parameter(description = "用户ID", required = true, example = "1234567890123456789")
-            @PathVariable @Min(1) Long userId) {
+    @GetMapping("/exists")
+    @Operation(summary = "检查当前用户积分账户是否存在", 
+            description = "检查当前登录用户是否已创建积分账户")
+    public ApiResponse<Boolean> hasUserCredit() {
         
+        Long userId = UserContext.requireCurrentUserId();
         log.info("检查用户积分账户是否存在 - userId: {}", userId);
         
         try {

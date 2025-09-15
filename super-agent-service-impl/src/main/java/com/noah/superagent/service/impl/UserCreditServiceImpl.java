@@ -15,7 +15,6 @@ import com.noah.superagent.dao.entity.CreditTransactionEntity;
 import com.noah.superagent.dao.mapper.UserCreditAccountMapper;
 import com.noah.superagent.dao.mapper.UserCreditBalanceMapper;
 import com.noah.superagent.dao.mapper.CreditTransactionMapper;
-import com.noah.superagent.dao.mapper.UserMapper;
 import com.noah.superagent.service.UserCreditService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +42,6 @@ public class UserCreditServiceImpl implements UserCreditService {
     private final UserCreditAccountMapper userCreditAccountMapper;
     private final UserCreditBalanceMapper userCreditBalanceMapper;
     private final CreditTransactionMapper creditTransactionMapper;
-    private final UserMapper userMapper;
 
     // 免费套餐每日登录赠送积分数量
     private static final BigDecimal FREE_PLAN_DAILY_CREDITS = new BigDecimal("300");
@@ -61,7 +59,7 @@ public class UserCreditServiceImpl implements UserCreditService {
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
         if (creditAccount == null) {
             log.warn("用户积分账户不存在 - userId: {}", userId);
-            throw new BusinessException(ResponseCodeEnum.USER_NOT_FOUND, "用户积分账户不存在");
+            throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
         }
 
         // 查询用户各类型积分余额
@@ -164,10 +162,7 @@ public class UserCreditServiceImpl implements UserCreditService {
     public UserCreditResponse initFreePlanForUser(Long userId) {
         log.info("为用户分配免费体验套餐并初始化积分账户 - userId: {}", userId);
         
-        // 检查用户是否存在
-        if (userMapper.selectOneById(userId) == null) {
-            throw new BusinessException(ResponseCodeEnum.USER_NOT_FOUND);
-        }
+        // 注意：现在使用SSO认证，能调用到这里说明用户已通过认证，无需额外检查用户存在性
         
         // 检查是否已存在积分账户
         UserCreditAccountEntity existingAccount = userCreditAccountMapper.selectByUserId(userId);
@@ -248,7 +243,7 @@ public class UserCreditServiceImpl implements UserCreditService {
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
         if (creditAccount == null) {
             log.warn("用户积分账户不存在 - userId: {}", userId);
-            throw new BusinessException(ResponseCodeEnum.USER_NOT_FOUND, "用户积分账户不存在");
+            throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
         }
         
         // 2. 检查今日是否已经发放过积分（防重）
@@ -400,7 +395,7 @@ public class UserCreditServiceImpl implements UserCreditService {
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
         if (creditAccount == null) {
             log.warn("用户积分账户不存在 - userId: {}", userId);
-            throw new BusinessException(ResponseCodeEnum.USER_NOT_FOUND, "用户积分账户不存在");
+            throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
         }
         
         // 2. 更新积分汇总账户
