@@ -105,24 +105,7 @@ export const API_ENDPOINTS = {
     PLANS: 'subscription/plans',
   },
 
-  // ========== 用户积分相关 ==========
-  // 后端: @RequestMapping("/api/v1/user-credit") -> 前端直接用: user-credit/*
-  USER_CREDIT: {
-    BASE: 'user-credit',
-    BALANCE: 'user-credit/balance',
-    HISTORY: 'user-credit/history',
-    CONSUME: 'user-credit/consume',
-    RECHARGE: 'user-credit/recharge',
-  },
 
-  // ========== 积分管理相关（管理员） ==========
-  // 后端: @RequestMapping("/api/v1/admin/credit-management") -> 前端直接用: admin/credit-management/*
-  CREDIT_MANAGEMENT: {
-    BASE: 'admin/credit-management',
-    USERS: 'admin/credit-management/users',
-    ADJUST: 'admin/credit-management/adjust',
-    STATISTICS: 'admin/credit-management/statistics',
-  },
 
   // ========== 资源使用相关 ==========
   // 后端: @RequestMapping("/api/v1/resource-usage") -> 前端直接用: resource-usage/*

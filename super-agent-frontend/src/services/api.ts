@@ -132,10 +132,11 @@ export const subscriptionApi = {
     return api.get(API_ENDPOINTS.SUBSCRIPTION.LIST);
   },
   
-  // 获取当前订阅
-  getCurrentSubscription: (userId?: string): ApiPromise<SubscriptionInfo> => {
-    const params = userId ? { userId } : {};
-    return api.get(API_ENDPOINTS.SUBSCRIPTION.CURRENT, { params });
+  // 获取当前订阅和积分信息（已整合积分数量）
+  getCurrentSubscription: (): ApiPromise<any> => {
+    // 注意：该接口现在同时返回订阅信息和积分数量，不再需要单独调用积分接口
+    // 返回格式: { subscription: SubscriptionInfo, availableCredits: number, hasCreditAccount: boolean }
+    return api.get(API_ENDPOINTS.SUBSCRIPTION.CURRENT);
   },
   
   // 获取套餐列表
@@ -193,39 +194,6 @@ export const userApi = {
   },
 };
 
-// ========== 积分相关API ==========
-export const creditApi = {
-  // 获取积分余额
-  getBalance: (): ApiPromise<CreditBalance> => {
-    return api.get(API_ENDPOINTS.USER_CREDIT.BALANCE);
-  },
-  
-  // 获取积分历史记录
-  getHistory: (params: PageRequest): ApiPromise<PageResponse<CreditTransaction>> => {
-    return api.get(API_ENDPOINTS.USER_CREDIT.HISTORY, { params });
-  },
-  
-  // 消费积分
-  consume: (data: CreditConsumeRequest): ApiPromise<void> => {
-    return api.post(API_ENDPOINTS.USER_CREDIT.CONSUME, data);
-  },
-  
-  // 充值积分
-  recharge: (data: CreditRechargeRequest): ApiPromise<void> => {
-    return api.post(API_ENDPOINTS.USER_CREDIT.RECHARGE, data);
-  },
-
-  // 向后兼容的API
-  getUserCredit: (userId: string): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.get(API_ENDPOINTS.LEGACY.USER_CREDIT(userId));
-  },
-  
-  getCreditTransactions: (userId: string, pageNum: number = 1, pageSize: number = 10): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.get(API_ENDPOINTS.LEGACY.USER_CREDIT_TRANSACTIONS(userId), {
-      params: { pageNum, pageSize }
-    });
-  },
-};
 
 // ========== 支付相关API ==========
 export const paymentApi = {
@@ -411,28 +379,6 @@ export const chatTaskApi = {
   },
 };
 
-// ========== 积分管理相关API（管理员） ==========
-export const creditManagementApi = {
-  // 获取用户列表
-  getUsers: (params: PageRequest): ApiPromise<PageResponse<any>> => {
-    return api.get(API_ENDPOINTS.CREDIT_MANAGEMENT.USERS, { params });
-  },
-  
-  // 调整用户积分
-  adjustCredit: (data: {
-    userId: string;
-    amount: number;
-    type: 'ADD' | 'SUBTRACT';
-    reason: string;
-  }): ApiPromise<void> => {
-    return api.post(API_ENDPOINTS.CREDIT_MANAGEMENT.ADJUST, data);
-  },
-  
-  // 获取积分统计
-  getStatistics: (): ApiPromise<any> => {
-    return api.get(API_ENDPOINTS.CREDIT_MANAGEMENT.STATISTICS);
-  },
-};
 
 // ========== 资源使用相关API ==========
 export const resourceUsageApi = {
