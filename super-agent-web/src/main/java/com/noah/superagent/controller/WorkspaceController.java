@@ -64,23 +64,17 @@ public class WorkspaceController {
         return ApiResponse.success("查询成功", response);
     }
 
-    @GetMapping
-    @Operation(summary = "分页查询工作空间", description = "分页查询工作空间列表，支持关键词搜索")
-    public ApiResponse<PageResponse<WorkspaceResponse>> getWorkspacePage(@Valid PageRequest request) {
-        log.info("接收分页查询工作空间请求: {}", request);
+    @GetMapping("/user/{userId}")
+    @Operation(summary = "根据用户ID查询工作空间", description = "根据用户ID查询该用户下的所有工作空间列表，如果用户没有工作空间则创建默认工作空间")
+    public ApiResponse<List<WorkspaceResponse>> getWorkspacesByUserId(
+            @Parameter(description = "用户ID", example = "1234567890123456789")
+            @PathVariable("userId") Long userId) {
+        log.info("接收根据用户ID查询工作空间请求: {}", userId);
         
-        // Service -> PageResponse<DTO> -> PageResponse<Response>
-        PageResponse<WorkspaceDTO> doPageResponse = workspaceService.getWorkspacePage(
-                request.getPageNum(), request.getPageSize(), request.getKeyword());
+        List<WorkspaceDTO> workspaceDOs = workspaceService.getWorkspacesByUserIdOrDefault(userId);
+        List<WorkspaceResponse> responses = workspaceWebConvert.toResponseList(workspaceDOs);
         
-        PageResponse<WorkspaceResponse> response = new PageResponse<>(
-                workspaceWebConvert.toResponseList(doPageResponse.getRecords()),
-                doPageResponse.getTotal(),
-                doPageResponse.getPageNum(),
-                doPageResponse.getPageSize()
-        );
-        
-        return ApiResponse.success("查询成功", response);
+        return ApiResponse.success("查询成功", responses);
     }
 
     @PutMapping("/{id}")
@@ -109,18 +103,5 @@ public class WorkspaceController {
         
         workspaceService.deleteWorkspace(id);
         return ApiResponse.success("删除成功");
-    }
-
-    @GetMapping("/user/{userId}")
-    @Operation(summary = "根据用户ID查询工作空间", description = "根据用户ID查询该用户下的所有工作空间列表")
-    public ApiResponse<List<WorkspaceResponse>> getWorkspacesByUserId(
-            @Parameter(description = "用户ID", example = "1234567890123456789")
-            @PathVariable("userId") Long userId) {
-        log.info("接收根据用户ID查询工作空间请求: {}", userId);
-        
-        List<WorkspaceDTO> workspaceDOs = workspaceService.getWorkspacesByUserId(userId);
-        List<WorkspaceResponse> responses = workspaceWebConvert.toResponseList(workspaceDOs);
-        
-        return ApiResponse.success("查询成功", responses);
     }
 }

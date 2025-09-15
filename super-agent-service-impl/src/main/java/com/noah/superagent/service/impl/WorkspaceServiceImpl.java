@@ -63,6 +63,27 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     }
 
     @Override
+    public WorkspaceDTO getWorkspaceByIdOrDefault(Long id) {
+        log.info("查询工作空间信息，ID: {}，如果不存在则创建默认工作空间", id);
+        
+        WorkspaceEntity workspaceEntity = workspaceMapper.selectOneById(id);
+        if (workspaceEntity == null) {
+            log.info("工作空间不存在: {}，创建默认工作空间", id);
+            // 创建默认工作空间
+            WorkspaceDTO defaultWorkspace = new WorkspaceDTO();
+            defaultWorkspace.setName("默认工作空间");
+            defaultWorkspace.setDescription("系统自动创建的默认工作空间");
+            defaultWorkspace.setUserId(1L); // 默认用户ID，实际使用中应该从上下文中获取
+            defaultWorkspace.setStatus(com.noah.superagent.common.enums.WorkspaceStatusEnum.NORMAL); // 正常状态
+            defaultWorkspace.setIsDefault(com.noah.superagent.common.enums.DefaultEnum.DEFAULT); // 默认工作空间
+            return createWorkspace(defaultWorkspace);
+        }
+        
+        // Entity -> DTO
+        return workspacePersistenceConvert.fromEntity(workspaceEntity);
+    }
+
+    @Override
     public PageResponse<WorkspaceDTO> getWorkspacePage(Integer pageNum, Integer pageSize, String keyword) {
         log.info("分页查询工作空间，页码: {}, 每页数量: {}, 关键词: {}", 
                 pageNum, pageSize, keyword);
@@ -143,6 +164,33 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         
         // 根据用户ID查询工作空间列表
         List<WorkspaceEntity> workspaceEntities = workspaceMapper.selectByUserId(userId);
+        
+        // 转换结果
+        return workspacePersistenceConvert.fromEntityList(workspaceEntities);
+    }
+    
+    @Override
+    public List<WorkspaceDTO> getWorkspacesByUserIdOrDefault(Long userId) {
+        log.info("根据用户ID查询工作空间列表，用户ID: {}，如果用户没有工作空间则创建默认工作空间", userId);
+        
+        // 根据用户ID查询工作空间列表
+        List<WorkspaceEntity> workspaceEntities = workspaceMapper.selectByUserId(userId);
+        
+        // 如果用户没有工作空间，则创建一个默认工作空间
+        if (workspaceEntities.isEmpty()) {
+            log.info("用户 {} 没有工作空间，创建默认工作空间", userId);
+            // 创建默认工作空间
+            WorkspaceDTO defaultWorkspace = new WorkspaceDTO();
+            defaultWorkspace.setName("默认工作空间");
+            defaultWorkspace.setDescription("系统自动创建的默认工作空间");
+            defaultWorkspace.setUserId(userId);
+            defaultWorkspace.setStatus(com.noah.superagent.common.enums.WorkspaceStatusEnum.NORMAL); // 正常状态
+            defaultWorkspace.setIsDefault(com.noah.superagent.common.enums.DefaultEnum.DEFAULT); // 默认工作空间
+            createWorkspace(defaultWorkspace);
+            
+            // 重新查询工作空间列表
+            workspaceEntities = workspaceMapper.selectByUserId(userId);
+        }
         
         // 转换结果
         return workspacePersistenceConvert.fromEntityList(workspaceEntities);
