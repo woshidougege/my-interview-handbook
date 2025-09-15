@@ -7,7 +7,7 @@ import com.noah.superagent.dao.mapper.UserSubscriptionMapper;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.common.enums.EnabledEnum;
 import com.noah.superagent.common.enums.SubscriptionStatusEnum;
-import com.noah.superagent.dto.response.UserSubscriptionWithCreditResponse;
+import com.noah.superagent.response.UserSubscriptionWithCreditResponse;
 import com.noah.superagent.service.UserCreditService;
 import com.noah.superagent.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;

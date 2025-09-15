@@ -16,49 +16,57 @@ public class WebMvcConfig implements WebMvcConfigurer {
         return new RestTemplate();
     }
 
-    @Autowired
-    private SSOInterceptor ssoInterceptor;
-
-    public void addInterceptors(InterceptorRegistry registry) {
-        // 添加SSO拦截器，拦截所有请求，排除已配置的不需要认证的路径
-        registry.addInterceptor(ssoInterceptor)
-                .addPathPatterns("/**")
-                .excludePathPatterns(
-                        "/sso/**",
-                        "/favicon.ico",
-                        "/**/*.css",
-                        "/**/*.html",
-                        "/**/*.js",
-                        // Swagger UI 相关路径
-                        "/swagger-ui.html",
-                        "/swagger-ui/**",
-                        "/swagger-resources/**", 
-                        "/swagger-resource",
-                        "/webjars/**",
-                        // API 文档相关路径
-                        "/v3/api-docs/**",
-                        "/v3/api-docs/swagger-config",
-                        "/v2/api-docs",
-                        "/doc.html/**",
-                        // 静态资源
-                        "/index.html",
-                        "/chat.html",
-                        "/super-agent/chat.html",
-                        "/static/**",
-                        "/ws/**"
-                );
-    }
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/static/**")
-                .addResourceLocations("classpath:/front/static/resources/bundle-main/static/");
-        registry.addResourceHandler("doc.html").addResourceLocations("classpath:/META-INF/resources/");
-        registry.addResourceHandler("swagger-ui.html").addResourceLocations("classpath:/META-INF/resources/");
-        registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
-        registry.addResourceHandler("/ui/**").addResourceLocations("file:ui/");
-        // 确保chat.html可以被直接访问
-        registry.addResourceHandler("/chat.html")
-                .addResourceLocations("classpath:/static/chat.html");
-        registry.addResourceHandler("/ws/**")
-                .addResourceLocations("classpath:/ws/**");
-    }
+//    @Autowired
+//    private SSOInterceptor ssoInterceptor;
+//
+//    public void addInterceptors(InterceptorRegistry registry) {
+//        // 添加SSO拦截器，拦截所有请求，排除已配置的不需要认证的路径
+//        registry.addInterceptor(ssoInterceptor)
+//                .addPathPatterns("/**")
+//                .excludePathPatterns(
+//                        "/sso/**",
+//                        "/favicon.ico",
+//                        "/**/*.css",
+//                        "/**/*.html",
+//                        "/**/*.js",
+//                        // Swagger UI 相关路径
+//                        "/swagger-ui.html",
+//                        "/swagger-ui/**",
+//                        "/swagger-resources/**",
+//                        "/swagger-resource",
+//                        "/webjars/**",
+//                        // API 文档相关路径
+//                        "/v3/api-docs/**",
+//                        "/v3/api-docs/swagger-config",
+//                        "/v2/api-docs",
+//                        "/doc.html/**",
+//                        // 静态资源
+//                        "/index.html",
+//                        "/chat.html",
+//                        "/super-agent/chat.html",
+//                        "/static/**",
+//                        "/ws/**",
+//                        // 认证相关API（无需SSO验证）
+//                        "/api/v1/auth/password-login",
+//                        "/api/v1/auth/phone-login",
+//                        "/api/v1/auth/send-sms",
+//                        "/api/v1/auth/register",
+//                        "/api/v1/auth/public-key",
+//                        "/api/v1/auth/reset-password",
+//                        "/api/v1/auth/**"
+//                );
+//    }
+//    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+//        registry.addResourceHandler("/static/**")
+//                .addResourceLocations("classpath:/front/static/resources/bundle-main/static/");
+//        registry.addResourceHandler("doc.html").addResourceLocations("classpath:/META-INF/resources/");
+//        registry.addResourceHandler("swagger-ui.html").addResourceLocations("classpath:/META-INF/resources/");
+//        registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
+//        registry.addResourceHandler("/ui/**").addResourceLocations("file:ui/");
+//        // 确保chat.html可以被直接访问
+//        registry.addResourceHandler("/chat.html")
+//                .addResourceLocations("classpath:/static/chat.html");
+//        registry.addResourceHandler("/ws/**")
+//                .addResourceLocations("classpath:/ws/**");
+//    }
 }

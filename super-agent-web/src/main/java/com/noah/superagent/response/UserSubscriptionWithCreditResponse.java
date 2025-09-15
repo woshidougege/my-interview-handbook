@@ -1,4 +1,4 @@
-package com.noah.superagent.dto.response;
+package com.noah.superagent.response;
 
 import com.noah.superagent.dao.entity.UserSubscriptionEntity;
 import io.swagger.v3.oas.annotations.media.Schema;

@@ -38,6 +38,8 @@ sa-token:
       "/api/v1/auth/password-login",
       "/api/v1/auth/get-sys-client-info",
       "/api/v1/auth/public-key",
+      # SSO代理接口（处理SSO认证流程，不应被拦截）
+      "/sso/doLoginByTicket",
       # 静态资源
       "/chat.html",
       "/static/**",

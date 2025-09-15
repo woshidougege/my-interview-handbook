@@ -4,7 +4,7 @@ import lombok.Data;
 
 /**
  * SSO认证中心用户信息
- * 用于接收从认证中心返回的用户信息
+ * 字段名与SSO SDK的UserDto保持一致，便于MapStruct转换
  *
  * @author 任相鹏
  * @since 1.0.0
@@ -13,19 +13,24 @@ import lombok.Data;
 public class SSOUserInfo {
 
     /**
-     * 认证中心用户ID（int类型）
+     * 认证中心用户ID（与SSO保持一致为String类型）
      */
-    private Integer userId;
+    private String userId;
 
     /**
-     * 用户名
+     * 用户名（与SSO字段名保持一致）
      */
-    private String username;
+    private String userName;
 
     /**
-     * 手机号
+     * 用户昵称（与SSO字段名保持一致）
      */
-    private String phone;
+    private String nickName;
+
+    /**
+     * 手机号（与SSO字段名保持一致）
+     */
+    private String phonenumber;
 
     /**
      * 邮箱
@@ -33,14 +38,14 @@ public class SSOUserInfo {
     private String email;
 
     /**
-     * 真实姓名
-     */
-    private String realName;
-
-    /**
      * 组织ID
      */
     private String orgId;
+
+    /**
+     * 组织机构code
+     */
+    private String orgCode;
 
     /**
      * 组织名称
@@ -48,9 +53,29 @@ public class SSOUserInfo {
     private String orgName;
 
     /**
-     * 用户状态（1-正常 0-禁用）
+     * 用户性别（0男 1女 2未知）
      */
-    private Integer status;
+    private String sex;
+
+    /**
+     * 租户id
+     */
+    private String tenantId;
+
+    /**
+     * 租户code码
+     */
+    private String tenantCode;
+
+    /**
+     * 租户名称
+     */
+    private String tenantName;
+
+    /**
+     * 用户状态（与SSO保持一致为String类型）
+     */
+    private String status;
 
     /**
      * 角色列表

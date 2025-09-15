@@ -2,6 +2,8 @@ package com.noah.superagent.util;
 
 import com.noah.superagent.model.SSOUserInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -9,13 +11,21 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * 用户上下文工具类
- * 提供便捷的方法获取当前登录用户信息（基于SSO）
+ * 提供便捷的方法获取当前登录用户信息（主动请求SSO接口）
  *
  * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
+@Component
 public class UserContext {
+
+    private static SSOManager ssoManager;
+
+    @Autowired
+    public void setSsoService(SSOManager ssoManager) {
+        UserContext.ssoManager = ssoManager;
+    }
 
     /**
      * 请求属性中用户信息的键名
@@ -40,30 +50,41 @@ public class UserContext {
      */
     public static Long getCurrentUserId() {
         SSOUserInfo user = getCurrentUser();
-        return user != null && user.getUserId() != null ? user.getUserId().longValue() : null;
+        if (user != null && user.getUserId() != null) {
+            try {
+                return Long.valueOf(user.getUserId());
+            } catch (NumberFormatException e) {
+                log.warn("用户ID转换失败: {}", user.getUserId());
+                return null;
+            }
+        }
+        return null;
     }
 
     /**
      * 获取当前登录用户信息
+     * 主动从SSO接口获取用户信息，而不是依赖预设的属性
      * 
-     * 注意：此方法依赖于拦截器或过滤器预先将用户信息设置到请求属性中
-     * 建议在用户认证拦截器中调用 setCurrentUser 方法
-     *
      * @return 当前SSO用户信息，未登录返回null
      */
     public static SSOUserInfo getCurrentUser() {
+        // 1. 优先从请求属性中获取（如果拦截器已经设置）
         HttpServletRequest request = getCurrentRequest();
-        if (request == null) {
-            log.debug("无法获取当前HTTP请求，可能不在Web上下文中");
-            return null;
+        
+         // 2. 如果请求属性中没有，则主动请求SSO接口获取
+         if (ssoManager != null) {
+             try {
+                 SSOUserInfo user = ssoManager.getCurrentSSOUser();
+                if (user != null && request != null) {
+                    // 获取到用户信息后缓存到请求属性中，避免重复请求
+                    request.setAttribute(USER_ATTRIBUTE_KEY, user);
+                }
+                return user;
+            } catch (Exception e) {
+                log.warn("主动获取SSO用户信息失败: {}", e.getMessage());
+            }
         }
-
-        Object userObj = request.getAttribute(USER_ATTRIBUTE_KEY);
-        if (userObj instanceof SSOUserInfo) {
-            return (SSOUserInfo) userObj;
-        }
-
-        log.debug("请求属性中未找到用户信息，用户可能未登录");
+        
         return null;
     }
 
@@ -74,7 +95,7 @@ public class UserContext {
      */
     public static String getCurrentUsername() {
         SSOUserInfo user = getCurrentUser();
-        return user != null ? user.getUsername() : null;
+        return user != null ? user.getUserName() : null;
     }
 
     /**
@@ -84,7 +105,7 @@ public class UserContext {
      */
     public static String getCurrentUserPhone() {
         SSOUserInfo user = getCurrentUser();
-        return user != null ? user.getPhone() : null;
+        return user != null ? user.getPhonenumber() : null;
     }
 
     /**
@@ -104,7 +125,7 @@ public class UserContext {
      */
     public static String getCurrentUserRealName() {
         SSOUserInfo user = getCurrentUser();
-        return user != null ? user.getRealName() : null;
+        return user != null ? user.getNickName() : null;
     }
 
     /**
@@ -127,9 +148,9 @@ public class UserContext {
         HttpServletRequest request = getCurrentRequest();
         if (request != null) {
             request.setAttribute(USER_ATTRIBUTE_KEY, user);
-            log.debug("设置当前用户: userId={}, username={}", 
+            log.debug("设置当前用户: userId={}, userName={}", 
                     user != null ? user.getUserId() : null, 
-                    user != null ? user.getUsername() : null);
+                    user != null ? user.getUserName() : null);
         } else {
             log.warn("无法设置用户信息：未找到当前HTTP请求");
         }
