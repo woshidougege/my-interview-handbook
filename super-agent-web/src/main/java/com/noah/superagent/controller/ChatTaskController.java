@@ -21,6 +21,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 对话任务管理控制器
@@ -86,8 +89,26 @@ public class ChatTaskController {
         PageResponse<ChatTaskDTO> doPageResponse = chatTaskService.getChatTaskPageByWorkspaceId(
                 workspaceId, request.getPageNum(), request.getPageSize(), request.getKeyword());
         
+        // 获取对话任务ID列表
+        List<Long> chatTaskIds = doPageResponse.getRecords().stream()
+                .map(ChatTaskDTO::getId)
+                .collect(Collectors.toList());
+        
+        // 批量查询定时任务状态
+        Map<Long, Long> chatTaskScheduledMap = chatTaskService.getChatTaskScheduledStatus(chatTaskIds);
+        
+        // 转换为响应列表并填充定时任务状态
+        List<ChatTaskResponse> responseList = doPageResponse.getRecords().stream()
+                .map(chatTaskWebConvert::toResponse)
+                .peek(response -> {
+                    Long scheduledTaskId = chatTaskScheduledMap.get(response.getId());
+                    response.setHasScheduledTask(scheduledTaskId != null);
+                    response.setScheduledTaskId(scheduledTaskId);
+                })
+                .collect(Collectors.toList());
+        
         PageResponse<ChatTaskResponse> response = new PageResponse<>(
-                chatTaskWebConvert.toResponseList(doPageResponse.getRecords()),
+                responseList,
                 doPageResponse.getTotal(),
                 doPageResponse.getPageNum(),
                 doPageResponse.getPageSize()
@@ -128,94 +149,65 @@ public class ChatTaskController {
     
     @PostMapping("/{id}/favorite")
     @Operation(summary = "收藏对话任务", description = "将指定对话任务标记为收藏")
-    public ApiResponse<Void> favoriteChatTask(
+    public ApiResponse<ChatTaskResponse> favoriteChatTask(
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
+            @PathVariable("workspaceId") Long workspaceId,
             @Parameter(description = "对话任务ID", example = "1234567890123456789")
             @PathVariable("id") Long id) {
         log.info("接收收藏对话任务请求: {}", id);
         
         chatTaskService.favoriteChatTask(id);
         
-        return ApiResponse.success("收藏成功");
+        // 重新查询任务以获取更新后的信息
+        ChatTaskDTO chatTaskDO = chatTaskService.getChatTaskById(id);
+        
+        // 获取定时任务状态
+        Map<Long, Long> chatTaskScheduledMap = chatTaskService.getChatTaskScheduledStatus(List.of(id));
+        ChatTaskResponse response = chatTaskWebConvert.toResponse(chatTaskDO);
+        Long scheduledTaskId = chatTaskScheduledMap.get(response.getId());
+        response.setHasScheduledTask(scheduledTaskId != null);
+        response.setScheduledTaskId(scheduledTaskId);
+        
+        return ApiResponse.success("收藏成功", response);
     }
     
     @DeleteMapping("/{id}/favorite")
     @Operation(summary = "取消收藏对话任务", description = "取消对话任务的收藏标记")
-    public ApiResponse<Void> unfavoriteChatTask(
+    public ApiResponse<ChatTaskResponse> unfavoriteChatTask(
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
+            @PathVariable("workspaceId") Long workspaceId,
             @Parameter(description = "对话任务ID", example = "1234567890123456789")
             @PathVariable("id") Long id) {
         log.info("接收取消收藏对话任务请求: {}", id);
         
         chatTaskService.unfavoriteChatTask(id);
         
-        return ApiResponse.success("取消收藏成功");
-    }
-    
-    @GetMapping("/favorites")
-    @Operation(summary = "查询收藏的对话任务列表", description = "分页查询收藏的对话任务列表")
-    public ApiResponse<PageResponse<ChatTaskResponse>> getFavoriteChatTasks(
-            @Parameter(description = "工作空间ID", example = "1234567890123456789")
-            @PathVariable("workspaceId") Long workspaceId,
-            @Valid PageRequest request) {
-        log.info("接收查询收藏对话任务列表请求，工作空间ID: {}", workspaceId);
+        // 重新查询任务以获取更新后的信息
+        ChatTaskDTO chatTaskDO = chatTaskService.getChatTaskById(id);
         
-        // Service -> PageResponse<DTO> -> PageResponse<Response>
-        PageResponse<ChatTaskDTO> doPageResponse = chatTaskService.getFavoriteChatTasks(
-                workspaceId, request.getPageNum(), request.getPageSize());
+        // 获取定时任务状态
+        Map<Long, Long> chatTaskScheduledMap = chatTaskService.getChatTaskScheduledStatus(List.of(id));
+        ChatTaskResponse response = chatTaskWebConvert.toResponse(chatTaskDO);
+        Long scheduledTaskId = chatTaskScheduledMap.get(response.getId());
+        response.setHasScheduledTask(scheduledTaskId != null);
+        response.setScheduledTaskId(scheduledTaskId);
         
-        PageResponse<ChatTaskResponse> response = new PageResponse<>(
-                chatTaskWebConvert.toResponseList(doPageResponse.getRecords()),
-                doPageResponse.getTotal(),
-                doPageResponse.getPageNum(),
-                doPageResponse.getPageSize()
-        );
-        
-        return ApiResponse.success("查询成功", response);
+        return ApiResponse.success("取消收藏成功", response);
     }
     
     @PostMapping("/generate-title")
     @Operation(summary = "生成对话标题", description = "根据用户问题生成对话标题")
-    public ApiResponse<ChatTitleGenerateResponse> generateChatTitle(
-            @Parameter(description = "工作空间ID", example = "1234567890123456789")
-            @PathVariable("workspaceId") Long workspaceId,
+    public ApiResponse<ChatTitleGenerateResponse> generateTitle(
             @Valid @RequestBody ChatTitleGenerateRequest request) {
-        log.info("接收生成对话标题请求，工作空间ID: {}，问题: {}", workspaceId, request.getQuestion());
+        log.info("接收生成对话标题请求: {}", request.getQuestion());
         
-        long startTime = System.currentTimeMillis();
+        // 调用AI服务生成标题
+        String generatedTitle = aiService.getAiResponse(request.getQuestion(), null, null);
         
-        try {
-            if (Boolean.TRUE.equals(request.getAsync())) {
-                // 异步处理
-                aiService.generateChatTitleAsync(request.getQuestion(), new AiService.TitleGenerationCallback() {
-                    @Override
-                    public void onSuccess(String title) {
-                        log.info("异步标题生成成功: {}", title);
-                        // TODO: 可以通过WebSocket或消息队列通知前端
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        log.error("异步标题生成失败: {}", error);
-                        // TODO: 可以通过WebSocket或消息队列通知前端
-                    }
-                });
-                
-                ChatTitleGenerateResponse response = ChatTitleGenerateResponse.createAsyncResponse();
-                return ApiResponse.success("标题生成任务已提交", response);
-            } else {
-                // 同步处理
-                String title = aiService.generateChatTitle(request.getQuestion());
-                long duration = System.currentTimeMillis() - startTime;
-                
-                ChatTitleGenerateResponse response = ChatTitleGenerateResponse.createSyncResponse(title, duration);
-                return ApiResponse.success("标题生成成功", response);
-            }
-        } catch (Exception e) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.error("生成对话标题失败，耗时: {}ms，错误: {}", duration, e.getMessage(), e);
-            
-            // 返回默认标题而不是抛出异常
-            ChatTitleGenerateResponse response = ChatTitleGenerateResponse.createSyncResponse("新对话", duration);
-            return ApiResponse.success("已使用默认标题", response);
-        }
+        ChatTitleGenerateResponse response = new ChatTitleGenerateResponse();
+        response.setTitle(generatedTitle);
+        response.setAsync(request.getAsync() != null ? request.getAsync() : false);
+        
+        return ApiResponse.success("标题生成成功", response);
     }
 }

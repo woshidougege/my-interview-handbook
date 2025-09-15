@@ -73,4 +73,15 @@ public interface ScheduledChatTaskMapper extends BaseMapper<ScheduledChatTaskEnt
                 .where(ScheduledChatTaskEntity::getUserId).eq(userId)
                 .and(ScheduledChatTaskEntity::getTaskName).eq(taskName));
     }
+    
+    /**
+     * 根据对话任务ID列表查询定时任务列表
+     */
+    default List<ScheduledChatTaskEntity> selectByChatTaskIds(List<Long> chatTaskIds) {
+        if (chatTaskIds == null || chatTaskIds.isEmpty()) {
+            return List.of();
+        }
+        return selectListByQuery(QueryWrapper.create()
+                .where(ScheduledChatTaskEntity::getChatTaskId).in(chatTaskIds));
+    }
 }
