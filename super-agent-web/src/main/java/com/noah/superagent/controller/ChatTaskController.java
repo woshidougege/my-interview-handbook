@@ -210,4 +210,27 @@ public class ChatTaskController {
         
         return ApiResponse.success("标题生成成功", response);
     }
+    
+    @PutMapping("/{id}/title")
+    @Operation(summary = "修改对话任务标题", description = "修改指定对话任务的标题")
+    public ApiResponse<ChatTaskResponse> updateChatTaskTitle(
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
+            @PathVariable("workspaceId") Long workspaceId,
+            @Parameter(description = "对话任务ID", example = "1234567890123456789")
+            @PathVariable("id") Long id,
+            @Parameter(description = "新标题")
+            @RequestBody Map<String, String> request) {
+        log.info("接收修改对话任务标题请求: ID={}, 新标题={}", id, request.get("title"));
+        
+        // 创建更新对象
+        ChatTaskDTO updateDO = new ChatTaskDTO();
+        updateDO.setId(id);
+        updateDO.setTitle(request.get("title"));
+        
+        // 更新标题
+        ChatTaskDTO resultDO = chatTaskService.updateChatTask(updateDO);
+        ChatTaskResponse response = chatTaskWebConvert.toResponse(resultDO);
+        
+        return ApiResponse.success("标题修改成功", response);
+    }
 }
