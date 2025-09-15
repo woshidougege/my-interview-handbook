@@ -1,6 +1,5 @@
 package com.noah.superagent.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -16,38 +15,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         return new RestTemplate();
     }
 
-    @Autowired
-    private SSOInterceptor ssoInterceptor;
-
-    public void addInterceptors(InterceptorRegistry registry) {
-        // 添加SSO拦截器，拦截所有请求，排除已配置的不需要认证的路径
-        registry.addInterceptor(ssoInterceptor)
-                .addPathPatterns("/**")
-                .excludePathPatterns(
-                        "/sso/**",
-                        "/favicon.ico",
-                        "/**/*.css",
-                        "/**/*.html",
-                        "/**/*.js",
-                        // Swagger UI 相关路径
-                        "/swagger-ui.html",
-                        "/swagger-ui/**",
-                        "/swagger-resources/**", 
-                        "/swagger-resource",
-                        "/webjars/**",
-                        // API 文档相关路径
-                        "/v3/api-docs/**",
-                        "/v3/api-docs/swagger-config",
-                        "/v2/api-docs",
-                        "/doc.html/**",
-                        // 静态资源
-                        "/index.html",
-                        "/chat.html",
-                        "/super-agent/chat.html",
-                        "/static/**",
-                        "/ws/**"
-                );
-    }
+    // 移除了addInterceptors方法，不再使用SSO拦截器
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/static/**")
                 .addResourceLocations("classpath:/front/static/resources/bundle-main/static/");
