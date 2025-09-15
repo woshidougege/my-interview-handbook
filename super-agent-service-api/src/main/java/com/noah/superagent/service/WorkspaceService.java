@@ -31,6 +31,14 @@ public interface WorkspaceService {
     WorkspaceDTO getWorkspaceById(Long id);
 
     /**
+     * 根据ID查询工作空间，如果不存在则创建默认工作空间
+     *
+     * @param id 工作空间ID
+     * @return 工作空间信息
+     */
+    WorkspaceDTO getWorkspaceByIdOrDefault(Long id);
+
+    /**
      * 分页查询工作空间
      *
      * @param pageNum 页码
@@ -62,4 +70,12 @@ public interface WorkspaceService {
      * @return 工作空间列表
      */
     List<WorkspaceDTO> getWorkspacesByUserId(Long userId);
+    
+    /**
+     * 根据用户ID查询工作空间列表，如果用户没有工作空间则创建默认工作空间
+     *
+     * @param userId 用户ID
+     * @return 工作空间列表
+     */
+    List<WorkspaceDTO> getWorkspacesByUserIdOrDefault(Long userId);
 }
