@@ -6,13 +6,7 @@ import com.norinrd.interfaces.api.CommonInterface;
 import com.norinrd.interfaces.dto.UserDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * SSO Token工具类
@@ -24,9 +18,6 @@ import javax.servlet.http.HttpServletRequest;
 @Slf4j
 @Component
 public class SSOManager {
-
-    @Value("${sa-token.sso.server-url:}")
-    private String ssoServerUrl;
     
     @Autowired
     private CommonInterface commonInterface;
@@ -48,13 +39,6 @@ public class SSOManager {
             log.error("SDK获取用户信息失败: {}", e.getMessage(), e);
             return null;
         }
-    }
-
-    /**
-     * 获取SSO登录URL
-     */
-    public String getLoginUrl(String redirectUrl) {
-        return ssoServerUrl + "/login?redirect=" + redirectUrl;
     }
 
 }
