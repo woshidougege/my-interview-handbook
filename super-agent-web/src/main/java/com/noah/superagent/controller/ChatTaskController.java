@@ -219,13 +219,13 @@ public class ChatTaskController {
             @Parameter(description = "对话任务ID", example = "1234567890123456789")
             @PathVariable("id") Long id,
             @Parameter(description = "新标题")
-            @RequestBody Map<String, String> request) {
-        log.info("接收修改对话任务标题请求: ID={}, 新标题={}", id, request.get("title"));
+            @RequestParam("title") String title) {
+        log.info("接收修改对话任务标题请求: ID={}, 新标题={}", id, title);
         
         // 创建更新对象
         ChatTaskDTO updateDO = new ChatTaskDTO();
         updateDO.setId(id);
-        updateDO.setTitle(request.get("title"));
+        updateDO.setTitle(title);
         
         // 更新标题
         ChatTaskDTO resultDO = chatTaskService.updateChatTask(updateDO);
