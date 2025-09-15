@@ -6,7 +6,7 @@ import com.noah.superagent.common.dto.request.ScheduledChatTaskUpdateRequest;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.ScheduledChatTaskResponse;
 import com.noah.superagent.convert.ScheduledChatTaskWebConvert;
-import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
+import com.noah.superagent.model.ScheduledChatTaskDTO;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.service.ScheduledChatTaskService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,14 +45,14 @@ public class ScheduledChatTaskController {
             @Valid @RequestBody ScheduledChatTaskCreateRequest request) {
         log.info("接收创建定时对话任务请求: {}", request.getTaskName());
 
-        // Request -> Entity -> Service -> Entity -> Response
-        ScheduledChatTaskEntity scheduledChatTaskEntity = scheduledChatTaskWebConvert.fromCreateRequest(request);
+        // Request -> DTO -> Service -> DTO -> Response
+        ScheduledChatTaskDTO taskDTO = scheduledChatTaskWebConvert.fromCreateRequest(request);
         // 设置工作空间ID和用户ID
-        scheduledChatTaskEntity.setWorkspaceId(workspaceId);
+        taskDTO.setWorkspaceId(workspaceId);
         // 在实际应用中，用户ID应该从安全上下文中获取
-        scheduledChatTaskEntity.setUserId(request.getUserId());
-        ScheduledChatTaskEntity resultEntity = scheduledChatTaskService.createScheduledChatTask(scheduledChatTaskEntity);
-        ScheduledChatTaskResponse response = scheduledChatTaskWebConvert.toResponse(resultEntity);
+        taskDTO.setUserId(request.getUserId());
+        ScheduledChatTaskDTO resultDTO = scheduledChatTaskService.createScheduledChatTask(taskDTO);
+        ScheduledChatTaskResponse response = scheduledChatTaskWebConvert.toResponse(resultDTO);
 
         return ApiResponse.success("定时对话任务创建成功", response);
     }
@@ -64,9 +64,9 @@ public class ScheduledChatTaskController {
             @PathVariable("id") Long id) {
         log.info("接收查询定时对话任务请求: {}", id);
 
-        // Service -> Entity -> Response
-        ScheduledChatTaskEntity scheduledChatTaskEntity = scheduledChatTaskService.getScheduledChatTaskById(id);
-        ScheduledChatTaskResponse response = scheduledChatTaskWebConvert.toResponse(scheduledChatTaskEntity);
+        // Service -> DTO -> Response
+        ScheduledChatTaskDTO taskDTO = scheduledChatTaskService.getScheduledChatTaskById(id);
+        ScheduledChatTaskResponse response = scheduledChatTaskWebConvert.toResponse(taskDTO);
 
         return ApiResponse.success("查询成功", response);
     }
@@ -79,15 +79,15 @@ public class ScheduledChatTaskController {
             @Valid PageRequest request) {
         log.info("接收分页查询定时对话任务请求: {}", request);
 
-        // Service -> PageResponse<Entity> -> PageResponse<Response>
-        PageResponse<ScheduledChatTaskEntity> entityPageResponse = scheduledChatTaskService.getScheduledChatTasksPage(
+        // Service -> PageResponse<DTO> -> PageResponse<Response>
+        PageResponse<ScheduledChatTaskDTO> dtoPageResponse = scheduledChatTaskService.getScheduledChatTasksPage(
                 workspaceId, request.getPageNum(), request.getPageSize(), request.getKeyword());
 
         PageResponse<ScheduledChatTaskResponse> response = new PageResponse<>(
-                scheduledChatTaskWebConvert.toResponseList(entityPageResponse.getRecords()),
-                entityPageResponse.getTotal(),
-                entityPageResponse.getPageNum(),
-                entityPageResponse.getPageSize()
+                scheduledChatTaskWebConvert.toResponseList(dtoPageResponse.getRecords()),
+                dtoPageResponse.getTotal(),
+                dtoPageResponse.getPageNum(),
+                dtoPageResponse.getPageSize()
         );
 
         return ApiResponse.success("查询成功", response);
@@ -101,10 +101,10 @@ public class ScheduledChatTaskController {
             @Valid @RequestBody ScheduledChatTaskUpdateRequest request) {
         log.info("接收更新定时对话任务请求: {}", id);
 
-        // UpdateRequest -> Entity -> Service -> Entity -> Response
-        ScheduledChatTaskEntity updateEntity = scheduledChatTaskWebConvert.fromUpdateRequest(request);
-        ScheduledChatTaskEntity resultEntity = scheduledChatTaskService.updateScheduledChatTask(id, updateEntity);
-        ScheduledChatTaskResponse response = scheduledChatTaskWebConvert.toResponse(resultEntity);
+        // UpdateRequest -> DTO -> Service -> DTO -> Response
+        ScheduledChatTaskDTO updateDTO = scheduledChatTaskWebConvert.fromUpdateRequest(request);
+        ScheduledChatTaskDTO resultDTO = scheduledChatTaskService.updateScheduledChatTask(id, updateDTO);
+        ScheduledChatTaskResponse response = scheduledChatTaskWebConvert.toResponse(resultDTO);
 
         return ApiResponse.success("更新成功", response);
     }
@@ -154,8 +154,8 @@ public class ScheduledChatTaskController {
             @PathVariable("userId") Long userId) {
         log.info("接收根据用户ID查询定时对话任务请求: {}", userId);
 
-        List<ScheduledChatTaskEntity> scheduledChatTaskEntities = scheduledChatTaskService.getScheduledChatTasksByUserId(userId);
-        List<ScheduledChatTaskResponse> response = scheduledChatTaskWebConvert.toResponseList(scheduledChatTaskEntities);
+        List<ScheduledChatTaskDTO> scheduledChatTaskDTOs = scheduledChatTaskService.getScheduledChatTasksByUserId(userId);
+        List<ScheduledChatTaskResponse> response = scheduledChatTaskWebConvert.toResponseList(scheduledChatTaskDTOs);
 
         return ApiResponse.success("查询成功", response);
     }
@@ -167,8 +167,8 @@ public class ScheduledChatTaskController {
             @PathVariable("workspaceId") Long workspaceId) {
         log.info("接收根据工作空间ID查询定时对话任务请求: {}", workspaceId);
 
-        List<ScheduledChatTaskEntity> scheduledChatTaskEntities = scheduledChatTaskService.getScheduledChatTasksByWorkspaceId(workspaceId);
-        List<ScheduledChatTaskResponse> response = scheduledChatTaskWebConvert.toResponseList(scheduledChatTaskEntities);
+        List<ScheduledChatTaskDTO> scheduledChatTaskDTOs = scheduledChatTaskService.getScheduledChatTasksByWorkspaceId(workspaceId);
+        List<ScheduledChatTaskResponse> response = scheduledChatTaskWebConvert.toResponseList(scheduledChatTaskDTOs);
 
         return ApiResponse.success("查询成功", response);
     }

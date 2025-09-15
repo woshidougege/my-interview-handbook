@@ -3,7 +3,7 @@ package com.noah.superagent.convert;
 import com.noah.superagent.common.dto.request.ScheduledChatTaskCreateRequest;
 import com.noah.superagent.common.dto.request.ScheduledChatTaskUpdateRequest;
 import com.noah.superagent.common.dto.response.ScheduledChatTaskResponse;
-import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
+import com.noah.superagent.model.ScheduledChatTaskDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
@@ -12,19 +12,19 @@ import java.util.List;
 
 /**
  * 定时对话任务Web层转换器
- * 实现DTO与Entity之间的相互转换
+ * 负责 Request <-> DTO <-> Response 转换
  *
- * @author System
+ * @author AI Assistant  
  * @since 1.0.0
  */
 @Mapper(componentModel = "spring")
 public interface ScheduledChatTaskWebConvert {
 
     /**
-     * 创建请求转换为实体
+     * 创建请求转换为DTO
      *
      * @param request 创建请求
-     * @return 定时对话任务实体
+     * @return 定时对话任务DTO
      */
     @Mappings({
             @Mapping(target = "id", ignore = true),
@@ -34,15 +34,16 @@ public interface ScheduledChatTaskWebConvert {
             @Mapping(target = "updateBy", ignore = true),
             @Mapping(target = "deleted", ignore = true),
             @Mapping(target = "lastExecutionTime", ignore = true),
-            @Mapping(target = "nextExecutionTime", ignore = true)
+            @Mapping(target = "nextExecutionTime", ignore = true),
+            @Mapping(target = "chatTaskId", ignore = true)
     })
-    ScheduledChatTaskEntity fromCreateRequest(ScheduledChatTaskCreateRequest request);
+    ScheduledChatTaskDTO fromCreateRequest(ScheduledChatTaskCreateRequest request);
 
     /**
-     * 更新请求转换为实体
+     * 更新请求转换为DTO
      *
      * @param request 更新请求
-     * @return 定时对话任务实体
+     * @return 定时对话任务DTO
      */
     @Mappings({
             @Mapping(target = "id", ignore = true),
@@ -54,23 +55,24 @@ public interface ScheduledChatTaskWebConvert {
             @Mapping(target = "updateBy", ignore = true),
             @Mapping(target = "deleted", ignore = true),
             @Mapping(target = "lastExecutionTime", ignore = true),
-            @Mapping(target = "nextExecutionTime", ignore = true)
+            @Mapping(target = "nextExecutionTime", ignore = true),
+            @Mapping(target = "chatTaskId", ignore = true)
     })
-    ScheduledChatTaskEntity fromUpdateRequest(ScheduledChatTaskUpdateRequest request);
+    ScheduledChatTaskDTO fromUpdateRequest(ScheduledChatTaskUpdateRequest request);
 
     /**
-     * 实体转换为响应
+     * DTO转换为响应
      *
-     * @param entity 定时对话任务实体
+     * @param dto 定时对话任务DTO
      * @return 定时对话任务响应
      */
-    ScheduledChatTaskResponse toResponse(ScheduledChatTaskEntity entity);
+    ScheduledChatTaskResponse toResponse(ScheduledChatTaskDTO dto);
 
     /**
-     * 实体列表转换为响应列表
+     * DTO列表转换为响应列表
      *
-     * @param entities 定时对话任务实体列表
+     * @param dtos 定时对话任务DTO列表
      * @return 定时对话任务响应列表
      */
-    List<ScheduledChatTaskResponse> toResponseList(List<ScheduledChatTaskEntity> entities);
+    List<ScheduledChatTaskResponse> toResponseList(List<ScheduledChatTaskDTO> dtos);
 }
