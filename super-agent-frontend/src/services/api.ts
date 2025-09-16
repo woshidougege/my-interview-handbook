@@ -148,6 +148,11 @@ export const subscriptionApi = {
   getPlans: (): ApiPromise<any[]> => {
     return api.get(API_ENDPOINTS.SUBSCRIPTION.PLANS);
   },
+
+  // 根据计费周期获取套餐列表
+  getPlansWithBillingCycle: (billingCycle: 'monthly' | 'yearly'): ApiPromise<any[]> => {
+    return api.get(`${API_ENDPOINTS.SUBSCRIPTION.PLANS}?billingCycle=${billingCycle}`);
+  },
   
   // 创建订阅
   createSubscription: (data: SubscriptionCreateRequest): ApiPromise<SubscriptionInfo> => {

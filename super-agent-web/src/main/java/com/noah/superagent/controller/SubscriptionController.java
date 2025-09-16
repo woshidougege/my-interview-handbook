@@ -1,6 +1,7 @@
 package com.noah.superagent.controller;
 
 import com.noah.superagent.common.dto.response.SubscriptionPlanResponse;
+import com.noah.superagent.common.enums.BillingCycleEnum;
 import com.noah.superagent.convert.SubscriptionPlanWebConvert;
 import com.noah.superagent.model.UserSubscriptionDTO;
 import com.noah.superagent.response.ApiResponse;
@@ -10,6 +11,7 @@ import com.noah.superagent.service.UserSubscriptionService;
 import com.noah.superagent.service.UserCreditService;
 import com.noah.superagent.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -40,7 +42,7 @@ public class SubscriptionController {
 
     @Operation(
         summary = "获取所有启用的套餐", 
-        description = "获取系统中所有启用状态的订阅套餐列表，包含套餐详情、价格、功能特性等信息。此接口无需认证，可用于展示给未登录用户。",
+        description = "获取系统中所有启用状态的订阅套餐列表，包含套餐详情、价格、功能特性等信息。支持按计费周期调整价格（按年优惠17%）。此接口无需认证，可用于展示给未登录用户。",
         tags = {"订阅管理"}
     )
     @ApiResponses(value = {
@@ -170,9 +172,18 @@ public class SubscriptionController {
         )
     })
     @GetMapping("/plans")
-    public ApiResponse<List<SubscriptionPlanResponse>> getPlans() {
+    public ApiResponse<List<SubscriptionPlanResponse>> getPlans(
+            @Parameter(
+                name = "billingCycle",
+                description = "计费周期：monthly(按月) 或 yearly(按年)，按年时自动优惠17%",
+                example = "monthly"
+            )
+            @RequestParam(value = "billingCycle", required = false, defaultValue = "monthly") String billingCycle
+    ) {
+        BillingCycleEnum cycle = BillingCycleEnum.fromCode(billingCycle);
+        
         List<SubscriptionPlanResponse> plans = webConvert.toResponseList(
-            subscriptionPlanService.getEnabledPlans()
+            subscriptionPlanService.getEnabledPlansByBillingCycle(cycle)
         );
         
         // 明确指定泛型类型 - 解决Swagger嵌套对象显示问题

@@ -54,25 +54,27 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     if (visible) {
       loadPlans();
     }
-  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visible, billingCycle]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const loadPlans = async () => {
     try {
       setLoading(true);
-      const response = await subscriptionApi.getPlans();
+      const response = await subscriptionApi.getPlansWithBillingCycle(billingCycle);
       const apiPlans = response.data.data || [];
       
       // 转换API数据为组件需要的格式  
       const formattedPlans: Plan[] = apiPlans.map((plan: {
         id: number;
         planName: string;
+        planCode?: string;
         monthlyPrice?: number;
         yearlyPrice?: number;
         features?: PlanFeature[];
       }) => ({
         id: plan.id.toString(),
         name: plan.planName,
+        code: plan.planCode || plan.planName.toLowerCase(),
         price: { 
           monthly: plan.monthlyPrice || 0, 
           yearly: plan.yearlyPrice || 0 
@@ -124,6 +126,19 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     }
   ];
 
+  // 获取显示价格（后端已经处理了按年优惠）
+  const getDisplayPrice = (plan: Plan) => {
+    return billingCycle === 'yearly' ? plan.price.yearly : plan.price.monthly;
+  };
+
+  // 获取月均价格（用于按年时的提示）
+  const getMonthlyEquivalent = (plan: Plan) => {
+    if (billingCycle === 'yearly' && plan.price.yearly > 0) {
+      return Math.round(plan.price.yearly / 12);
+    }
+    return plan.price.monthly;
+  };
+
   const handleSubscribe = (planId: string) => {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
@@ -135,7 +150,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     setSelectedPlan({
       id: planId,
       name: plan.name,
-      amount: plan.price[billingCycle]
+      amount: getDisplayPrice(plan)
     });
     setPaymentVisible(true);
   };
@@ -297,12 +312,18 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
                   <span style={{ fontSize: '32px', fontWeight: 600, color: '#333' }}>
-                    ¥{plan.price[billingCycle]}
+                    ¥{getDisplayPrice(plan)}
                   </span>
                   <span style={{ fontSize: '14px', color: '#666', marginLeft: '4px' }}>
                     {plan.isCreditsOnly ? ' / 10000积分' : (billingCycle === 'monthly' ? ' / 月' : ' / 年')}
                   </span>
                 </div>
+                {/* 按年时显示月均价格提示 */}
+                {billingCycle === 'yearly' && !plan.isCreditsOnly && getDisplayPrice(plan) > 0 && (
+                  <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                    {getMonthlyEquivalent(plan)}元/月
+                  </div>
+                )}
               </div>
 
               {/* 订阅按钮 - 在价格下方 */}
