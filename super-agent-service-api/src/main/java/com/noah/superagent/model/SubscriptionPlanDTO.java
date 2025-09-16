@@ -77,4 +77,14 @@ public class SubscriptionPlanDTO extends BaseDTO {
      * 按年优惠比例（0-1之间的小数，如0.17表示17%优惠）
      */
     private Double yearlyDiscountRate;
+
+    /**
+     * 按年订阅总优惠金额（一年总共省多少钱）
+     */
+    private BigDecimal yearlyTotalSavings;
+
+    /**
+     * 按年订阅月均优惠金额（平均每月省多少钱）
+     */
+    private BigDecimal yearlyMonthlySavings;
 }
