@@ -46,7 +46,7 @@ public interface ScheduledChatTaskWebConvert {
      * @return 定时对话任务DTO
      */
     @Mappings({
-            @Mapping(target = "id", ignore = true),
+            @Mapping(target = "id", ignore = false),
             @Mapping(target = "userId", ignore = true),
             @Mapping(target = "workspaceId", ignore = true),
             @Mapping(target = "createTime", ignore = true),
