@@ -22,8 +22,10 @@ export interface UserCredit {
   availableCredits?: number;
   hasCreditAccount?: boolean;
   planName?: string;
+  planCode?: string;
   limitedCredits?: number;
   dailyRefreshCredits?: number;
+  permanentCredits?: number;
 }
 
 // 积分交易记录类型定义

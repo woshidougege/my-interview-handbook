@@ -63,4 +63,11 @@ public class UserSubscriptionWithCreditResponse {
         minimum = "0"
     )
     private Long dailyRefreshCredits;
+
+    @Schema(
+        description = "永久积分（购买获得，永不过期）", 
+        example = "1900",
+        minimum = "0"
+    )
+    private Long permanentCredits;
 }

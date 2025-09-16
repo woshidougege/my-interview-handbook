@@ -333,6 +333,7 @@ public class SubscriptionController {
             String planCode = null;
             Long limitedCredits = 0L;
             Long dailyRefreshCredits = 0L;
+            Long permanentCredits = 0L;
             
             // 获取套餐名称和代码
             if (subscription != null && subscription.getPlanId() != null) {
@@ -381,11 +382,15 @@ public class SubscriptionController {
                         // 当日刷新积分
                         dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
                         
-                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}", 
+                        // 永久积分
+                        permanentCredits = creditDetail.getPermanentBalance() != null ? creditDetail.getPermanentBalance().longValue() : 0L;
+                        
+                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}, permanent: {}", 
                                 userId, availableCredits, 
                                 creditDetail.getFreeBalance(), 
                                 creditDetail.getActivityBalance(), 
-                                creditDetail.getDailyBalance());
+                                creditDetail.getDailyBalance(),
+                                creditDetail.getPermanentBalance());
                     }
                 }
             } catch (Exception e) {
@@ -402,6 +407,7 @@ public class SubscriptionController {
             response.setPlanCode(planCode);
             response.setLimitedCredits(limitedCredits);
             response.setDailyRefreshCredits(dailyRefreshCredits);
+            response.setPermanentCredits(permanentCredits);
             
             // 明确指定泛型类型 - 解决Swagger嵌套对象显示问题
             return ApiResponse.success("获取订阅和积分信息成功", response);
