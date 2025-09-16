@@ -42,7 +42,7 @@ public class SubscriptionPlanServiceImpl extends ServiceImpl<SubscriptionPlanMap
     public List<SubscriptionPlanDTO> getEnabledPlans() {
         log.info("获取启用的订阅套餐列表");
         
-        return subscriptionPlanMapper.selectAll()
+        return subscriptionPlanMapper.selectAllOrderById()
                 .stream()
                 .filter(plan -> EnabledEnum.ENABLED.equals(plan.getEnabled()))
                 .map(convert::fromEntity)
