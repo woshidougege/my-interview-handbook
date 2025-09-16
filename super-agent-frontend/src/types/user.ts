@@ -34,11 +34,17 @@ export interface CreditTransaction {
   userId: string;
   transactionType: number;
   transactionTypeDesc: string;
+  creditType: string;
+  creditTypeDesc: string;
   amount: number;
+  balanceBefore: number;
   balanceAfter: number;
   description: string;
-  relatedId?: string;
+  relatedOrderId?: string;
+  relatedSubscriptionId?: string;
+  expireTime?: string;
   createTime: string;
+  changeType: string; // "+" 表示收入，"-" 表示支出
 }
 
 // 套餐功能特性类型定义

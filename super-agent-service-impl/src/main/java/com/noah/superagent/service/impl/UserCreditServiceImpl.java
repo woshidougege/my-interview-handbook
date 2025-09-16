@@ -507,6 +507,9 @@ public class UserCreditServiceImpl implements UserCreditService {
         // 添加交易类型描述
         if (entity.getTransactionType() != null) {
             response.setTransactionTypeDesc(entity.getTransactionType().getDesc());
+            
+            // 设置收入支出标识
+            response.setChangeType(entity.getTransactionType().isIncome() ? "+" : "-");
         }
         
         // 添加积分类型描述

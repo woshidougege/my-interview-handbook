@@ -59,4 +59,7 @@ public class CreditTransactionResponse {
 
     @Schema(description = "交易时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "收入支出标识", example = "+")
+    private String changeType;
 }
