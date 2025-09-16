@@ -1,9 +1,6 @@
 package com.noah.superagent.controller;
 
-import com.noah.superagent.common.dto.request.PasswordLoginRequest;
-import com.noah.superagent.common.dto.request.PhoneLoginRequest;
-import com.noah.superagent.common.dto.request.RegisterRequest;
-import com.noah.superagent.common.dto.request.ResetPasswordRequest;
+import com.noah.superagent.common.dto.request.*;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -401,6 +398,43 @@ public class AuthController {
         } catch (Exception e) {
             log.error("找回密码失败: {}", e.getMessage(), e);
             return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/reset-password-by-id")
+    @Operation(
+        summary = "通过用户ID重置密码",
+        description = "通过用户ID和新密码重置密码，对接方舟认证系统"
+    )
+    public ApiResponse<String> resetPasswordById(@RequestBody ChangePasswordRequest request) {
+        log.info("通过用户ID重置密码请求，用户ID: {}", request.getUserId());
+
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent", "sso", "restPassword").toUriString();
+
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("userId", request.getUserId());
+            requestBody.put("newPwd", request.getNewPwd());
+            requestBody.put("servicecode", serviceCode);
+
+            HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity, MAP_TYPE_REFERENCE);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    return ApiResponse.success("密码重置成功");
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
+            }
+
+            return ApiResponse.error("密码重置失败，请稍后重试");
+
+        } catch (Exception e) {
+            log.error("通过用户ID重置密码失败: {}", e.getMessage(), e);
+            return ApiResponse.error("密码重置失败: " + e.getMessage());
         }
     }
 }
