@@ -105,39 +105,9 @@
             </excludes>
         </dependencySet>
 
-        <!-- 第三方依赖 - 同时复制到根目录lib（方便单独上传） -->
-        <dependencySet>
-            <outputDirectory>lib</outputDirectory>
-            <useProjectArtifact>false</useProjectArtifact>
-            <excludes>
-                <!-- 排除本项目的模块，这些会单独处理 -->
-                <exclude>com.noah:super-agent-common</exclude>
-                <exclude>com.noah:super-agent-dao</exclude>
-                <exclude>com.noah:super-agent-service-api</exclude>
-                <exclude>com.noah:super-agent-service-impl</exclude>
-                <exclude>com.noah:super-agent-web</exclude>
-                <exclude>com.noah:super-agent-scheduler</exclude>
-            </excludes>
-        </dependencySet>
-
         <!-- 业务模块依赖 - 放到super-agent/modules目录 -->
         <dependencySet>
             <outputDirectory>super-agent/modules</outputDirectory>
-            <useProjectArtifact>false</useProjectArtifact>
-            <includes>
-                <include>com.noah:super-agent-common</include>
-                <include>com.noah:super-agent-dao</include>
-                <include>com.noah:super-agent-service-api</include>
-                <include>com.noah:super-agent-service-impl</include>
-                <include>com.noah:super-agent-web</include>
-                <include>com.noah:super-agent-scheduler</include>
-            </includes>
-            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
-        </dependencySet>
-
-        <!-- 业务模块依赖 - 同时复制到根目录models（方便单独上传） -->
-        <dependencySet>
-            <outputDirectory>models</outputDirectory>
             <useProjectArtifact>false</useProjectArtifact>
             <includes>
                 <include>com.noah:super-agent-common</include>
