@@ -47,6 +47,11 @@ sa-token:
       "/api/v1/**"
     ]
     isHttp: true
+  # Token超时配置（控制您系统中satoken的有效期）
+  # token有效期，单位s 默认30天, -1代表永不过期  
+  timeout: 2592000
+  # token临时过期时间 (指定时间内无操作就视为token过期) 单位: 秒, -1代表不限制
+  activity-timeout: 1800
   # 是否打印启动成功标志
   is-print: true
   # 是否允许同一账号并发登录 (为true时允许一起登录, 为false时新登录挤掉旧登录) =-1
@@ -54,14 +59,14 @@ sa-token:
   # 在多人登录同一账号时，是否共用一个token (为true时所有登录共用一个token, 为false时每次登录新建一个token)
   isShare: false
   # 是否使用redis存储信息，默认false使用内存来存储信息，true使用spring redis存储信息（请配置spring redis），若配置下述alone-redis，则使用下述alone-redis存储信息（不必再配置spring redis）。
-  redis-enabled: false
+  redis-enabled: true
   alone-redis:
     # 是否启用独立的redis来存储信息，此处为true时，redis-enabled也要设置为true
     enabled: true
     # cluster:
     #   nodes: 192.168.5.160:6379,192.168.5.161:6379,192.168.5.162:6379
     # password: zb@123
-    host: xxx
+    host: 192.168.1.66
     port: 6379
     database: 1
     connect-timeout: 10s
