@@ -87,7 +87,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
         monthlySavings: plan.monthlySavings || 0,
         yearlyOriginalPrice: plan.yearlyOriginalPrice || 0,
         yearlySavings: plan.yearlySavings || 0,
-        yearlyMonthlySavings: plan.yearlyMonthlySavings || 0,
         yearlyDiscountRate: globalDiscountRate,
         isCurrent: plan.isCurrentPlan || false,
         buttonText: plan.isCurrentPlan ? '当前计划' : '订阅',
@@ -251,7 +250,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
         ) : (
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: `repeat(${Math.min(plans.length, 4)}, 1fr)`, 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
             gap: '24px',
             marginBottom: '32px',
             alignItems: 'stretch'
@@ -337,10 +336,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
                     {/* 显示月均价格和优惠提示 */}
                     {!plan.isCreditsOnly && plan.price.yearly > 0 && (
                       <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                        <div>平均 {Math.round(plan.price.yearly / 12)}元/月</div>
-                        {plan.yearlyMonthlySavings > 0 && (
+                        <div>平均 {plan.price.monthly}元/月</div>
+                        {plan.monthlySavings > 0 && (
                           <div style={{ color: '#ff4d4f', marginTop: '2px' }}>
-                            每月省 {plan.yearlyMonthlySavings.toFixed(2)}元
+                            每月省 {plan.monthlySavings}元
                           </div>
                         )}
                       </div>

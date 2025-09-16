@@ -114,10 +114,4 @@ public class SubscriptionPlanResponse extends BaseResponse {
      */
     @Schema(description = "按年订阅优惠金额（元）", example = "80.00")
     private BigDecimal yearlySavings;
-
-    /**
-     * 按年订阅月均优惠金额（平均每月省多少钱）
-     */
-    @Schema(description = "按年订阅月均优惠金额（元）", example = "6.67")
-    private BigDecimal yearlyMonthlySavings;
 }

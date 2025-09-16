@@ -55,24 +55,14 @@ public class PlansConfig {
         private String description;
 
         /**
-         * 月付价格
+         * 价格配置字段（-1表示自动计算，否则使用配置值）
          */
-        private BigDecimal monthlyPrice;
-
-        /**
-         * 年付价格
-         */
-        private BigDecimal yearlyPrice;
-
-        /**
-         * 价格控制字段（-1表示自动计算，否则使用配置值）
-         */
-        private BigDecimal monthlyOriginalPrice = BigDecimal.valueOf(-1);
-        private BigDecimal monthlyDiscountedPrice = BigDecimal.valueOf(-1);
-        private BigDecimal monthlySavings = BigDecimal.valueOf(-1);
-        private BigDecimal yearlyOriginalPrice = BigDecimal.valueOf(-1);
-        private BigDecimal yearlyDiscountedPrice = BigDecimal.valueOf(-1);
-        private BigDecimal yearlySavings = BigDecimal.valueOf(-1);
+        private BigDecimal monthlyOriginalPrice;    // 月价原价（必填）
+        private BigDecimal yearlyOriginalPrice;     // 年价原价（必填）
+        private BigDecimal monthlyDiscountedPrice = BigDecimal.valueOf(-1);  // 月价优惠后（-1=自动17%优惠）
+        private BigDecimal yearlyDiscountedPrice = BigDecimal.valueOf(-1);   // 年价优惠后（-1=自动17%优惠）
+        private BigDecimal monthlySavings = BigDecimal.valueOf(-1);          // 月价优惠金额（-1=自动计算）
+        private BigDecimal yearlySavings = BigDecimal.valueOf(-1);           // 年价优惠金额（-1=自动计算）
 
         /**
          * 有效期天数

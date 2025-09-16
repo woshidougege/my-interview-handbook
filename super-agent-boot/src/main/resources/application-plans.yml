@@ -10,14 +10,12 @@ super-agent:
         name: "免费版"
         code: "FREE"
         description: "适合轻度使用的个人用户"
-        monthly-price: 0
-        yearly-price: 0
-        # 价格控制字段（免费版全部为0）
+        # 价格配置（免费版原价为0）
         monthly-original-price: 0
-        monthly-discounted-price: 0
-        monthly-savings: 0
         yearly-original-price: 0
+        monthly-discounted-price: 0
         yearly-discounted-price: 0
+        monthly-savings: 0
         yearly-savings: 0
         validity-days: 90
         sort-order: 1
@@ -39,14 +37,12 @@ super-agent:
         name: "基础版"
         code: "BASIC"
         description: "适合中度使用的专业用户"
-        monthly-price: 39
-        yearly-price: 388  # 39 * 12 * 0.83 = 388
-        # 价格控制字段（-1表示自动计算，否则使用配置值）
-        monthly-original-price: -1      # 月价原价（-1=使用monthly-price）
-        monthly-discounted-price: -1    # 月价优惠后（-1=使用monthly-price）
+        # 价格配置（设置原价，-1表示自动17%优惠计算）
+        monthly-original-price: 39      # 月价原价
+        yearly-original-price: 468      # 年价原价（39*12）
+        monthly-discounted-price: 29    # 月价优惠后（-1=自动17%优惠）
+        yearly-discounted-price: -1     # 年价优惠后（-1=自动17%优惠）
         monthly-savings: -1             # 月价优惠金额（-1=自动计算）
-        yearly-original-price: -1       # 年价原价（-1=monthly-price*12）
-        yearly-discounted-price: -1     # 年价优惠后（-1=使用yearly-price）
         yearly-savings: -1              # 年价优惠金额（-1=自动计算）
         validity-days: 30
         sort-order: 2
@@ -83,14 +79,12 @@ super-agent:
         name: "高级版"
         code: "PREMIUM" 
         description: "适合重度使用的企业用户"
-        monthly-price: 199
-        yearly-price: 1983  # 199 * 12 * 0.83 = 1983
-        # 价格控制字段（-1表示自动计算，否则使用配置值）
-        monthly-original-price: -1      # 月价原价（-1=使用monthly-price）
-        monthly-discounted-price: -1    # 月价优惠后（-1=使用monthly-price）
+        # 价格配置（设置原价，-1表示自动17%优惠计算）
+        monthly-original-price: 199     # 月价原价
+        yearly-original-price: 2388     # 年价原价（199*12）
+        monthly-discounted-price: 179    # 月价优惠后（-1=自动17%优惠）
+        yearly-discounted-price: -1     # 年价优惠后（-1=自动17%优惠）
         monthly-savings: -1             # 月价优惠金额（-1=自动计算）
-        yearly-original-price: -1       # 年价原价（-1=monthly-price*12）
-        yearly-discounted-price: -1     # 年价优惠后（-1=使用yearly-price）
         yearly-savings: -1              # 年价优惠金额（-1=自动计算）
         validity-days: 30
         sort-order: 3
@@ -130,15 +124,13 @@ super-agent:
         name: "额外购买积分"
         code: "CREDIT_PACK"
         description: "直接购买永久积分，无订阅期限"
-        monthly-price: 59
-        yearly-price: 59
-        # 价格控制字段（积分包无优惠）
-        monthly-original-price: 59
-        monthly-discounted-price: 59
-        monthly-savings: 0
-        yearly-original-price: 59
-        yearly-discounted-price: 59
-        yearly-savings: 0
+        # 价格配置（积分包无优惠，原价即最终价）
+        monthly-original-price: 59      # 月价原价
+        yearly-original-price: 59       # 年价原价（一次性购买，无年付概念）
+        monthly-discounted-price: 59    # 月价优惠后（无优惠）
+        yearly-discounted-price: 59     # 年价优惠后（无优惠）
+        monthly-savings: 0              # 月价优惠金额（无优惠）
+        yearly-savings: 0               # 年价优惠金额（无优惠）
         validity-days: 0
         sort-order: 4
         is-recommended: false

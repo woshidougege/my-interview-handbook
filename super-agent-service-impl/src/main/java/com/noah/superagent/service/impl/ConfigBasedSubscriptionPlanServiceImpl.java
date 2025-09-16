@@ -66,9 +66,7 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
         dto.setPlanCode(parsePlanCode(config.getCode()));
         dto.setDescription(config.getDescription());
         
-        // 价格信息
-        dto.setMonthlyPrice(config.getMonthlyPrice());
-        dto.setYearlyPrice(config.getYearlyPrice());
+        // 价格信息将在calculatePriceFields中设置
         
         // 计算价格相关字段
         calculatePriceFields(dto, config);
@@ -90,28 +88,26 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
      * 支持配置文件控制：-1表示自动计算，否则使用配置值
      */
     private void calculatePriceFields(SubscriptionPlanDTO dto, PlansConfig.PlanConfig config) {
-        BigDecimal monthlyPrice = config.getMonthlyPrice();
-        BigDecimal yearlyPrice = config.getYearlyPrice();
+        BigDecimal monthlyOriginalPrice = config.getMonthlyOriginalPrice();
+        BigDecimal yearlyOriginalPrice = config.getYearlyOriginalPrice();
         
         // 全局优惠比例
         BigDecimal discountRate = BigDecimal.valueOf(plansConfig.getYearlyDiscountRate());
         
-        if (monthlyPrice != null && monthlyPrice.compareTo(BigDecimal.ZERO) > 0) {
+        if (monthlyOriginalPrice != null && monthlyOriginalPrice.compareTo(BigDecimal.ZERO) > 0) {
             
             // === 月价相关字段 ===
             
-            // 月价原价
-            BigDecimal monthlyOriginalPrice = config.getMonthlyOriginalPrice();
-            if (monthlyOriginalPrice.compareTo(BigDecimal.valueOf(-1)) == 0) {
-                monthlyOriginalPrice = monthlyPrice; // 月价原价等于月价
-            }
+            // 设置月价原价（直接使用配置值）
             dto.setMonthlyOriginalPrice(monthlyOriginalPrice);
             
             // 月价优惠后价格
             BigDecimal monthlyDiscountedPrice = config.getMonthlyDiscountedPrice();
             if (monthlyDiscountedPrice.compareTo(BigDecimal.valueOf(-1)) == 0) {
-                // 月价目前没有优惠，优惠后价格等于原价
-                monthlyDiscountedPrice = monthlyPrice;
+                // 自动计算：月价应用17%优惠
+                BigDecimal discountMultiplier = BigDecimal.ONE.subtract(discountRate);
+                monthlyDiscountedPrice = monthlyOriginalPrice.multiply(discountMultiplier)
+                    .setScale(0, RoundingMode.HALF_UP);
             }
             dto.setMonthlyPrice(monthlyDiscountedPrice);
             
@@ -124,24 +120,19 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
             
             // === 年价相关字段 ===
             
-            // 年价原价
-            BigDecimal yearlyOriginalPrice = config.getYearlyOriginalPrice();
-            if (yearlyOriginalPrice.compareTo(BigDecimal.valueOf(-1)) == 0) {
-                yearlyOriginalPrice = monthlyPrice.multiply(new BigDecimal("12"));
+            // 设置年价原价（如果未配置，则使用月价*12）
+            if (yearlyOriginalPrice == null || yearlyOriginalPrice.compareTo(BigDecimal.ZERO) == 0) {
+                yearlyOriginalPrice = monthlyOriginalPrice.multiply(new BigDecimal("12"));
             }
             dto.setYearlyOriginalPrice(yearlyOriginalPrice);
             
             // 年价优惠后价格
             BigDecimal yearlyDiscountedPrice = config.getYearlyDiscountedPrice();
             if (yearlyDiscountedPrice.compareTo(BigDecimal.valueOf(-1)) == 0) {
-                if (yearlyPrice != null && yearlyPrice.compareTo(BigDecimal.ZERO) > 0) {
-                    yearlyDiscountedPrice = yearlyPrice; // 使用配置的年价
-                } else {
-                    // 自动计算：年价原价 * (1 - 优惠比例)
-                    BigDecimal discountMultiplier = BigDecimal.ONE.subtract(discountRate);
-                    yearlyDiscountedPrice = yearlyOriginalPrice.multiply(discountMultiplier)
-                        .setScale(0, RoundingMode.HALF_UP);
-                }
+                // 自动计算：年价原价 * (1 - 优惠比例)
+                BigDecimal discountMultiplier = BigDecimal.ONE.subtract(discountRate);
+                yearlyDiscountedPrice = yearlyOriginalPrice.multiply(discountMultiplier)
+                    .setScale(0, RoundingMode.HALF_UP);
             }
             dto.setYearlyPrice(yearlyDiscountedPrice);
             
@@ -152,9 +143,6 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
             }
             dto.setYearlySavings(yearlySavings);
             
-            // 年价月均优惠金额
-            dto.setYearlyMonthlySavings(yearlySavings.divide(new BigDecimal("12"), 2, RoundingMode.HALF_UP));
-            
         } else {
             // 免费套餐，所有价格字段都为0
             dto.setMonthlyOriginalPrice(BigDecimal.ZERO);
@@ -163,7 +151,6 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
             dto.setYearlyOriginalPrice(BigDecimal.ZERO);
             dto.setYearlyPrice(BigDecimal.ZERO);
             dto.setYearlySavings(BigDecimal.ZERO);
-            dto.setYearlyMonthlySavings(BigDecimal.ZERO);
         }
     }
 
