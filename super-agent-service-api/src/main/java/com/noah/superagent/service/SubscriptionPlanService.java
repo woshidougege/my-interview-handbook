@@ -19,4 +19,12 @@ public interface SubscriptionPlanService {
      * @return 启用的套餐列表
      */
     List<SubscriptionPlanDTO> getEnabledPlans();
+    
+    /**
+     * 根据ID获取套餐信息
+     *
+     * @param planId 套餐ID
+     * @return 套餐信息
+     */
+    SubscriptionPlanDTO getPlanById(Long planId);
 }

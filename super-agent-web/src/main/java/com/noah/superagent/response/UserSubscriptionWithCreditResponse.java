@@ -37,4 +37,24 @@ public class UserSubscriptionWithCreditResponse {
         example = "true"
     )
     private Boolean hasCreditAccount;
+
+    @Schema(
+        description = "套餐名称", 
+        example = "基础版"
+    )
+    private String planName;
+
+    @Schema(
+        description = "限时积分（免费积分+活动积分）", 
+        example = "800",
+        minimum = "0"
+    )
+    private Long limitedCredits;
+
+    @Schema(
+        description = "当日刷新积分", 
+        example = "300",
+        minimum = "0"
+    )
+    private Long dailyRefreshCredits;
 }

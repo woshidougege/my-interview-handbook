@@ -329,11 +329,37 @@ public class SubscriptionController {
             // 查询用户可用积分
             Long availableCredits = 0L;
             boolean hasCreditAccount = false;
+            String planName = null;
+            Long limitedCredits = 0L;
+            Long dailyRefreshCredits = 0L;
+            
+            // 获取套餐名称
+            if (subscription != null && subscription.getPlanId() != null) {
+                try {
+                    var plan = subscriptionPlanService.getPlanById(subscription.getPlanId());
+                    if (plan != null) {
+                        planName = plan.getPlanName();
+                    }
+                } catch (Exception e) {
+                    log.warn("查询套餐信息失败 - planId: {}, 错误: {}", subscription.getPlanId(), e.getMessage());
+                }
+            }
             
             try {
                 hasCreditAccount = userCreditService.hasUserCredit(userId);
                 if (hasCreditAccount) {
                     availableCredits = userCreditService.getAvailableCredits(userId);
+                    
+                    // 获取详细积分信息
+                    var creditDetail = userCreditService.getUserCredit(userId);
+                    if (creditDetail != null) {
+                        // 限时积分 = 免费积分 + 活动积分
+                        limitedCredits = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
+                                        (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
+                        
+                        // 当日刷新积分
+                        dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
+                    }
                 }
             } catch (Exception e) {
                 log.warn("查询用户积分信息失败 - userId: {}, 错误: {}", userId, e.getMessage());
@@ -345,6 +371,9 @@ public class SubscriptionController {
             response.setSubscription(subscription);
             response.setAvailableCredits(availableCredits);
             response.setHasCreditAccount(hasCreditAccount);
+            response.setPlanName(planName);
+            response.setLimitedCredits(limitedCredits);
+            response.setDailyRefreshCredits(dailyRefreshCredits);
             
             // 明确指定泛型类型 - 解决Swagger嵌套对象显示问题
             return ApiResponse.success("获取订阅和积分信息成功", response);
