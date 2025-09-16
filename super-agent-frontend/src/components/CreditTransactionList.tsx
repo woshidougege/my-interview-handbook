@@ -38,76 +38,16 @@ const CreditTransactionList: React.FC<CreditTransactionListProps> = () => {
     try {
       setLoading(true);
       
-      try {
-        // 调用真实API
-        const response = await userApi.getCreditTransactions(page, pageSize);
-        const data = response.data.data;
-        
-        setTransactions(data.records || []);
-        setPagination({
-          current: data.pageNum || page,
-          pageSize: data.pageSize || pageSize,
-          total: data.totalRow || 0
-        });
-      } catch (apiError) {
-        console.log('API调用失败，使用模拟数据:', apiError);
-        
-        // API调用失败时使用模拟数据
-        const mockData = {
-          records: [
-            {
-              id: '1',
-              description: '生成100款活动彰显......',
-              amount: -670,
-              transactionType: 'CONSUME',
-              createTime: '2016-09-05 15:00',
-              remark: 'AI内容生成消费'
-            },
-            {
-              id: '2', 
-              description: '对比美遇&ML和其他Co...',
-              amount: -500,
-              transactionType: 'CONSUME',
-              createTime: '2016-09-05 15:00',
-              remark: 'AI对比分析消费'
-            },
-            {
-              id: '3',
-              description: '意外购买10000',
-              amount: +10000,
-              transactionType: 'RECHARGE',
-              createTime: '2016-09-05 15:00',
-              remark: '积分充值'
-            },
-            {
-              id: '4',
-              description: '意外购买10000',
-              amount: +10000,
-              transactionType: 'RECHARGE', 
-              createTime: '2016-09-05 15:00',
-              remark: '积分充值'
-            },
-            {
-              id: '5',
-              description: '意外购买10000',
-              amount: +10000,
-              transactionType: 'RECHARGE',
-              createTime: '2016-09-05 15:00',
-              remark: '积分充值'
-            }
-          ],
-          totalRow: 23,
-          pageNum: page,
-          pageSize: pageSize
-        };
-        
-        setTransactions(mockData.records);
-        setPagination({
-          current: mockData.pageNum,
-          pageSize: mockData.pageSize,
-          total: mockData.totalRow
-        });
-      }
+      // 调用真实API
+      const response = await userApi.getCreditTransactions(page, pageSize);
+      const data = response.data.data;
+      
+      setTransactions(data.records || []);
+      setPagination({
+        current: data.pageNum || page,
+        pageSize: data.pageSize || pageSize,
+        total: data.totalRow || 0
+      });
     } catch (error: any) {
       message.error('加载积分交易记录失败: ' + (error.message || '未知错误'));
     } finally {

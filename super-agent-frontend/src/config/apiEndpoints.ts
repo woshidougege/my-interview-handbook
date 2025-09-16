@@ -151,9 +151,9 @@ export const API_ENDPOINTS = {
   // ========== SSO单点登录相关 ==========
   // 这些接口由SSO SDK直接提供，需要包含完整的后端地址
   SSO: {
-    DO_LOGIN_BY_TICKET: (ticket: string) => `http://localhost:8081/super-agent/sso/doLoginByTicket?ticket=${ticket}`,
-    GET_USER: 'http://localhost:8081/super-agent/sso/getuser',
-    GET_MENU: 'http://localhost:8081/super-agent/sso/getmenu',
+    DO_LOGIN_BY_TICKET: (ticket: string) => `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081'}/super-agent/sso/doLoginByTicket?ticket=${ticket}`,
+    GET_USER: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081'}/super-agent/sso/getuser`,
+    GET_MENU: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081'}/super-agent/sso/getmenu`,
   },
 } as const;
 
@@ -173,7 +173,7 @@ export const isValidEndpoint = (endpoint: string): boolean => {
 export const getAllEndpoints = (): string[] => {
   const endpoints: string[] = [];
   
-  const extractEndpoints = (obj: any, prefix = ''): void => {
+  const extractEndpoints = (obj: Record<string, unknown>, prefix = ''): void => {
     Object.entries(obj).forEach(([key, value]) => {
       if (typeof value === 'string') {
         endpoints.push(value);
@@ -181,7 +181,7 @@ export const getAllEndpoints = (): string[] => {
         // 对于函数类型的端点，我们添加一个示例
         endpoints.push(`${value.toString()} (function)`);
       } else if (typeof value === 'object' && value !== null) {
-        extractEndpoints(value, `${prefix}${key}.`);
+        extractEndpoints(value as Record<string, unknown>, `${prefix}${key}.`);
       }
     });
   };

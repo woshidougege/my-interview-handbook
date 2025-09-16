@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Modal,
   Avatar,
@@ -38,13 +38,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
 
-  useEffect(() => {
-    if (visible) {
-      loadUserData();
-    }
-  }, [visible]);
-
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -60,10 +54,10 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
         
         const creditInfo: UserCredit = {
           userId: user.id || '',
-          availableCredits: data.availableCredits || 150000,
+          availableCredits: data.availableCredits || 0,
           planName: data.planName || '基础版',
-          limitedCredits: data.limitedCredits || 800,
-          dailyRefreshCredits: data.dailyRefreshCredits || 300,
+          limitedCredits: data.limitedCredits || 0,
+          dailyRefreshCredits: data.dailyRefreshCredits || 0,
           hasCreditAccount: data.hasCreditAccount || false,
           totalBalance: data.totalBalance || 0,
           freeBalance: data.freeBalance || 0,
@@ -85,28 +79,34 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
         phone: user.phone,
       });
       
-    } catch (error: any) {
-      message.error('加载用户数据失败: ' + (error.message || '未知错误'));
+    } catch (error: unknown) {
+      message.error('加载用户数据失败: ' + (error instanceof Error ? error.message : '未知错误'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [form]);
 
-  const handleSave = async (values: any) => {
+  useEffect(() => {
+    if (visible) {
+      loadUserData();
+    }
+  }, [visible, loadUserData]);
+
+  const handleSave = async () => {
     try {
       setLoading(true);
       // TODO: 调用更新用户信息的API
       message.success('保存成功');
       onClose();
-    } catch (error: any) {
-      message.error('保存失败: ' + (error.message || '未知错误'));
+    } catch (error: unknown) {
+      message.error('保存失败: ' + (error instanceof Error ? error.message : '未知错误'));
     } finally {
       setLoading(false);
     }
   };
 
   // 处理密码修改
-  const handleChangePassword = async (values: any) => {
+  const handleChangePassword = async (values: { newPassword: string; confirmPassword: string }) => {
     try {
       setPasswordLoading(true);
       
@@ -124,15 +124,15 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
       }
 
       // 调用后端API修改密码
-      const response = await authApi.changePasswordSSO({
+      await authApi.changePasswordSSO({
         newPassword: encryptedPassword
       });
       message.success('密码修改成功');
       setIsEditingPassword(false);
       passwordForm.resetFields();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('修改密码失败:', error);
-      message.error('密码修改失败: ' + (error.message || '未知错误'));
+      message.error('密码修改失败: ' + (error instanceof Error ? error.message : '未知错误'));
     } finally {
       setPasswordLoading(false);
     }
@@ -290,7 +290,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
                       alignItems: 'center',
                       border: '1px solid #e8e8e8'
                     }}>
-                      {userInfo?.phone || '18888888800'}
+                      {userInfo?.phone || '未设置'}
                     </div>
                   </div>
 
@@ -537,7 +537,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
                         fontSize: '16px',
                         fontWeight: 600 
                       }}>
-                        {formatNumber(creditInfo?.availableCredits || 150000)}
+                        {formatNumber(creditInfo?.availableCredits || 0)}
                       </span>
                     </div>
                     <Button
@@ -577,7 +577,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
                         fontSize: '16px',
                         fontWeight: 600 
                       }}>
-                        {formatNumber(creditInfo?.limitedCredits || 800)}
+                        {formatNumber(creditInfo?.limitedCredits || 0)}
                       </span>
                     </div>
                     <Button
@@ -617,7 +617,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
                         fontSize: '16px',
                         fontWeight: 600 
                       }}>
-                        {formatNumber(creditInfo?.dailyRefreshCredits || 300)}
+                        {formatNumber(creditInfo?.dailyRefreshCredits || 0)}
                       </span>
                     </div>
                   </div>
