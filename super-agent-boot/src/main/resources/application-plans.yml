@@ -50,9 +50,9 @@ super-agent:
         enabled: true
         features:
           - text: "一次性发放1900积分"
-            highlight: true
+            highlight: false
             included: true
-          - text: "每日可获得***新积分"
+          - text: "每日可获得300新积分"
             highlight: false
             included: true
           - text: "访问聊天"
@@ -92,9 +92,9 @@ super-agent:
         enabled: true
         features:
           - text: "一次性发放1900积分"
-            highlight: true
+            highlight: false
             included: true
-          - text: "每日可获得***新积分"
+          - text: "每日可获得300新积分"
             highlight: false
             included: true
           - text: "访问聊天"
