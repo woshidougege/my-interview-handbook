@@ -1,6 +1,7 @@
 package com.noah.superagent.controller;
 
 import com.noah.superagent.common.dto.response.SubscriptionPlanResponse;
+import com.noah.superagent.common.enums.BillingCycleEnum;
 import com.noah.superagent.convert.SubscriptionPlanWebConvert;
 import com.noah.superagent.model.UserSubscriptionDTO;
 import com.noah.superagent.response.ApiResponse;
@@ -10,6 +11,7 @@ import com.noah.superagent.service.UserSubscriptionService;
 import com.noah.superagent.service.UserCreditService;
 import com.noah.superagent.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -40,7 +42,7 @@ public class SubscriptionController {
 
     @Operation(
         summary = "获取所有启用的套餐", 
-        description = "获取系统中所有启用状态的订阅套餐列表，包含套餐详情、价格、功能特性等信息。此接口无需认证，可用于展示给未登录用户。",
+        description = "获取系统中所有启用状态的订阅套餐列表，包含套餐详情、价格、功能特性等信息。支持按计费周期调整价格（按年优惠17%）。此接口无需认证，可用于展示给未登录用户。",
         tags = {"订阅管理"}
     )
     @ApiResponses(value = {
@@ -71,10 +73,6 @@ public class SubscriptionController {
                                 "\"price\": 0," +
                                 "\"monthlyPrice\": 0," +
                                 "\"yearlyPrice\": 0," +
-                                "\"creditAmount\": 1000," +
-                                "\"monthlyCreditAmount\": 0," +
-                                "\"yearlyCreditAmount\": 0," +
-                                "\"dailyRefreshCredit\": 0," +
                                 "\"validityDays\": 90," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": false," +
@@ -97,10 +95,6 @@ public class SubscriptionController {
                                 "\"price\": 39," +
                                 "\"monthlyPrice\": 39," +
                                 "\"yearlyPrice\": 388," +
-                                "\"creditAmount\": 1900," +
-                                "\"monthlyCreditAmount\": 1900," +
-                                "\"yearlyCreditAmount\": 1900," +
-                                "\"dailyRefreshCredit\": 0," +
                                 "\"validityDays\": 30," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": true," +
@@ -119,10 +113,6 @@ public class SubscriptionController {
                                 "\"price\": 199," +
                                 "\"monthlyPrice\": 199," +
                                 "\"yearlyPrice\": 1983," +
-                                "\"creditAmount\": 19000," +
-                                "\"monthlyCreditAmount\": 19000," +
-                                "\"yearlyCreditAmount\": 19000," +
-                                "\"dailyRefreshCredit\": 0," +
                                 "\"validityDays\": 30," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": false," +
@@ -170,9 +160,18 @@ public class SubscriptionController {
         )
     })
     @GetMapping("/plans")
-    public ApiResponse<List<SubscriptionPlanResponse>> getPlans() {
+    public ApiResponse<List<SubscriptionPlanResponse>> getPlans(
+            @Parameter(
+                name = "billingCycle",
+                description = "计费周期：monthly(按月) 或 yearly(按年)，按年时自动优惠17%",
+                example = "monthly"
+            )
+            @RequestParam(value = "billingCycle", required = false, defaultValue = "monthly") String billingCycle
+    ) {
+        BillingCycleEnum cycle = BillingCycleEnum.fromCode(billingCycle);
+        
         List<SubscriptionPlanResponse> plans = webConvert.toResponseList(
-            subscriptionPlanService.getEnabledPlans()
+            subscriptionPlanService.getEnabledPlansByBillingCycle(cycle)
         );
         
         // 明确指定泛型类型 - 解决Swagger嵌套对象显示问题
@@ -216,7 +215,6 @@ public class SubscriptionController {
                                     "\"startTime\": \"2025-01-01T10:00:00\"," +
                                     "\"endTime\": \"2025-02-01T10:00:00\"," +
                                     "\"paidAmount\": 39.9," +
-                                    "\"creditAmount\": 5000," +
                                     "\"status\": \"ACTIVE\"," +
                                     "\"payOrderNo\": \"ORDER_2025010110001\"," +
                                     "\"remark\": \"基础版套餐订阅\"" +
@@ -330,15 +328,18 @@ public class SubscriptionController {
             Long availableCredits = 0L;
             boolean hasCreditAccount = false;
             String planName = null;
+            String planCode = null;
             Long limitedCredits = 0L;
             Long dailyRefreshCredits = 0L;
+            Long permanentCredits = 0L;
             
-            // 获取套餐名称
+            // 获取套餐名称和代码
             if (subscription != null && subscription.getPlanId() != null) {
                 try {
                     var plan = subscriptionPlanService.getPlanById(subscription.getPlanId());
                     if (plan != null) {
                         planName = plan.getPlanName();
+                        planCode = plan.getPlanCode() != null ? plan.getPlanCode().getCode() : null;
                     }
                 } catch (Exception e) {
                     log.warn("查询套餐信息失败 - planId: {}, 错误: {}", subscription.getPlanId(), e.getMessage());
@@ -347,18 +348,47 @@ public class SubscriptionController {
             
             try {
                 hasCreditAccount = userCreditService.hasUserCredit(userId);
-                if (hasCreditAccount) {
-                    availableCredits = userCreditService.getAvailableCredits(userId);
+                if (!hasCreditAccount) {
+                    // 用户首次登录，自动初始化积分账户
+                    log.info("用户首次登录，自动初始化积分账户 - userId: {}", userId);
+                    userCreditService.initFreePlanForUser(userId);
                     
+                    // TODO: 创建免费套餐订阅记录
+                    // 暂时跳过订阅记录创建，专注解决积分详情问题
+                    
+                    // 立即发放当日积分（使用新的登录时发放逻辑）
+                    try {
+                        userCreditService.giveFreePlanDailyBonusOnLogin(userId);
+                        log.info("用户首次登录积分发放成功 - userId: {}", userId);
+                    } catch (Exception dailyBonusError) {
+                        log.warn("发放每日积分失败，但不影响账户初始化 - userId: {}, 错误: {}", userId, dailyBonusError.getMessage());
+                    }
+                    
+                    hasCreditAccount = true;
+                }
+                
+                if (hasCreditAccount) {
                     // 获取详细积分信息
                     var creditDetail = userCreditService.getUserCredit(userId);
                     if (creditDetail != null) {
+                        availableCredits = creditDetail.getTotalBalance() != null ? creditDetail.getTotalBalance().longValue() : 0L;
+                        
                         // 限时积分 = 免费积分 + 活动积分
                         limitedCredits = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
                                         (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
                         
                         // 当日刷新积分
                         dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
+                        
+                        // 永久积分
+                        permanentCredits = creditDetail.getPermanentBalance() != null ? creditDetail.getPermanentBalance().longValue() : 0L;
+                        
+                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}, permanent: {}", 
+                                userId, availableCredits, 
+                                creditDetail.getFreeBalance(), 
+                                creditDetail.getActivityBalance(), 
+                                creditDetail.getDailyBalance(),
+                                creditDetail.getPermanentBalance());
                     }
                 }
             } catch (Exception e) {
@@ -372,8 +402,10 @@ public class SubscriptionController {
             response.setAvailableCredits(availableCredits);
             response.setHasCreditAccount(hasCreditAccount);
             response.setPlanName(planName);
+            response.setPlanCode(planCode);
             response.setLimitedCredits(limitedCredits);
             response.setDailyRefreshCredits(dailyRefreshCredits);
+            response.setPermanentCredits(permanentCredits);
             
             // 明确指定泛型类型 - 解决Swagger嵌套对象显示问题
             return ApiResponse.success("获取订阅和积分信息成功", response);

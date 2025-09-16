@@ -65,21 +65,14 @@ public interface UserCreditService {
     UserCreditResponse initFreePlanForUser(Long userId);
 
     /**
-     * 免费套餐每日积分赠送
-     * （定时任务调用）
+     * 用户登录时检查并发放每日积分
+     * （用户登录时调用，一天只发放一次）
      *
      * @param userId 用户ID
-     * @return 赠送后的积分账户信息
+     * @return 积分账户信息
      */
-    UserCreditResponse giveFreePlanDailyBonus(Long userId);
+    UserCreditResponse giveFreePlanDailyBonusOnLogin(Long userId);
 
-    /**
-     * 批量处理所有免费套餐用户的每日积分赠送
-     * （定时任务调用，处理所有免费套餐用户）
-     *
-     * @return 处理结果统计
-     */
-    String processFreePlanDailyBonusForAllUsers();
     
     /**
      * 发放付费套餐永久积分

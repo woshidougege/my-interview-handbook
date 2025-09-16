@@ -29,6 +29,12 @@ public class SubscriptionPlanResponse extends BaseResponse {
     private String planName;
 
     /**
+     * 套餐代码（英文标识）
+     */
+    @Schema(description = "套餐代码（英文标识）", example = "basic")
+    private String planCode;
+
+    /**
      * 套餐描述
      */
     @Schema(description = "套餐描述", example = "适合中度使用的专业用户")
@@ -62,30 +68,6 @@ public class SubscriptionPlanResponse extends BaseResponse {
     private BigDecimal yearlyPrice;
 
     /**
-     * 赠送积分数量（兼容字段）
-     */
-    @Schema(description = "赠送积分数量（兼容字段）", example = "1900.00")
-    private BigDecimal creditAmount;
-
-    /**
-     * 按月赠送积分数量
-     */
-    @Schema(description = "按月订阅赠送的积分数量", example = "1900.00")
-    private BigDecimal monthlyCreditAmount;
-
-    /**
-     * 按年赠送积分数量
-     */
-    @Schema(description = "按年订阅赠送的积分数量", example = "1900.00")
-    private BigDecimal yearlyCreditAmount;
-
-    /**
-     * 每日刷新积分数量
-     */
-    @Schema(description = "每日自动刷新的积分数量（0表示不刷新）", example = "0")
-    private Integer dailyRefreshCredit;
-
-    /**
      * 套餐有效期（天）
      */
     @Schema(description = "套餐有效期天数（0表示永久）", example = "30")
@@ -108,4 +90,22 @@ public class SubscriptionPlanResponse extends BaseResponse {
      */
     @Schema(description = "排序值（数字越小越靠前）", example = "2")
     private Integer sortOrder;
+
+    /**
+     * 按年优惠比例（0-1之间的小数，如0.17表示17%优惠）
+     */
+    @Schema(description = "按年优惠比例（如0.17表示17%优惠）", example = "0.17")
+    private Double yearlyDiscountRate;
+
+    /**
+     * 按年订阅总优惠金额（一年总共省多少钱）
+     */
+    @Schema(description = "按年订阅总优惠金额（元）", example = "80.00")
+    private BigDecimal yearlyTotalSavings;
+
+    /**
+     * 按年订阅月均优惠金额（平均每月省多少钱）
+     */
+    @Schema(description = "按年订阅月均优惠金额（元）", example = "6.67")
+    private BigDecimal yearlyMonthlySavings;
 }

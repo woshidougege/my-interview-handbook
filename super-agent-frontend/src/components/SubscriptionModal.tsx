@@ -29,7 +29,11 @@ interface PlanFeature {
 interface Plan {
   id: string;
   name: string;
+  code: string;
   price: { monthly: number; yearly: number };
+  yearlyDiscountRate: number; // 优惠比例，如0.17表示17%
+  yearlyTotalSavings: number; // 年度总优惠金额（后端计算）
+  yearlyMonthlySavings: number; // 月均优惠金额（后端计算）
   isCurrent: boolean;
   buttonText: string;
   buttonType: 'default' | 'primary';
@@ -53,29 +57,37 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     if (visible) {
       loadPlans();
     }
-  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visible, billingCycle]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const loadPlans = async () => {
     try {
       setLoading(true);
-      const response = await subscriptionApi.getPlans();
+      const response = await subscriptionApi.getPlansWithBillingCycle(billingCycle);
       const apiPlans = response.data.data || [];
       
       // 转换API数据为组件需要的格式  
       const formattedPlans: Plan[] = apiPlans.map((plan: {
         id: number;
         planName: string;
+        planCode?: string;
         monthlyPrice?: number;
         yearlyPrice?: number;
+        yearlyDiscountRate?: number;
+        yearlyTotalSavings?: number;
+        yearlyMonthlySavings?: number;
         features?: PlanFeature[];
       }) => ({
         id: plan.id.toString(),
         name: plan.planName,
+        code: plan.planCode || plan.planName.toLowerCase(),
         price: { 
           monthly: plan.monthlyPrice || 0, 
           yearly: plan.yearlyPrice || 0 
         },
+        yearlyDiscountRate: plan.yearlyDiscountRate || 0,
+        yearlyTotalSavings: plan.yearlyTotalSavings || 0,
+        yearlyMonthlySavings: plan.yearlyMonthlySavings || 0,
         isCurrent: false, // TODO: 从用户订阅状态判断
         buttonText: plan.planName === '免费版' ? '当前计划' : '订阅',
         buttonType: plan.planName === '免费版' ? 'default' as const : 'primary' as const,
@@ -99,7 +111,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     {
       id: '1',
       name: '免费版',
+      code: 'free',
       price: { monthly: 0, yearly: 0 },
+      yearlyDiscountRate: 0,
+      yearlyTotalSavings: 0,
+      yearlyMonthlySavings: 0,
       isCurrent: true,
       buttonText: '当前计划',
       buttonType: 'default' as const,
@@ -111,7 +127,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     {
       id: '2',
       name: '基础版',
+      code: 'basic',
       price: { monthly: 39, yearly: 388 },
+      yearlyDiscountRate: 0.17,
+      yearlyTotalSavings: 80, // 39*12*0.17 = 79.56 约80元
+      yearlyMonthlySavings: 6.67, // 80/12 = 6.67元/月
       isCurrent: false,
       buttonText: '订阅',
       buttonType: 'primary' as const,
@@ -120,6 +140,25 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       ]
     }
   ];
+
+  // 获取显示价格（后端已经处理了按年优惠）
+  const getDisplayPrice = (plan: Plan) => {
+    return billingCycle === 'yearly' ? plan.price.yearly : plan.price.monthly;
+  };
+
+  // 获取月均价格（用于按年时的提示）
+  const getMonthlyEquivalent = (plan: Plan) => {
+    if (billingCycle === 'yearly' && plan.price.yearly > 0) {
+      return Math.round(plan.price.yearly / 12);
+    }
+    return plan.price.monthly;
+  };
+
+  // 获取优惠金额（后端已计算）
+  const getDiscountAmount = (plan: Plan) => {
+    return billingCycle === 'yearly' ? plan.yearlyTotalSavings : 0;
+  };
+
 
   const handleSubscribe = (planId: string) => {
     const plan = plans.find(p => p.id === planId);
@@ -132,7 +171,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     setSelectedPlan({
       id: planId,
       name: plan.name,
-      amount: plan.price[billingCycle]
+      amount: getDisplayPrice(plan)
     });
     setPaymentVisible(true);
   };
@@ -232,16 +271,21 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
               }}
             >
               按年
-              <Tag 
-                color="blue"
-                style={{ 
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  borderRadius: '4px'
-                }}
-              >
-                节省17%
-              </Tag>
+              {(() => {
+                const discountPlan = plans.find(p => p.yearlyDiscountRate > 0);
+                return discountPlan && (
+                  <Tag 
+                    color="blue"
+                    style={{ 
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      borderRadius: '4px'
+                    }}
+                  >
+                    节省{Math.round(discountPlan.yearlyDiscountRate * 100)}%
+                  </Tag>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -292,14 +336,49 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
 
               {/* 价格 */}
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                {/* 按年且有优惠时显示原价和优惠信息 */}
+                {billingCycle === 'yearly' && !plan.isCreditsOnly && getDiscountAmount(plan) > 0 && (
+                  <div style={{ marginBottom: '8px' }}>
+                    <span style={{ 
+                      fontSize: '16px', 
+                      color: '#999', 
+                      textDecoration: 'line-through',
+                      marginRight: '8px'
+                    }}>
+                      ¥{plan.price.monthly * 12}
+                    </span>
+                    <span style={{ 
+                      fontSize: '12px', 
+                      color: '#ff4d4f',
+                      background: '#fff2f0',
+                      padding: '2px 6px',
+                      borderRadius: '3px'
+                    }}>
+                      省¥{getDiscountAmount(plan)}
+                    </span>
+                  </div>
+                )}
+                
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
                   <span style={{ fontSize: '32px', fontWeight: 600, color: '#333' }}>
-                    ¥{plan.price[billingCycle]}
+                    ¥{getDisplayPrice(plan)}
                   </span>
                   <span style={{ fontSize: '14px', color: '#666', marginLeft: '4px' }}>
                     {plan.isCreditsOnly ? ' / 10000积分' : (billingCycle === 'monthly' ? ' / 月' : ' / 年')}
                   </span>
                 </div>
+                
+                {/* 按年时显示月均价格和优惠提示 */}
+                {billingCycle === 'yearly' && !plan.isCreditsOnly && getDisplayPrice(plan) > 0 && (
+                  <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                    <div>平均 {getMonthlyEquivalent(plan)}元/月</div>
+                    {plan.yearlyMonthlySavings > 0 && (
+                      <div style={{ color: '#ff4d4f', marginTop: '2px' }}>
+                        每月省 {plan.yearlyMonthlySavings.toFixed(2)}元
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* 订阅按钮 - 在价格下方 */}

@@ -82,7 +82,7 @@ class SseService {
    */
   private getBaseUrl(): string {
     if (process.env.NODE_ENV === 'development') {
-      return 'http://localhost:8081/super-agent';
+      return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081/super-agent';
     }
     const protocol = window.location.protocol;
     const host = window.location.host;

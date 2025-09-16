@@ -1,6 +1,7 @@
 package com.noah.superagent.model;
 
 import com.noah.superagent.common.enums.EnabledEnum;
+import com.noah.superagent.common.enums.PlanCodeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -21,6 +22,11 @@ public class SubscriptionPlanDTO extends BaseDTO {
      * 套餐名称
      */
     private String planName;
+
+    /**
+     * 套餐代码（英文标识）
+     */
+    private PlanCodeEnum planCode;
 
     /**
      * 套餐描述
@@ -48,26 +54,6 @@ public class SubscriptionPlanDTO extends BaseDTO {
     private BigDecimal yearlyPrice;
 
     /**
-     * 赠送积分数量（兼容字段）
-     */
-    private BigDecimal creditAmount;
-
-    /**
-     * 按月赠送积分数量
-     */
-    private BigDecimal monthlyCreditAmount;
-
-    /**
-     * 按年赠送积分数量
-     */
-    private BigDecimal yearlyCreditAmount;
-
-    /**
-     * 每日刷新积分数量
-     */
-    private Integer dailyRefreshCredit;
-
-    /**
      * 套餐有效期（天）
      */
     private Integer validityDays;
@@ -86,4 +72,19 @@ public class SubscriptionPlanDTO extends BaseDTO {
      * 排序值
      */
     private Integer sortOrder;
+
+    /**
+     * 按年优惠比例（0-1之间的小数，如0.17表示17%优惠）
+     */
+    private Double yearlyDiscountRate;
+
+    /**
+     * 按年订阅总优惠金额（一年总共省多少钱）
+     */
+    private BigDecimal yearlyTotalSavings;
+
+    /**
+     * 按年订阅月均优惠金额（平均每月省多少钱）
+     */
+    private BigDecimal yearlyMonthlySavings;
 }

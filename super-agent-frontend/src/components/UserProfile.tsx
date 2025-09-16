@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Avatar,
   Dropdown,
@@ -23,17 +23,13 @@ import { deleteCookie } from '@/utils/cookieHelper';
 const UserProfile: React.FC = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [creditInfo, setCreditInfo] = useState<UserCredit | null>(null);
-  const [currentSubscription, setCurrentSubscription] = useState<Record<string, any> | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<{ id: string; planName: string; status: string; } | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [subscriptionVisible, setSubscriptionVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -49,9 +45,21 @@ const UserProfile: React.FC = () => {
         setCurrentSubscription(data.subscription);
         
         // 从订阅接口中提取积分信息
-        const creditInfo = {
+        const creditInfo: UserCredit = {
+          userId: user.id || '',
           availableCredits: data.availableCredits || 0,
-          hasCreditAccount: data.hasCreditAccount || false
+          hasCreditAccount: data.hasCreditAccount || false,
+          totalBalance: data.totalBalance || 0,
+          freeBalance: data.freeBalance || 0,
+          subscriptionBalance: data.subscriptionBalance || 0,
+          permanentBalance: data.permanentBalance || 0,
+          totalEarned: data.totalEarned || 0,
+          totalSpent: data.totalSpent || 0,
+          planName: data.planName || '基础版',
+          limitedCredits: data.limitedCredits || 0,
+          dailyRefreshCredits: data.dailyRefreshCredits || 0,
+          createTime: data.createTime || new Date().toISOString(),
+          updateTime: data.updateTime || new Date().toISOString()
         };
         setCreditInfo(creditInfo);
       } catch (error) {
@@ -64,7 +72,11 @@ const UserProfile: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
 
   const handleLogout = () => {
     try {
@@ -122,7 +134,7 @@ const UserProfile: React.FC = () => {
                 fontWeight: 500,
                 color: '#333'
               }}>
-                {userInfo?.username || '张三'}
+                {userInfo?.username || '用户'}
               </div>
               <div style={{ 
                 fontSize: '12px',
@@ -228,7 +240,7 @@ const UserProfile: React.FC = () => {
             gap: '4px'
           }}>
             <span style={{ color: '#faad14' }}>⚡</span>
-            {(creditInfo?.totalBalance || 1094).toLocaleString()}
+            {(creditInfo?.totalBalance || 0).toLocaleString()}
           </span>
           <Button
             type="text"

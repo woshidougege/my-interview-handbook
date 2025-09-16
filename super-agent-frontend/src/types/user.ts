@@ -22,8 +22,10 @@ export interface UserCredit {
   availableCredits?: number;
   hasCreditAccount?: boolean;
   planName?: string;
+  planCode?: string;
   limitedCredits?: number;
   dailyRefreshCredits?: number;
+  permanentCredits?: number;
 }
 
 // 积分交易记录类型定义
@@ -32,11 +34,17 @@ export interface CreditTransaction {
   userId: string;
   transactionType: number;
   transactionTypeDesc: string;
+  creditType: string;
+  creditTypeDesc: string;
   amount: number;
+  balanceBefore: number;
   balanceAfter: number;
   description: string;
-  relatedId?: string;
+  relatedOrderId?: string;
+  relatedSubscriptionId?: string;
+  expireTime?: string;
   createTime: string;
+  changeType: string; // "+" 表示收入，"-" 表示支出
 }
 
 // 套餐功能特性类型定义
@@ -50,15 +58,12 @@ export interface PlanFeature {
 export interface SubscriptionPlan {
   id: string;
   planName: string;
+  planCode: string;
   description: string;
   features: PlanFeature[];
   price: number;
   monthlyPrice: number;
   yearlyPrice: number;
-  creditAmount: number;
-  monthlyCreditAmount: number;
-  yearlyCreditAmount: number;
-  dailyRefreshCredit: number;
   validityDays: number;
   enabled: boolean;
   isRecommended: boolean;

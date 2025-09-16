@@ -2,7 +2,6 @@ package com.noah.superagent.scheduler.config;
 
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import com.noah.superagent.scheduler.job.CreditExpiryCleanupJob;
-import com.noah.superagent.scheduler.job.DailyCreditBonusJob;
 import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
 import com.noah.superagent.scheduler.job.ScheduledChatTaskJob;
 import org.springframework.context.annotation.Bean;
@@ -18,14 +17,6 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class SchedulerTaskConfig {
-
-    /**
-     * 注册每日积分发放任务
-     */
-    @Bean
-    public RecurringTask<Void> dailyCreditBonusTask(DailyCreditBonusJob dailyCreditBonusJob) {
-        return dailyCreditBonusJob.getTask();
-    }
 
     /**
      * 注册积分过期清理任务

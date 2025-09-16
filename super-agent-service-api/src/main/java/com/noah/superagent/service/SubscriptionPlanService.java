@@ -1,5 +1,6 @@
 package com.noah.superagent.service;
 
+import com.noah.superagent.common.enums.BillingCycleEnum;
 import com.noah.superagent.model.SubscriptionPlanDTO;
 
 import java.util.List;
@@ -19,6 +20,14 @@ public interface SubscriptionPlanService {
      * @return 启用的套餐列表
      */
     List<SubscriptionPlanDTO> getEnabledPlans();
+
+    /**
+     * 根据计费周期获取所有启用的套餐列表，自动调整价格
+     *
+     * @param billingCycle 计费周期
+     * @return 调整价格后的启用套餐列表
+     */
+    List<SubscriptionPlanDTO> getEnabledPlansByBillingCycle(BillingCycleEnum billingCycle);
     
     /**
      * 根据ID获取套餐信息

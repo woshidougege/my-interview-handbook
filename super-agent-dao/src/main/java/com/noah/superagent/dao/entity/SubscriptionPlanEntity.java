@@ -4,6 +4,7 @@ import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Table;
 import com.mybatisflex.core.handler.Fastjson2TypeHandler;
 import com.noah.superagent.common.enums.EnabledEnum;
+import com.noah.superagent.common.enums.PlanCodeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -25,6 +26,11 @@ public class SubscriptionPlanEntity extends BaseEntity {
      * 套餐名称
      */
     private String planName;
+
+    /**
+     * 套餐代码（英文标识）
+     */
+    private PlanCodeEnum planCode;
 
     /**
      * 套餐描述
@@ -51,26 +57,6 @@ public class SubscriptionPlanEntity extends BaseEntity {
      * 按年价格
      */
     private BigDecimal yearlyPrice;
-
-    /**
-     * 赠送积分数量（兼容字段）
-     */
-    private BigDecimal creditAmount;
-
-    /**
-     * 按月赠送积分数量
-     */
-    private BigDecimal monthlyCreditAmount;
-
-    /**
-     * 按年赠送积分数量
-     */
-    private BigDecimal yearlyCreditAmount;
-
-    /**
-     * 每日刷新积分数量
-     */
-    private Integer dailyRefreshCredit;
 
     /**
      * 套餐有效期（天）

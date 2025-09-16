@@ -2,7 +2,6 @@ package com.noah.superagent.scheduler.initializer;
 
 import com.github.kagkarlsson.scheduler.Scheduler;
 import com.noah.superagent.scheduler.job.CreditExpiryCleanupJob;
-import com.noah.superagent.scheduler.job.DailyCreditBonusJob;
 import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,8 +34,8 @@ public class SchedulerTaskInitializer implements ApplicationRunner {
             scheduler.start();
             log.info("DB-Scheduler调度器启动成功");
             
-            // 检查并启动每日积分发放任务
-            ensureTaskRunning(DailyCreditBonusJob.getJobTaskName(), "每日积分发放任务");
+            // 每日积分发放任务已禁用，改为用户登录时发放
+            // ensureTaskRunning(DailyCreditBonusJob.getJobTaskName(), "每日积分发放任务");
             
             // 检查并启动积分过期清理任务
             ensureTaskRunning(CreditExpiryCleanupJob.getJobTaskName(), "积分过期清理任务");
