@@ -15,6 +15,9 @@ import java.util.Date;
 @Schema(description = "定时对话任务响应")
 public class ScheduledChatTaskResponse {
 
+    @Schema(description = "定时任务ID", example = "1234567890123456789")
+    private Long id;
+
     @Schema(description = "关联用户ID", example = "1234567890123456789")
     private Long userId;
 
