@@ -27,6 +27,7 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[0;37m'
+BLACK='\033[0;30m'
 BOLD='\033[1m'
 UNDERLINE='\033[4m'
 # 背景色
@@ -479,8 +480,279 @@ daemon() {
     return 1
 }
 
+# 显示菜单选项
+display_menu() {
+    local selected=$1
+    local start_line=$2
+    
+    # 保存光标位置
+    echo -ne "\033[s"
+    
+    # 移动到菜单开始位置
+    echo -ne "\033[${start_line};1H"
+    
+    local options=(
+        "🚀 前台启动 (start)"
+        "🌙 后台启动 (daemon)" 
+        "🛑 停止应用 (stop)"
+        "🔄 重启应用 (restart)"
+        "📋 查看状态 (status)"
+        "📝 查看日志 (logs)"
+        "🐛 调试模式 (debug)"
+        "🧹 清理进程 (cleanup)"
+        "🌐 前台启动+URL显示"
+        "🌙 后台启动+URL显示"
+        "❌ 退出"
+    )
+    
+    local i=0
+    for option in "${options[@]}"; do
+        i=$((i + 1))
+        # 清除当前行
+        echo -ne "\033[2K"
+        
+        if [ $i -eq $selected ]; then
+            # 高亮显示选中项 - 使用白色字体确保在任何背景下都清晰
+            echo -e "  ${BG_CYAN}${WHITE}${BOLD} ► $i) $option ${NC}"
+        else
+            # 普通显示
+            echo -e "  ${CYAN}$i)${NC} $option"
+        fi
+    done
+    
+    # 恢复光标位置
+    echo -ne "\033[u"
+}
+
+# 执行选中的菜单项
+execute_menu_option() {
+    local choice=$1
+    
+    case $choice in
+        1)
+            echo -e "${GREEN}正在执行: 前台启动...${NC}"
+            start
+            return 1  # 退出菜单
+            ;;
+        2)
+            echo -e "${GREEN}正在执行: 后台启动...${NC}"
+            daemon
+            return 1  # 退出菜单
+            ;;
+        3)
+            echo -e "${GREEN}正在执行: 停止应用...${NC}"
+            stop
+            echo ""
+            echo -e "${CYAN}按任意键继续...${NC}"
+            read -n 1 -s
+            return 0  # 返回菜单
+            ;;
+        4)
+            echo -e "${GREEN}正在执行: 重启应用...${NC}"
+            restart
+            return 1  # 退出菜单
+            ;;
+        5)
+            echo -e "${GREEN}正在执行: 查看状态...${NC}"
+            status
+            echo ""
+            echo -e "${CYAN}按任意键继续...${NC}"
+            read -n 1 -s
+            return 0  # 返回菜单
+            ;;
+        6)
+            echo -e "${GREEN}正在执行: 查看日志...${NC}"
+            logs
+            return 1  # 退出菜单
+            ;;
+        7)
+            echo -e "${GREEN}正在执行: 调试模式...${NC}"
+            debug
+            return 1  # 退出菜单
+            ;;
+        8)
+            echo -e "${GREEN}正在执行: 清理进程...${NC}"
+            cleanup_old_prompts
+            echo -e "${GREEN}✅ 已清理所有提示进程${NC}"
+            echo ""
+            echo -e "${CYAN}按任意键继续...${NC}"
+            read -n 1 -s
+            return 0  # 返回菜单
+            ;;
+        9)
+            echo -e "${GREEN}正在执行: 前台启动+URL显示...${NC}"
+            export URLS=on
+            start
+            return 1  # 退出菜单
+            ;;
+        10)
+            echo -e "${GREEN}正在执行: 后台启动+URL显示...${NC}"
+            export URLS=on
+            daemon
+            return 1  # 退出菜单
+            ;;
+        11)
+            echo -e "${PURPLE}👋 再见！${NC}"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}❌ 无效选项${NC}"
+            sleep 1
+            return 0  # 返回菜单
+            ;;
+    esac
+}
+
+# 交互式菜单函数
+interactive_menu() {
+    # 设置终端为原始模式，捕获特殊键
+    local old_stty=$(stty -g)
+    stty -echo -icanon min 0 time 10
+    
+    # 清理函数
+    cleanup_terminal() {
+        stty "$old_stty"
+        echo -ne "\033[?25h"  # 显示光标
+    }
+    
+    # 设置退出陷阱
+    trap cleanup_terminal EXIT INT TERM
+    
+    local selected=1
+    local max_options=11
+    local menu_start_line
+    
+    while true; do
+        clear
+        echo -e "${BOLD}${BG_BLUE}${WHITE}                                                               ${NC}"
+        echo -e "${BOLD}${BG_BLUE}${WHITE}    🚀 Super Agent 交互式管理菜单                           ${NC}"
+        echo -e "${BOLD}${BG_BLUE}${WHITE}                                                               ${NC}"
+        echo ""
+        
+        # 显示当前状态
+        echo -e "${CYAN}📊 当前状态:${NC}"
+        if [ -f "$PID_FILE" ]; then
+            local pid=$(cat "$PID_FILE" 2>/dev/null)
+            if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                echo -e "   ${GREEN}✅ $APP_NAME 正在运行 (PID: ${YELLOW}$pid${GREEN})${NC}"
+            else
+                echo -e "   ${RED}❌ $APP_NAME 未运行 (PID文件存在但进程不存在)${NC}"
+            fi
+        else
+            echo -e "   ${RED}❌ $APP_NAME 未运行${NC}"
+        fi
+        echo ""
+        
+        # 操作提示
+        echo -e "${BOLD}${CYAN}请选择操作:${NC}"
+        echo -e "${YELLOW}💡 使用 ↑↓ 方向键选择，Enter 确认，数字键直接选择，ESC/q 退出${NC}"
+        echo ""
+        
+        # 记录菜单开始行号
+        menu_start_line=$(tput cuf 0; echo $(($(tput cuf 0; tput cuu 100; tput cud 100) + $(echo | wc -l) + 10)))
+        menu_start_line=12  # 简化：直接设置固定行号
+        
+        # 隐藏光标
+        echo -ne "\033[?25l"
+        
+        # 显示菜单
+        display_menu "$selected" "$menu_start_line"
+        
+        # 移动到提示位置
+        echo -ne "\033[25;1H"
+        echo -ne "\033[2K"
+        echo -ne "${YELLOW}👉 当前选择: ${GREEN}选项 $selected${NC} | ${CYAN}操作: ↑↓选择 Enter确认 ESC退出${NC}"
+        
+        # 读取用户输入
+        local key
+        read -n 1 key 2>/dev/null
+        
+        case "$key" in
+            $'\033')  # ESC序列开始或ESC键
+                read -n 1 -t 0.1 key2 2>/dev/null
+                if [ -z "$key2" ]; then
+                    # 单独的ESC键，退出
+                    cleanup_terminal
+                    echo -e "${PURPLE}👋 再见！${NC}"
+                    exit 0
+                elif [ "$key2" = "[" ]; then
+                    # 方向键序列
+                    read -n 1 key3 2>/dev/null
+                    case "$key3" in
+                        'A')  # 上箭头
+                            selected=$((selected - 1))
+                            if [ $selected -lt 1 ]; then
+                                selected=$max_options
+                            fi
+                            ;;
+                        'B')  # 下箭头
+                            selected=$((selected + 1))
+                            if [ $selected -gt $max_options ]; then
+                                selected=1
+                            fi
+                            ;;
+                    esac
+                fi
+                ;;
+            '')  # Enter键
+                cleanup_terminal
+                clear
+                if ! execute_menu_option "$selected"; then
+                    # 重新设置终端模式继续菜单
+                    stty -echo -icanon min 0 time 10
+                    continue
+                else
+                    break
+                fi
+                ;;
+            'q'|'Q')  # q键退出
+                cleanup_terminal
+                echo -e "${PURPLE}👋 再见！${NC}"
+                exit 0
+                ;;
+            '1')  # 数字1，可能是10或11
+                read -n 1 -t 0.2 key2 2>/dev/null
+                local choice_num="1"
+                if [ "$key2" = "0" ]; then
+                    choice_num="10"
+                elif [ "$key2" = "1" ]; then
+                    choice_num="11"
+                fi
+                
+                if [ "$choice_num" -le "$max_options" ] && [ "$choice_num" -ge "1" ]; then
+                    cleanup_terminal
+                    clear
+                    if ! execute_menu_option "$choice_num"; then
+                        stty -echo -icanon min 0 time 10
+                        continue
+                    else
+                        break
+                    fi
+                fi
+                ;;
+            [2-9])  # 数字键2-9
+                if [ "$key" -le "$max_options" ] && [ "$key" -ge "1" ]; then
+                    cleanup_terminal
+                    clear
+                    if ! execute_menu_option "$key"; then
+                        stty -echo -icanon min 0 time 10
+                        continue
+                    else
+                        break
+                    fi
+                fi
+                ;;
+        esac
+    done
+    
+    cleanup_terminal
+}
+
 # 主入口
 case "$1" in
+    -i|--interactive|interactive)
+        interactive_menu
+        ;;
     start)
         start
         ;;
@@ -507,26 +779,30 @@ case "$1" in
         echo -e "${GREEN}✅ 已清理所有提示进程${NC}"
         ;;
     *)
-        echo -e "${BOLD}${BLUE}用法:${NC} ${GREEN}$0${NC} ${YELLOW}{start|daemon|stop|restart|status|logs|debug|cleanup}${NC} ${CYAN}[urls] [debug_port]${NC}"
+        echo -e "${BOLD}${BLUE}用法:${NC} ${GREEN}$0${NC} ${YELLOW}{start|daemon|stop|restart|status|logs|debug|cleanup|-i}${NC} ${CYAN}[urls] [debug_port]${NC}"
         echo ""
         echo -e "${BOLD}${CYAN}命令说明:${NC}"
-        echo -e "  ${GREEN}start${NC}   - 前台启动应用（显示日志，Ctrl+C停止）"
-        echo -e "  ${GREEN}daemon${NC}  - 后台启动应用（守护进程模式）"
-        echo -e "  ${GREEN}stop${NC}    - 停止应用"
-        echo -e "  ${GREEN}restart${NC} - 重启应用"
-        echo -e "  ${GREEN}status${NC}  - 查看运行状态"
-        echo -e "  ${GREEN}logs${NC}    - 实时查看日志"
-        echo -e "  ${GREEN}debug${NC}   - 远程调试模式（前台运行，开启JVM调试端口，默认5005）"
-        echo -e "  ${GREEN}cleanup${NC} - 清理残留的提示进程"
+        echo -e "  ${GREEN}start${NC}        - 前台启动应用（显示日志，Ctrl+C停止）"
+        echo -e "  ${GREEN}daemon${NC}       - 后台启动应用（守护进程模式）"
+        echo -e "  ${GREEN}stop${NC}         - 停止应用"
+        echo -e "  ${GREEN}restart${NC}      - 重启应用"
+        echo -e "  ${GREEN}status${NC}       - 查看运行状态"
+        echo -e "  ${GREEN}logs${NC}         - 实时查看日志"
+        echo -e "  ${GREEN}debug${NC}        - 远程调试模式（前台运行，开启JVM调试端口，默认5005）"
+        echo -e "  ${GREEN}cleanup${NC}      - 清理残留的提示进程"
+        echo -e "  ${GREEN}-i${NC}/${GREEN}interactive${NC} - 📱 ${BOLD}交互式菜单模式${NC} ${YELLOW}(推荐)${NC}"
         echo ""
         echo -e "${BOLD}${CYAN}可选参数:${NC}"
-        echo -e "  ${YELLOW}urls${NC}    - 启动时打印 Docs/OpenAPI/Actuator/Druid 访问地址"
+        echo -e "  ${YELLOW}urls${NC}         - 启动时打印 Docs/OpenAPI/Actuator/Druid 访问地址"
         echo ""
         echo -e "${BOLD}${CYAN}示例:${NC}"
+        echo -e "  ${GREEN}$0 -i${NC}               ${PURPLE}# 🎯 交互式菜单（推荐使用）${NC}"
         echo -e "  ${GREEN}$0 start urls${NC}       ${PURPLE}# 前台启动并打印组件URL${NC}"
         echo -e "  ${GREEN}$0 daemon urls${NC}      ${PURPLE}# 后台启动并打印组件URL${NC}"
         echo -e "  ${GREEN}$0 debug urls 5005${NC}  ${PURPLE}# 调试模式并打印组件URL${NC}"
         echo -e "  ${GREEN}$0 cleanup${NC}          ${PURPLE}# 手动清理提示进程${NC}"
+        echo ""
+        echo -e "${BOLD}${YELLOW}💡 提示: 使用 ${GREEN}$0 -i${NC} ${YELLOW}进入交互式菜单，体验更好！${NC}"
         exit 1
         ;;
 esac
