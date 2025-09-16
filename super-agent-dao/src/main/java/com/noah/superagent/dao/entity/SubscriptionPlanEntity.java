@@ -4,6 +4,7 @@ import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Table;
 import com.mybatisflex.core.handler.Fastjson2TypeHandler;
 import com.noah.superagent.common.enums.EnabledEnum;
+import com.noah.superagent.common.enums.PlanCodeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -25,6 +26,11 @@ public class SubscriptionPlanEntity extends BaseEntity {
      * 套餐名称
      */
     private String planName;
+
+    /**
+     * 套餐代码（英文标识）
+     */
+    private PlanCodeEnum planCode;
 
     /**
      * 套餐描述

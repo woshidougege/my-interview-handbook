@@ -1,6 +1,7 @@
 package com.noah.superagent.model;
 
 import com.noah.superagent.common.enums.EnabledEnum;
+import com.noah.superagent.common.enums.PlanCodeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -21,6 +22,11 @@ public class SubscriptionPlanDTO extends BaseDTO {
      * 套餐名称
      */
     private String planName;
+
+    /**
+     * 套餐代码（英文标识）
+     */
+    private PlanCodeEnum planCode;
 
     /**
      * 套餐描述

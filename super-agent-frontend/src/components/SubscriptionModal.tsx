@@ -29,6 +29,7 @@ interface PlanFeature {
 interface Plan {
   id: string;
   name: string;
+  code: string;
   price: { monthly: number; yearly: number };
   isCurrent: boolean;
   buttonText: string;
@@ -99,6 +100,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     {
       id: '1',
       name: '免费版',
+      code: 'free',
       price: { monthly: 0, yearly: 0 },
       isCurrent: true,
       buttonText: '当前计划',
@@ -111,6 +113,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     {
       id: '2',
       name: '基础版',
+      code: 'basic',
       price: { monthly: 39, yearly: 388 },
       isCurrent: false,
       buttonText: '订阅',

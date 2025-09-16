@@ -64,6 +64,12 @@ public class UserCreditServiceImpl implements UserCreditService {
 
         // 查询用户各类型积分余额
         List<UserCreditBalanceEntity> balanceList = userCreditBalanceMapper.selectByUserId(userId);
+        log.info("查询到积分余额记录数量: {} - userId: {}", balanceList.size(), userId);
+        
+        for (UserCreditBalanceEntity balance : balanceList) {
+            log.info("积分余额详情 - userId: {}, type: {}, balance: {}", userId, balance.getCreditType(), balance.getBalance());
+        }
+        
         Map<CreditTypeEnum, BigDecimal> balanceMap = balanceList.stream()
                 .collect(Collectors.toMap(
                         UserCreditBalanceEntity::getCreditType,
@@ -77,6 +83,10 @@ public class UserCreditServiceImpl implements UserCreditService {
         response.setActivityBalance(balanceMap.getOrDefault(CreditTypeEnum.ACTIVITY, BigDecimal.ZERO));
         response.setFreeBalance(balanceMap.getOrDefault(CreditTypeEnum.NEW_USER, BigDecimal.ZERO)); // 新用户积分作为免费积分
         response.setPermanentBalance(balanceMap.getOrDefault(CreditTypeEnum.PERMANENT, BigDecimal.ZERO));
+        
+        log.info("响应积分详情 - userId: {}, daily: {}, activity: {}, free: {}, permanent: {}", 
+                userId, response.getDailyBalance(), response.getActivityBalance(), 
+                response.getFreeBalance(), response.getPermanentBalance());
         
         log.info("查询用户积分账户成功 - userId: {}, totalBalance: {}", userId, creditAccount.getTotalBalance());
         return response;
@@ -202,6 +212,7 @@ public class UserCreditServiceImpl implements UserCreditService {
             log.error("创建用户积分余额记录失败 - userId: {}", userId);
             throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "创建积分余额记录失败");
         }
+        log.info("创建新用户积分余额记录成功 - userId: {}, type: {}, balance: {}", userId, CreditTypeEnum.NEW_USER, NEW_USER_CREDITS);
         
         // 3. 记录新用户赠送积分的交易记录
         CreditTransactionEntity transaction = new CreditTransactionEntity();
@@ -239,11 +250,19 @@ public class UserCreditServiceImpl implements UserCreditService {
     public UserCreditResponse giveFreePlanDailyBonus(Long userId) {
         log.info("为用户发放免费套餐每日积分 - userId: {}, 积分数量: {}", userId, FREE_PLAN_DAILY_CREDITS);
         
-        // 1. 查询用户积分账户
+        // 1. 查询用户积分账户，如果不存在则先初始化
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
         if (creditAccount == null) {
-            log.warn("用户积分账户不存在 - userId: {}", userId);
-            throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
+            log.info("用户积分账户不存在，先初始化账户 - userId: {}", userId);
+            // 先初始化免费套餐账户
+            initFreePlanForUser(userId);
+            // 重新查询积分账户
+            creditAccount = userCreditAccountMapper.selectByUserId(userId);
+            if (creditAccount == null) {
+                log.error("初始化积分账户后仍然为空 - userId: {}", userId);
+                throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
+            }
+            log.info("积分账户初始化完成，当前余额: {} - userId: {}", creditAccount.getTotalBalance(), userId);
         }
         
         // 2. 检查今日是否已经发放过积分（防重）
@@ -295,7 +314,12 @@ public class UserCreditServiceImpl implements UserCreditService {
             dailyBalance.setVersion(0);
             dailyBalance.setCreateBy(userId);
             
-            userCreditBalanceMapper.insertOrUpdate(dailyBalance);
+            int dailyBalanceResult = userCreditBalanceMapper.insertOrUpdate(dailyBalance);
+            if (dailyBalanceResult <= 0) {
+                log.error("创建用户每日积分余额记录失败 - userId: {}", userId);
+                throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "创建每日积分余额记录失败");
+            }
+            log.info("创建每日积分记录成功 - userId: {}, 积分: {}", userId, FREE_PLAN_DAILY_CREDITS);
         } else {
             // 更新现有的每日积分记录（直接替换，因为每日积分只保留当天的）
             dailyBalance.setBalance(newDailyBalance); // 每日积分覆盖模式

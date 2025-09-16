@@ -347,18 +347,43 @@ public class SubscriptionController {
             
             try {
                 hasCreditAccount = userCreditService.hasUserCredit(userId);
-                if (hasCreditAccount) {
-                    availableCredits = userCreditService.getAvailableCredits(userId);
+                if (!hasCreditAccount) {
+                    // 用户首次登录，自动初始化积分账户
+                    log.info("用户首次登录，自动初始化积分账户 - userId: {}", userId);
+                    userCreditService.initFreePlanForUser(userId);
                     
+                    // TODO: 创建免费套餐订阅记录
+                    // 暂时跳过订阅记录创建，专注解决积分详情问题
+                    
+                    // 立即发放当日积分
+                    try {
+                        userCreditService.giveFreePlanDailyBonus(userId);
+                        log.info("用户首次登录积分发放成功 - userId: {}", userId);
+                    } catch (Exception dailyBonusError) {
+                        log.warn("发放每日积分失败，但不影响账户初始化 - userId: {}, 错误: {}", userId, dailyBonusError.getMessage());
+                    }
+                    
+                    hasCreditAccount = true;
+                }
+                
+                if (hasCreditAccount) {
                     // 获取详细积分信息
                     var creditDetail = userCreditService.getUserCredit(userId);
                     if (creditDetail != null) {
+                        availableCredits = creditDetail.getTotalBalance() != null ? creditDetail.getTotalBalance().longValue() : 0L;
+                        
                         // 限时积分 = 免费积分 + 活动积分
                         limitedCredits = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
                                         (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
                         
                         // 当日刷新积分
                         dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
+                        
+                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}", 
+                                userId, availableCredits, 
+                                creditDetail.getFreeBalance(), 
+                                creditDetail.getActivityBalance(), 
+                                creditDetail.getDailyBalance());
                     }
                 }
             } catch (Exception e) {

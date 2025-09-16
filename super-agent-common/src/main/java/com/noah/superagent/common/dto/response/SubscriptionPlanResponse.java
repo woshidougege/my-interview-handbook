@@ -29,6 +29,12 @@ public class SubscriptionPlanResponse extends BaseResponse {
     private String planName;
 
     /**
+     * 套餐代码（英文标识）
+     */
+    @Schema(description = "套餐代码（英文标识）", example = "basic")
+    private String planCode;
+
+    /**
      * 套餐描述
      */
     @Schema(description = "套餐描述", example = "适合中度使用的专业用户")

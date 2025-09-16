@@ -50,6 +50,7 @@ export interface PlanFeature {
 export interface SubscriptionPlan {
   id: string;
   planName: string;
+  planCode: string;
   description: string;
   features: PlanFeature[];
   price: number;
