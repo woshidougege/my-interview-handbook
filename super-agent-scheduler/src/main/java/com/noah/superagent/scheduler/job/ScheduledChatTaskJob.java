@@ -12,6 +12,7 @@ import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
 import com.noah.superagent.dao.mapper.ChatTaskMapper;
 import com.noah.superagent.dao.mapper.ScheduledChatTaskMapper;
 import com.noah.superagent.service.AiService;
+import com.norinrd.gttoken.util.StringUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,9 +74,6 @@ public class ScheduledChatTaskJob {
         try {
             // 执行定时对话任务检查和处理
             int executedTaskCount = executeScheduledChatTasks();
-
-            // 重新计算所有启用任务的下次执行时间
-            recalculateAllEnabledTasksNextExecutionTime();
 
             long duration = System.currentTimeMillis() - startTime;
             log.info("定时对话任务检查执行完成 - 耗时: {}ms, 执行任务数: {}", duration, executedTaskCount);
@@ -215,78 +213,50 @@ public class ScheduledChatTaskJob {
      * @param content  新的内容
      */
     private void updateChatTaskContent(ChatTaskEntity chatTask, String content) {
-        if (chatTask.getContent() == null) {
-            chatTask.setContent(content);
-        } else {
-            chatTask.setContent(chatTask.getContent() + "\n\n" + content);
-        }
+        String newContent = StringUtils.hasText(chatTask.getContent()) ?
+            chatTask.getContent() + "\n---\n" + content : content;
+        chatTask.setContent(newContent);
+        chatTask.setStatus(com.noah.superagent.common.enums.ChatTaskStatusEnum.COMPLETED);
+        chatTaskMapper.update(chatTask);
     }
 
     /**
      * 保存任务执行结果
-     *
-     * @param scheduledTask 定时任务
-     * @param response      AI响应结果
+     * @param task 定时任务
+     * @param response 响应结果
      */
-    private void saveTaskResult(ScheduledChatTaskEntity scheduledTask, String response) {
-        // 这里可以保存任务执行结果到专门的结果表中
-        // 目前我们只是记录日志
-        log.info("保存任务执行结果 - 任务ID: {}, 响应长度: {}", scheduledTask.getId(), response.length());
+    private void saveTaskResult(ScheduledChatTaskEntity task, String response) {
+        // 根据数据库表结构，没有lastResult字段，暂时不保存响应结果
+        // 如果需要记录，可以考虑将结果保存到其他字段或日志中
     }
 
 
-    /**
-     * 重新计算所有启用任务的下次执行时间
-     */
-    private void recalculateAllEnabledTasksNextExecutionTime() {
-        // 查询所有启用的定时任务
-        List<ScheduledChatTaskEntity> enabledTasks = scheduledChatTaskMapper.selectByStatus(1);
-        log.debug("找到 {} 个启用的定时任务需要重新计算下次执行时间", enabledTasks.size());
-
-        int updatedCount = 0;
-        for (ScheduledChatTaskEntity task : enabledTasks) {
-            try {
-                // 检查任务是否为启用状态且不是一次性任务（一次性任务执行后会被禁用）
-                if (task.getStatus() != null && task.getStatus() == 1) {
-                    updateNextExecutionTime(task);
-                    updatedCount++;
-                }
-            } catch (Exception e) {
-                log.error("重新计算定时任务下次执行时间失败 - 任务ID: {}, 任务名称: {}, 错误: {}",
-                        task.getId(), task.getTaskName(), e.getMessage(), e);
-            }
-        }
-
-        log.debug("重新计算定时任务下次执行时间完成，共检查 {} 个任务，更新 {} 个任务",
-                enabledTasks.size(), updatedCount);
-    }
 
     /**
      * 更新下次执行时间
-     *
      * @param task 定时任务
      */
     private void updateNextExecutionTime(ScheduledChatTaskEntity task) {
         try {
             // 使用db-scheduler的cron表达式解析器计算下次执行时间
-            com.github.kagkarlsson.scheduler.task.schedule.CronSchedule cronSchedule =
-                    Schedules.cron(task.getCronExpression());
-
+            com.github.kagkarlsson.scheduler.task.schedule.CronSchedule cronSchedule = 
+                Schedules.cron(task.getCronExpression());
+            
             // 获取当前时间
             Instant now = Instant.now();
-
+            
             // 计算下次执行时间
             Instant nextExecutionTime = cronSchedule.getNextExecutionTime(com.github.kagkarlsson.scheduler.task.ExecutionComplete.simulatedSuccess(now));
-
+            
             task.setLastExecutionTime(Date.from(now));
             task.setNextExecutionTime(Date.from(nextExecutionTime));
             scheduledChatTaskMapper.update(task);
-
-            log.debug("更新定时任务执行时间成功 - 任务ID: {}, 上次执行时间: {}, 下次执行时间: {}",
+            
+            log.info("更新定时任务执行时间成功 - 任务ID: {}, 上次执行时间: {}, 下次执行时间: {}", 
                     task.getId(), now, nextExecutionTime);
         } catch (Exception e) {
             log.error("更新定时任务执行时间失败 - 任务ID: {}, 错误: {}", task.getId(), e.getMessage(), e);
-
+            
             // 出错时设置一个默认的下次执行时间（1小时后）
             Date nextExecutionTime = new Date(System.currentTimeMillis() + 60 * 60 * 1000L);
             task.setLastExecutionTime(new Date());

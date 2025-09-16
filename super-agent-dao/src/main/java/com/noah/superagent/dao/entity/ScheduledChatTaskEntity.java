@@ -49,6 +49,7 @@ public class ScheduledChatTaskEntity extends BaseEntity {
      * Cron表达式
      */
     @Column(value = "cron_expression")
+    @Deprecated
     private String cronExpression;
 
     /**
@@ -83,4 +84,10 @@ public class ScheduledChatTaskEntity extends BaseEntity {
      * 删除标记: 0-未删除 1-已删除
      */
     private DeletedEnum deleted;
+    
+    /**
+     * 任务调度配置（JSON格式存储）
+     */
+    @Column(value = "schedule_config")
+    private String scheduleConfig;
 }

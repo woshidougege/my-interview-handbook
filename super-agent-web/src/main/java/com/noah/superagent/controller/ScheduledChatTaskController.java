@@ -38,7 +38,7 @@ public class ScheduledChatTaskController {
     private final ScheduledChatTaskWebConvert scheduledChatTaskWebConvert;
 
     @PostMapping
-    @Operation(summary = "创建定时对话任务", description = "创建新的定时对话任务")
+    @Operation(summary = "创建定时对话任务", description = "创建新的定时对话任务，支持通过scheduleConfig参数配置定时规则，系统将自动生成cron表达式")
     public ApiResponse<ScheduledChatTaskResponse> createScheduledChatTask(
             @Parameter(description = "工作空间ID", example = "1234567890123456789")
             @PathVariable("workspaceId") Long workspaceId,
@@ -94,7 +94,7 @@ public class ScheduledChatTaskController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "更新定时对话任务", description = "更新定时对话任务信息")
+    @Operation(summary = "更新定时对话任务", description = "更新定时对话任务信息，支持通过scheduleConfig参数更新定时规则")
     public ApiResponse<ScheduledChatTaskResponse> updateScheduledChatTask(
             @Parameter(description = "定时对话任务ID", example = "1234567890123456789")
             @PathVariable("id") Long id,

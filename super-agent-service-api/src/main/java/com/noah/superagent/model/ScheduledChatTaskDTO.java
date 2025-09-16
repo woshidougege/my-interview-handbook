@@ -1,5 +1,6 @@
 package com.noah.superagent.model;
 
+import com.noah.superagent.common.dto.ScheduleConfig;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -39,7 +40,13 @@ public class ScheduledChatTaskDTO extends BaseDTO {
     /**
      * Cron表达式
      */
+    @Deprecated
     private String cronExpression;
+
+    /**
+     * 任务调度配置
+     */
+    private ScheduleConfig scheduleConfig;
 
     /**
      * 对话提示词

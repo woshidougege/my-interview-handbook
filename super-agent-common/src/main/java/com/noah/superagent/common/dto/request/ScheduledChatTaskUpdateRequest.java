@@ -1,5 +1,6 @@
 package com.noah.superagent.common.dto.request;
 
+import com.noah.superagent.common.dto.ScheduleConfig;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -21,8 +22,12 @@ public class ScheduledChatTaskUpdateRequest extends BaseRequest {
     @Schema(description = "任务名称", example = "每日新闻摘要")
     private String taskName;
 
-    @Schema(description = "Cron表达式", example = "0 0 9 * * ?")
+    @Deprecated
+    @Schema(description = "Cron表达式 (已废弃，请使用scheduleConfig)")
     private String cronExpression;
+
+    @Schema(description = "任务调度配置")
+    private ScheduleConfig scheduleConfig;
 
     @Schema(description = "对话提示词", example = "请为我生成今日科技新闻摘要")
     private String prompt;
