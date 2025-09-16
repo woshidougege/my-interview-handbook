@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Tabs, Form, Input, Button, message, Checkbox } from 'antd';
+import { Modal, Tabs, Form, Input, Button, message } from 'antd';
 import { PhoneOutlined, SafetyCertificateOutlined, UserOutlined, LockOutlined } from '@ant-design/icons';
-import { authApi } from '../services/api';
 import { API_ENDPOINTS, buildApiUrl } from '../config/apiEndpoints';
 import { encryptWithSM2 } from '../utils/sm2Encrypt';
 import { getPublicKey, getCachedPublicKey } from '../services/publicKeyService';

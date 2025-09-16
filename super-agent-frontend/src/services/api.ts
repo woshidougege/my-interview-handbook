@@ -94,6 +94,11 @@ export const authApi = {
     return api.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, data);
   },
 
+  // 修改密码（使用后端API代理SSO）
+  changePasswordSSO: (data: { newPassword: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post(API_ENDPOINTS.LEGACY.AUTH_CHANGE_PASSWORD, data);
+  },
+
   // 密码登录（向后兼容）
   passwordLogin: (data: { username: string; password: string }): Promise<AxiosResponse<ApiResponse<any>>> => {
     return api.post(API_ENDPOINTS.LEGACY.AUTH_PASSWORD_LOGIN, data);
@@ -211,6 +216,18 @@ export const userApi = {
     // SSO模式下，用户信息由SSO管理，不支持更新
     throw new Error('用户信息更新请在SSO系统中进行');
   },
+
+  // 获取用户积分详情
+  getCreditDetails: (): ApiPromise<any> => {
+    return api.get(API_ENDPOINTS.CREDIT.DETAILS);
+  },
+
+  // 分页查询积分交易记录
+  getCreditTransactions: (pageNum: number = 1, pageSize: number = 10): ApiPromise<any> => {
+    return api.get(API_ENDPOINTS.CREDIT.TRANSACTIONS, {
+      params: { pageNum, pageSize }
+    });
+  }
 };
 
 

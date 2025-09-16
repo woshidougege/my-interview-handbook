@@ -105,6 +105,14 @@ export const API_ENDPOINTS = {
     PLANS: 'subscription/plans',
   },
 
+  // ========== 用户积分相关 ==========
+  // 后端: @RequestMapping("/api/v1/credit") -> 前端直接用: credit/*
+  CREDIT: {
+    BASE: 'credit',
+    DETAILS: 'credit/details',
+    TRANSACTIONS: 'credit/transactions',
+  },
+
 
 
   // ========== 资源使用相关 ==========
@@ -128,6 +136,7 @@ export const API_ENDPOINTS = {
     AUTH_GET_SYS_CLIENT_INFO: 'auth/get-sys-client-info',
     AUTH_PUBLIC_KEY: 'auth/public-key',
     AUTH_USER_CURRENT: 'auth/user/current',
+    AUTH_CHANGE_PASSWORD: 'auth/change-password',
     // USERS_UPDATE: 'users/update', // 已废弃：SSO模式下不支持用户信息更新
     SUBSCRIPTION_PLANS: 'subscription/plans',
     PAYMENT_CREATE: 'payment/create',

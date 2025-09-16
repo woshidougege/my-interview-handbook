@@ -10,11 +10,16 @@ import {
 import {
   UserOutlined,
   EditOutlined,
-  WalletOutlined
+  WalletOutlined,
+  EyeInvisibleOutlined,
+  EyeTwoTone
 } from '@ant-design/icons';
 import { UserInfo, UserCredit } from '@/types/user';
-import { userApi, subscriptionApi } from '@/services/api';
+import { userApi, subscriptionApi, authApi } from '@/services/api';
 import { formatNumber } from '@/utils/format';
+import CreditTransactionList from './CreditTransactionList';
+import { encryptWithSM2 } from '@/utils/sm2Encrypt';
+import { getCachedPublicKey } from '@/services/publicKeyService';
 
 
 interface UserSettingsProps {
@@ -24,10 +29,14 @@ interface UserSettingsProps {
 
 const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
   const [form] = Form.useForm();
+  const [passwordForm] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [creditInfo, setCreditInfo] = useState<UserCredit | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
 
   useEffect(() => {
     if (visible) {
@@ -49,9 +58,21 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
         const subscriptionResponse = await subscriptionApi.getCurrentSubscription();
         const data = subscriptionResponse.data.data;
         
-        const creditInfo = {
-          availableCredits: data.availableCredits || 0,
-          hasCreditAccount: data.hasCreditAccount || false
+        const creditInfo: UserCredit = {
+          userId: user.id || '',
+          availableCredits: data.availableCredits || 150000,
+          planName: data.planName || '基础版',
+          limitedCredits: data.limitedCredits || 800,
+          dailyRefreshCredits: data.dailyRefreshCredits || 300,
+          hasCreditAccount: data.hasCreditAccount || false,
+          totalBalance: data.totalBalance || 0,
+          freeBalance: data.freeBalance || 0,
+          subscriptionBalance: data.subscriptionBalance || 0,
+          permanentBalance: data.permanentBalance || 0,
+          totalEarned: data.totalEarned || 0,
+          totalSpent: data.totalSpent || 0,
+          createTime: data.createTime || new Date().toISOString(),
+          updateTime: data.updateTime || new Date().toISOString()
         };
         setCreditInfo(creditInfo);
       } catch (error) {
@@ -84,6 +105,45 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
     }
   };
 
+  // 处理密码修改
+  const handleChangePassword = async (values: any) => {
+    try {
+      setPasswordLoading(true);
+      
+      // SM2加密新密码
+      let encryptedPassword = values.newPassword;
+      
+      if (getCachedPublicKey()) {
+        try {
+          encryptedPassword = encryptWithSM2(values.newPassword);
+        } catch (encryptError) {
+          console.warn('SM2加密失败，使用明文密码:', encryptError);
+        }
+      } else {
+        console.warn('未找到缓存公钥，使用明文密码');
+      }
+
+      // 调用后端API修改密码
+      const response = await authApi.changePasswordSSO({
+        newPassword: encryptedPassword
+      });
+      message.success('密码修改成功');
+      setIsEditingPassword(false);
+      passwordForm.resetFields();
+    } catch (error: any) {
+      console.error('修改密码失败:', error);
+      message.error('密码修改失败: ' + (error.message || '未知错误'));
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  // 取消密码修改
+  const handleCancelPasswordEdit = () => {
+    setIsEditingPassword(false);
+    passwordForm.resetFields();
+  };
+
   return (
     <Modal
       title={
@@ -98,7 +158,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={700}
+      width={800}
       centered
       styles={{
         content: { 
@@ -121,7 +181,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
     >
       <div style={{ background: 'transparent', color: '#333' }}>
         {/* 侧边导航栏 */}
-        <div style={{ display: 'flex', height: '400px' }}>
+        <div style={{ display: 'flex', height: '600px' }}>
           <div style={{ 
             width: '140px', 
             background: '#fafafa',
@@ -234,38 +294,6 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      marginBottom: '8px'
-                    }}>
-                      <span style={{ color: '#333', fontSize: '14px', fontWeight: 500 }}>密码</span>
-                      <EditOutlined 
-                        style={{ 
-                          color: '#1890ff', 
-                          cursor: 'pointer',
-                          fontSize: '14px'
-                        }}
-                        onClick={() => message.info('密码修改功能开发中')}
-                      />
-                    </div>
-                    <div style={{ 
-                      color: '#666', 
-                      fontSize: '14px',
-                      background: '#f5f5f5',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      height: '40px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      border: '1px solid #e8e8e8'
-                    }}>
-                      ******
-                    </div>
-                  </div>
-
                   <Form.Item style={{ marginTop: '16px', marginBottom: '0' }}>
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <Button 
@@ -304,112 +332,305 @@ const UserSettings: React.FC<UserSettingsProps> = ({ visible, onClose }) => {
                     </div>
                   </Form.Item>
                 </Form>
+
+                {/* 密码修改区域 - 独立于主表单 */}
+                <div style={{ marginBottom: '12px', marginTop: '16px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    marginBottom: '8px'
+                  }}>
+                    <span style={{ color: '#333', fontSize: '14px', fontWeight: 500 }}>密码</span>
+                    <EditOutlined 
+                      style={{ 
+                        color: '#1890ff', 
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                      onClick={() => {
+                        setIsEditingPassword(true);
+                      }}
+                    />
+                  </div>
+                  
+                  {!isEditingPassword ? (
+                    <div style={{ 
+                      color: '#666', 
+                      fontSize: '14px',
+                      background: '#f5f5f5',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      height: '40px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      border: '1px solid #e8e8e8'
+                    }}>
+                      ******
+                    </div>
+                  ) : (
+                    <Form
+                      form={passwordForm}
+                      onFinish={(values) => {
+                        handleChangePassword(values);
+                      }}
+                      layout="vertical"
+                      style={{ margin: 0 }}
+                    >
+                      <Form.Item
+                        name="newPassword"
+                        rules={[
+                          { required: true, message: '请输入新密码' },
+                          { min: 6, message: '密码长度至少6位' }
+                        ]}
+                        style={{ marginBottom: '12px' }}
+                      >
+                        <Input.Password
+                          placeholder="请输入新密码"
+                          iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                          style={{
+                            background: '#fff',
+                            border: '1px solid #d9d9d9',
+                            color: '#333',
+                            fontSize: '14px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            height: '40px'
+                          }}
+                        />
+                      </Form.Item>
+                      
+                      <Form.Item
+                        name="confirmPassword"
+                        dependencies={['newPassword']}
+                        rules={[
+                          { required: true, message: '请确认新密码' },
+                          ({ getFieldValue }) => ({
+                            validator(_, value) {
+                              if (!value || getFieldValue('newPassword') === value) {
+                                return Promise.resolve();
+                              }
+                              return Promise.reject(new Error('两次输入的密码不一致'));
+                            },
+                          }),
+                        ]}
+                        style={{ marginBottom: '12px' }}
+                      >
+                        <Input.Password
+                          placeholder="请确认新密码"
+                          iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                          style={{
+                            background: '#fff',
+                            border: '1px solid #d9d9d9',
+                            color: '#333',
+                            fontSize: '14px',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            height: '40px'
+                          }}
+                        />
+                      </Form.Item>
+                      
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <Button 
+                          type="primary" 
+                          htmlType="submit" 
+                          loading={passwordLoading}
+                          size="small"
+                          style={{ 
+                            background: '#1890ff',
+                            borderColor: '#1890ff',
+                            height: '32px',
+                            fontSize: '12px'
+                          }}
+                        >
+                          确认
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            handleCancelPasswordEdit();
+                          }}
+                          size="small"
+                          style={{ 
+                            background: '#fff',
+                            borderColor: '#d9d9d9',
+                            color: '#333',
+                            height: '32px',
+                            fontSize: '12px'
+                          }}
+                        >
+                          取消
+                        </Button>
+                      </div>
+                    </Form>
+                  )}
+                </div>
               </div>
             )}
 
             {activeTab === 'billing' && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  background: 'linear-gradient(135deg, #1890ff 0%, #40a9ff 100%)',
-                  padding: '20px', 
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                  boxShadow: '0 4px 16px rgba(24, 144, 255, 0.15)'
-                }}>
-                  <div style={{ 
-                    fontSize: '32px', 
-                    color: '#fff', 
-                    marginBottom: '4px',
-                    fontWeight: 600
-                  }}>
-                    {formatNumber(creditInfo?.totalBalance || 1094)}
-                  </div>
-                  <div style={{ 
-                    color: '#fff', 
-                    fontSize: '16px',
-                    opacity: 0.9
-                  }}>
-                    当前积分余额
-                  </div>
-                </div>
-
-                <div style={{ 
-                  display: 'flex', 
+              <div style={{ 
+                background: 'rgba(51, 51, 51, 0.9)',
+                color: '#fff',
+                padding: '20px',
+                borderRadius: '8px',
+                marginTop: '-16px',
+                marginLeft: '-24px',
+                marginRight: '-24px',
+                marginBottom: '-16px',
+                minHeight: '400px'
+              }}>
+                {/* 套餐用户信息 */}
+                <div style={{
+                  display: 'flex',
                   justifyContent: 'space-between',
-                  marginBottom: '16px',
-                  gap: '12px'
+                  alignItems: 'center',
+                  marginBottom: '20px',
+                  padding: '16px 20px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px'
                 }}>
-                  <div style={{ 
-                    flex: 1,
-                    background: '#fff',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #f0f0f0',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+                  <span style={{ 
+                    fontSize: '16px', 
+                    fontWeight: 500,
+                    color: '#fff'
                   }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '6px' }}>
-                      累计获得
-                    </div>
-                    <div style={{ 
-                      color: '#52c41a', 
-                      fontSize: '18px',
-                      fontWeight: 600
-                    }}>
-                      +{formatNumber(creditInfo?.totalEarned || 0)}
-                    </div>
-                  </div>
-                  <div style={{ 
-                    flex: 1,
-                    background: '#fff',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #f0f0f0',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
-                  }}>
-                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '6px' }}>
-                      累计消费
-                    </div>
-                    <div style={{ 
-                      color: '#ff4d4f', 
-                      fontSize: '18px',
-                      fontWeight: 600
-                    }}>
-                      -{formatNumber(creditInfo?.totalSpent || 0)}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <Button 
-                    type="primary" 
-                    block 
-                    size="large"
-                    style={{ 
+                    {creditInfo?.planName || '基础版'}用户
+                  </span>
+                  <Button
+                    type="primary"
+                    size="small"
+                    style={{
                       background: '#1890ff',
                       borderColor: '#1890ff',
-                      height: '40px',
-                      borderRadius: '8px',
-                      fontSize: '14px',
+                      fontSize: '12px',
+                      padding: '4px 16px',
+                      height: '28px',
+                      borderRadius: '14px',
                       fontWeight: 500
                     }}
                   >
-                    充值积分
+                    升级
                   </Button>
-                  <Button 
-                    block 
-                    size="large"
-                    style={{ 
-                      background: '#fff',
-                      borderColor: '#d9d9d9',
-                      color: '#333',
-                      height: '40px',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: 500
-                    }}
-                  >
-                    查看交易记录
-                  </Button>
+                </div>
+
+                {/* 积分信息区域 */}
+                <div style={{ marginBottom: '20px' }}>
+                  {/* 全部积分 */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '12px',
+                    padding: '0 4px'
+                  }}>
+                    <div>
+                      <span style={{ 
+                        color: '#ccc', 
+                        fontSize: '14px',
+                        marginRight: '20px' 
+                      }}>
+                        全部积分
+                      </span>
+                      <span style={{ 
+                        color: '#fff', 
+                        fontSize: '16px',
+                        fontWeight: 600 
+                      }}>
+                        {formatNumber(creditInfo?.availableCredits || 150000)}
+                      </span>
+                    </div>
+                    <Button
+                      size="small"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        color: '#fff',
+                        fontSize: '12px',
+                        padding: '4px 12px',
+                        height: '24px',
+                        borderRadius: '12px'
+                      }}
+                    >
+                      赠充
+                    </Button>
+                  </div>
+
+                  {/* 限时积分 */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '12px',
+                    padding: '0 4px'
+                  }}>
+                    <div>
+                      <span style={{ 
+                        color: '#ccc', 
+                        fontSize: '14px',
+                        marginRight: '20px' 
+                      }}>
+                        限时积分
+                      </span>
+                      <span style={{ 
+                        color: '#fff', 
+                        fontSize: '16px',
+                        fontWeight: 600 
+                      }}>
+                        {formatNumber(creditInfo?.limitedCredits || 800)}
+                      </span>
+                    </div>
+                    <Button
+                      size="small"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        color: '#fff',
+                        fontSize: '12px',
+                        padding: '4px 12px',
+                        height: '24px',
+                        borderRadius: '12px'
+                      }}
+                    >
+                      分享链接
+                    </Button>
+                  </div>
+
+                  {/* 当日刷新积分 */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '20px',
+                    padding: '0 4px'
+                  }}>
+                    <div>
+                      <span style={{ 
+                        color: '#ccc', 
+                        fontSize: '14px',
+                        marginRight: '20px'
+                      }}>
+                        当日刷新积分
+                      </span>
+                      <span style={{ 
+                        color: '#fff', 
+                        fontSize: '16px',
+                        fontWeight: 600 
+                      }}>
+                        {formatNumber(creditInfo?.dailyRefreshCredits || 300)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 积分详情列表 */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginTop: '16px'
+                }}>
+                  <CreditTransactionList />
                 </div>
               </div>
             )}

@@ -1,7 +1,9 @@
 package com.noah.superagent.service.impl;
 
+import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.noah.superagent.common.enums.EnabledEnum;
 import com.noah.superagent.convert.SubscriptionPlanPersistenceConvert;
+import com.noah.superagent.dao.entity.SubscriptionPlanEntity;
 import com.noah.superagent.dao.mapper.SubscriptionPlanMapper;
 import com.noah.superagent.model.SubscriptionPlanDTO;
 import com.noah.superagent.service.SubscriptionPlanService;
@@ -21,7 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
+public class SubscriptionPlanServiceImpl extends ServiceImpl<SubscriptionPlanMapper,SubscriptionPlanEntity> implements SubscriptionPlanService {
 
     private final SubscriptionPlanMapper subscriptionPlanMapper;
     private final SubscriptionPlanPersistenceConvert convert;
@@ -35,5 +37,17 @@ public class SubscriptionPlanServiceImpl implements SubscriptionPlanService {
                 .filter(plan -> EnabledEnum.ENABLED.equals(plan.getEnabled()))
                 .map(convert::fromEntity)
                 .collect(Collectors.toList());
+    }
+    
+    @Override
+    public SubscriptionPlanDTO getPlanById(Long planId) {
+        log.info("根据ID获取套餐信息 - planId: {}", planId);
+        
+        if (planId == null) {
+            return null;
+        }
+        
+        var entity = this.getById(planId);
+        return entity != null ? convert.fromEntity(entity) : null;
     }
 }

@@ -15,7 +15,11 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "统一API响应结果")
+@Schema(
+    name = "ApiResponse",
+    title = "统一API响应结果",
+    description = "系统统一的API响应格式，包含响应码、消息、数据和状态信息"
+)
 public class ApiResponse<T> {
 
     @Schema(description = "响应码")
