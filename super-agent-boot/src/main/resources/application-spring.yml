@@ -64,6 +64,8 @@ spring:
     serialization:
       # 写入日期时使用时间戳
       write-dates-as-timestamps: false
+      # Java 8时间类型也不使用时间戳
+      write-date-timestamps-as-nanoseconds: false
       # 序列化空对象
       fail-on-empty-beans: false
       # 格式化输出
