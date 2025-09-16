@@ -48,6 +48,7 @@ spring:
       # === 业务功能配置 ===
       - classpath:application-billing.yml     # 计费系统配置
       - classpath:application-payment.yml     # 支付系统配置
+      - classpath:application-plans.yml       # 套餐配置
       - classpath:application-scheduler.yml   # 任务调度配置
       - classpath:application-sso.yml         # 单点登录配置
       - classpath:application-ai.yml          # AI服务配置

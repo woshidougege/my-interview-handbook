@@ -1,7 +1,6 @@
 package com.noah.superagent.controller;
 
 import com.noah.superagent.common.dto.response.PlansListResponse;
-import com.noah.superagent.common.enums.BillingCycleEnum;
 import com.noah.superagent.convert.SubscriptionPlanWebConvert;
 import com.noah.superagent.model.UserSubscriptionDTO;
 import com.noah.superagent.response.ApiResponse;
@@ -11,7 +10,6 @@ import com.noah.superagent.service.UserSubscriptionService;
 import com.noah.superagent.service.UserCreditService;
 import com.noah.superagent.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -49,7 +47,7 @@ public class SubscriptionController {
 
     @Operation(
         summary = "获取所有启用的套餐", 
-        description = "获取系统中所有启用状态的订阅套餐列表，包含套餐详情、价格、功能特性等信息。支持按计费周期调整价格（按年优惠17%）。此接口无需认证，可用于展示给未登录用户。",
+        description = "获取系统中所有启用状态的订阅套餐列表，包含套餐详情、完整价格信息、功能特性等。包含月价、年价的原价和优惠信息，以及用户当前套餐标识。此接口无需认证，可用于展示给未登录用户。",
         tags = {"订阅管理"}
     )
     @ApiResponses(value = {
@@ -167,18 +165,33 @@ public class SubscriptionController {
         )
     })
     @GetMapping("/plans")
-    public ApiResponse<PlansListResponse> getPlans(
-            @Parameter(
-                name = "billingCycle",
-                description = "计费周期：monthly(按月) 或 yearly(按年)，按年时自动优惠17%",
-                example = "monthly"
-            )
-            @RequestParam(value = "billingCycle", required = false, defaultValue = "monthly") String billingCycle
-    ) {
-        BillingCycleEnum cycle = BillingCycleEnum.fromCode(billingCycle);
+    public ApiResponse<PlansListResponse> getPlans() {
         
-        // Service层返回DTO
-        List<com.noah.superagent.model.SubscriptionPlanDTO> planDTOs = subscriptionPlanService.getEnabledPlansByBillingCycle(cycle);
+        // 获取当前用户ID（如果已登录）
+        Long currentUserId;
+        Long currentUserPlanId = null;
+        try {
+            currentUserId = UserContext.getCurrentUserId(); // 使用可空版本，未登录不抛异常
+            if (currentUserId != null) {
+                // 获取用户当前有效订阅
+                UserSubscriptionDTO currentSubscription = userSubscriptionService.getCurrentActiveSubscription(currentUserId);
+                if (currentSubscription != null) {
+                    currentUserPlanId = currentSubscription.getPlanId();
+                }
+            }
+        } catch (Exception e) {
+            // 忽略获取用户信息失败的情况，继续返回套餐列表
+            log.debug("获取当前用户信息失败，继续返回套餐列表 - 错误: {}", e.getMessage());
+        }
+        
+        // Service层返回DTO（配置文件中已包含完整价格信息）
+        List<com.noah.superagent.model.SubscriptionPlanDTO> planDTOs = subscriptionPlanService.getEnabledPlans();
+        
+        // 标识当前套餐（价格信息已在Service层计算完成）
+        final Long finalCurrentUserPlanId = currentUserPlanId;
+        planDTOs.forEach(planDTO -> {
+            planDTO.setIsCurrentPlan(finalCurrentUserPlanId != null && finalCurrentUserPlanId.equals(planDTO.getId()));
+        });
         
         // Web层组装Response
         PlansListResponse response = new PlansListResponse();
@@ -335,13 +348,13 @@ public class SubscriptionController {
             UserSubscriptionDTO subscription = userSubscriptionService.getCurrentActiveSubscription(userId);
             
             // 查询用户可用积分
-            Long availableCredits = 0L;
+            long availableCredits = 0L;
             boolean hasCreditAccount = false;
             String planName = null;
             String planCode = null;
-            Long limitedCredits = 0L;
-            Long dailyRefreshCredits = 0L;
-            Long permanentCredits = 0L;
+            long limitedCredits = 0L;
+            long dailyRefreshCredits = 0L;
+            long permanentCredits = 0L;
             
             // 获取套餐名称和代码
             if (subscription != null && subscription.getPlanId() != null) {
@@ -376,27 +389,27 @@ public class SubscriptionController {
                     
                     hasCreditAccount = true;
                 }
-                
+
                 if (hasCreditAccount) {
                     // 获取详细积分信息
                     var creditDetail = userCreditService.getUserCredit(userId);
                     if (creditDetail != null) {
                         availableCredits = creditDetail.getTotalBalance() != null ? creditDetail.getTotalBalance().longValue() : 0L;
-                        
+
                         // 限时积分 = 免费积分 + 活动积分
                         limitedCredits = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
                                         (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
-                        
+
                         // 当日刷新积分
                         dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
-                        
+
                         // 永久积分
                         permanentCredits = creditDetail.getPermanentBalance() != null ? creditDetail.getPermanentBalance().longValue() : 0L;
-                        
-                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}, permanent: {}", 
-                                userId, availableCredits, 
-                                creditDetail.getFreeBalance(), 
-                                creditDetail.getActivityBalance(), 
+
+                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}, permanent: {}",
+                                userId, availableCredits,
+                                creditDetail.getFreeBalance(),
+                                creditDetail.getActivityBalance(),
                                 creditDetail.getDailyBalance(),
                                 creditDetail.getPermanentBalance());
                     }

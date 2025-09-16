@@ -7,6 +7,7 @@ import com.noah.superagent.common.config.BillingProperties;
 import com.noah.superagent.common.config.AsyncProperties;
 import com.noah.superagent.common.config.CacheProperties;
 import com.noah.superagent.common.config.MonitoringProperties;
+import com.noah.superagent.common.config.PlansConfig;
 
 /**
  * 统一配置管理类
@@ -23,18 +24,19 @@ import com.noah.superagent.common.config.MonitoringProperties;
     BillingProperties.class,
     AsyncProperties.class,
     CacheProperties.class,
-    MonitoringProperties.class
+    MonitoringProperties.class,
+    PlansConfig.class
     // 未来有新的配置类时，只需要在这里添加
 })
 public class ConfigurationConfig {
     
-    /**
-     * 这个类不需要任何实现，只是为了集中管理配置类
-     * 
-     * 优势：
-     * 1. 启动类保持简洁
-     * 2. 配置类集中管理，易于维护
-     * 3. 新增配置时只需修改这一个地方
-     * 4. 配置职责单一，符合单一职责原则
+    /*
+      这个类不需要任何实现，只是为了集中管理配置类
+
+      优势：
+      1. 启动类保持简洁
+      2. 配置类集中管理，易于维护
+      3. 新增配置时只需修改这一个地方
+      4. 配置职责单一，符合单一职责原则
      */
 }

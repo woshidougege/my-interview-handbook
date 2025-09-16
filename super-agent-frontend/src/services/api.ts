@@ -149,9 +149,10 @@ export const subscriptionApi = {
     return api.get(API_ENDPOINTS.SUBSCRIPTION.PLANS);
   },
 
-  // 根据计费周期获取套餐列表
+  // 根据计费周期获取套餐列表（已废弃，现在直接调用getPlans即可）
   getPlansWithBillingCycle: (billingCycle: 'monthly' | 'yearly'): ApiPromise<{yearlyDiscountRate: number, plans: any[]}> => {
-    return api.get(`${API_ENDPOINTS.SUBSCRIPTION.PLANS}?billingCycle=${billingCycle}`);
+    // 新接口已包含所有价格信息，不再需要billingCycle参数
+    return api.get(API_ENDPOINTS.SUBSCRIPTION.PLANS);
   },
   
   // 创建订阅

@@ -50,22 +50,34 @@ public class SubscriptionPlanResponse extends BaseResponse {
     private List<PlanFeatureResponse> features;
 
     /**
-     * 套餐价格（兼容字段）
+     * 按月原价（未优惠）
      */
-    @Schema(description = "套餐价格（兼容字段，通常与monthlyPrice相同）", example = "39.00")
-    private BigDecimal price;
+    @Schema(description = "按月订阅原价（未优惠）", example = "39.00")
+    private BigDecimal monthlyOriginalPrice;
 
     /**
-     * 按月价格
+     * 按月价格（最终价格，优惠后）
      */
-    @Schema(description = "按月订阅价格", example = "39.00")
+    @Schema(description = "按月订阅最终价格（优惠后）", example = "39.00")
     private BigDecimal monthlyPrice;
 
     /**
-     * 按年价格
+     * 按年原价（月价*12，未优惠）
      */
-    @Schema(description = "按年订阅价格（通常有优惠）", example = "388.00")
+    @Schema(description = "按年订阅原价（月价*12，未优惠）", example = "468.00")
+    private BigDecimal yearlyOriginalPrice;
+
+    /**
+     * 按年价格（最终价格，优惠后）
+     */
+    @Schema(description = "按年订阅最终价格（优惠后）", example = "388.00")
     private BigDecimal yearlyPrice;
+
+    /**
+     * 按月优惠金额
+     */
+    @Schema(description = "按月订阅优惠金额（通常为0）", example = "0.00")
+    private BigDecimal monthlySavings;
 
     /**
      * 套餐有效期（天）
@@ -86,16 +98,22 @@ public class SubscriptionPlanResponse extends BaseResponse {
     private Boolean isRecommended;
 
     /**
+     * 是否为用户当前套餐
+     */
+    @Schema(description = "是否为用户当前套餐（前端可显示当前计划标识）", example = "false")
+    private Boolean isCurrentPlan;
+
+    /**
      * 排序值
      */
     @Schema(description = "排序值（数字越小越靠前）", example = "2")
     private Integer sortOrder;
 
     /**
-     * 按年订阅总优惠金额（一年总共省多少钱）
+     * 按年订阅优惠金额（一年总共省多少钱）
      */
-    @Schema(description = "按年订阅总优惠金额（元）", example = "80.00")
-    private BigDecimal yearlyTotalSavings;
+    @Schema(description = "按年订阅优惠金额（元）", example = "80.00")
+    private BigDecimal yearlySavings;
 
     /**
      * 按年订阅月均优惠金额（平均每月省多少钱）

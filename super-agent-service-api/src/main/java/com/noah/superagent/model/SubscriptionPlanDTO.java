@@ -39,19 +39,29 @@ public class SubscriptionPlanDTO extends BaseDTO {
     private List<PlanFeatureDTO> features;
 
     /**
-     * 套餐价格（兼容字段）
+     * 按月原价（未优惠）
      */
-    private BigDecimal price;
+    private BigDecimal monthlyOriginalPrice;
 
     /**
-     * 按月价格
+     * 按月价格（最终价格，优惠后）
      */
     private BigDecimal monthlyPrice;
 
     /**
-     * 按年价格
+     * 按年原价（月价*12，未优惠）
+     */
+    private BigDecimal yearlyOriginalPrice;
+
+    /**
+     * 按年价格（最终价格，优惠后）
      */
     private BigDecimal yearlyPrice;
+
+    /**
+     * 按月优惠金额
+     */
+    private BigDecimal monthlySavings;
 
     /**
      * 套餐有效期（天）
@@ -69,6 +79,11 @@ public class SubscriptionPlanDTO extends BaseDTO {
     private Boolean isRecommended;
 
     /**
+     * 是否为用户当前套餐
+     */
+    private Boolean isCurrentPlan;
+
+    /**
      * 排序值
      */
     private Integer sortOrder;
@@ -79,9 +94,9 @@ public class SubscriptionPlanDTO extends BaseDTO {
     private Double yearlyDiscountRate;
 
     /**
-     * 按年订阅总优惠金额（一年总共省多少钱）
+     * 按年订阅优惠金额（一年总共省多少钱）
      */
-    private BigDecimal yearlyTotalSavings;
+    private BigDecimal yearlySavings;
 
     /**
      * 按年订阅月均优惠金额（平均每月省多少钱）
