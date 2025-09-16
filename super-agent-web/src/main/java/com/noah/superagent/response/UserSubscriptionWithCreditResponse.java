@@ -45,6 +45,12 @@ public class UserSubscriptionWithCreditResponse {
     private String planName;
 
     @Schema(
+        description = "套餐代码（英文标识）", 
+        example = "basic"
+    )
+    private String planCode;
+
+    @Schema(
         description = "限时积分（免费积分+活动积分）", 
         example = "800",
         minimum = "0"

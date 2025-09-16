@@ -330,15 +330,17 @@ public class SubscriptionController {
             Long availableCredits = 0L;
             boolean hasCreditAccount = false;
             String planName = null;
+            String planCode = null;
             Long limitedCredits = 0L;
             Long dailyRefreshCredits = 0L;
             
-            // 获取套餐名称
+            // 获取套餐名称和代码
             if (subscription != null && subscription.getPlanId() != null) {
                 try {
                     var plan = subscriptionPlanService.getPlanById(subscription.getPlanId());
                     if (plan != null) {
                         planName = plan.getPlanName();
+                        planCode = plan.getPlanCode() != null ? plan.getPlanCode().getCode() : null;
                     }
                 } catch (Exception e) {
                     log.warn("查询套餐信息失败 - planId: {}, 错误: {}", subscription.getPlanId(), e.getMessage());
@@ -397,6 +399,7 @@ public class SubscriptionController {
             response.setAvailableCredits(availableCredits);
             response.setHasCreditAccount(hasCreditAccount);
             response.setPlanName(planName);
+            response.setPlanCode(planCode);
             response.setLimitedCredits(limitedCredits);
             response.setDailyRefreshCredits(dailyRefreshCredits);
             
