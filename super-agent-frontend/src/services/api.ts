@@ -150,7 +150,7 @@ export const subscriptionApi = {
   },
 
   // 根据计费周期获取套餐列表
-  getPlansWithBillingCycle: (billingCycle: 'monthly' | 'yearly'): ApiPromise<any[]> => {
+  getPlansWithBillingCycle: (billingCycle: 'monthly' | 'yearly'): ApiPromise<{yearlyDiscountRate: number, plans: any[]}> => {
     return api.get(`${API_ENDPOINTS.SUBSCRIPTION.PLANS}?billingCycle=${billingCycle}`);
   },
   
@@ -209,7 +209,7 @@ export const userApi = {
   // 向后兼容的API（逐步废弃）
   getProfile: (): Promise<any> => {
     // 重定向到SSO获取用户信息
-    return this.getCurrentUser();
+    return userApi.getCurrentUser();
   },
   
   updateProfile: (data: UserProfileRequest): ApiPromise<any> => {

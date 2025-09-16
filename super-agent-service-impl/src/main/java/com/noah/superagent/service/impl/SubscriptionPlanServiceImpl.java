@@ -140,4 +140,5 @@ public class SubscriptionPlanServiceImpl extends ServiceImpl<SubscriptionPlanMap
         var entity = this.getById(planId);
         return entity != null ? convert.fromEntity(entity) : null;
     }
+
 }

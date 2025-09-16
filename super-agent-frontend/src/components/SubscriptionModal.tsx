@@ -61,10 +61,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
 
 
   const loadPlans = async () => {
+    let globalDiscountRate = 0.17; // 默认优惠比例
+    
     try {
       setLoading(true);
       const response = await subscriptionApi.getPlansWithBillingCycle(billingCycle);
-      const apiPlans = response.data.data || [];
+      const responseData = response.data.data || {};
+      const apiPlans = responseData.plans || [];
+      globalDiscountRate = responseData.yearlyDiscountRate || 0.17;
       
       // 转换API数据为组件需要的格式  
       const formattedPlans: Plan[] = apiPlans.map((plan: {
@@ -73,7 +77,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
         planCode?: string;
         monthlyPrice?: number;
         yearlyPrice?: number;
-        yearlyDiscountRate?: number;
         yearlyTotalSavings?: number;
         yearlyMonthlySavings?: number;
         features?: PlanFeature[];
@@ -85,7 +88,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
           monthly: plan.monthlyPrice || 0, 
           yearly: plan.yearlyPrice || 0 
         },
-        yearlyDiscountRate: plan.yearlyDiscountRate || 0,
+        yearlyDiscountRate: globalDiscountRate, // 使用全局优惠比例
         yearlyTotalSavings: plan.yearlyTotalSavings || 0,
         yearlyMonthlySavings: plan.yearlyMonthlySavings || 0,
         isCurrent: false, // TODO: 从用户订阅状态判断
@@ -100,14 +103,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       console.error('加载套餐失败:', error);
       message.error('加载套餐失败，请重试');
       // 使用默认套餐数据作为后备
-      setPlans(getDefaultPlans());
+      setPlans(getDefaultPlans(globalDiscountRate));
     } finally {
       setLoading(false);
     }
   };
 
   // 默认套餐数据（作为后备）
-  const getDefaultPlans = (): Plan[] => [
+  const getDefaultPlans = (globalDiscountRate = 0.17): Plan[] => [
     {
       id: '1',
       name: '免费版',
@@ -129,9 +132,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       name: '基础版',
       code: 'basic',
       price: { monthly: 39, yearly: 388 },
-      yearlyDiscountRate: 0.17,
-      yearlyTotalSavings: 80, // 39*12*0.17 = 79.56 约80元
-      yearlyMonthlySavings: 6.67, // 80/12 = 6.67元/月
+      yearlyDiscountRate: globalDiscountRate,
+      yearlyTotalSavings: Math.round(39 * 12 * globalDiscountRate), // 动态计算
+      yearlyMonthlySavings: Number((39 * 12 * globalDiscountRate / 12).toFixed(2)), // 动态计算
       isCurrent: false,
       buttonText: '订阅',
       buttonType: 'primary' as const,

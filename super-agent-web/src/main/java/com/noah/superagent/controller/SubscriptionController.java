@@ -1,6 +1,6 @@
 package com.noah.superagent.controller;
 
-import com.noah.superagent.common.dto.response.SubscriptionPlanResponse;
+import com.noah.superagent.common.dto.response.PlansListResponse;
 import com.noah.superagent.common.enums.BillingCycleEnum;
 import com.noah.superagent.convert.SubscriptionPlanWebConvert;
 import com.noah.superagent.model.UserSubscriptionDTO;
@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -39,6 +40,12 @@ public class SubscriptionController {
     private final SubscriptionPlanWebConvert webConvert;
     private final UserSubscriptionService userSubscriptionService;
     private final UserCreditService userCreditService;
+
+    /**
+     * 按年订阅优惠比例（Web层配置）
+     */
+    @Value("${super-agent.billing.subscription.yearly-discount-rate:0.17}")
+    private Double yearlyDiscountRate;
 
     @Operation(
         summary = "获取所有启用的套餐", 
@@ -160,7 +167,7 @@ public class SubscriptionController {
         )
     })
     @GetMapping("/plans")
-    public ApiResponse<List<SubscriptionPlanResponse>> getPlans(
+    public ApiResponse<PlansListResponse> getPlans(
             @Parameter(
                 name = "billingCycle",
                 description = "计费周期：monthly(按月) 或 yearly(按年)，按年时自动优惠17%",
@@ -170,12 +177,15 @@ public class SubscriptionController {
     ) {
         BillingCycleEnum cycle = BillingCycleEnum.fromCode(billingCycle);
         
-        List<SubscriptionPlanResponse> plans = webConvert.toResponseList(
-            subscriptionPlanService.getEnabledPlansByBillingCycle(cycle)
-        );
+        // Service层返回DTO
+        List<com.noah.superagent.model.SubscriptionPlanDTO> planDTOs = subscriptionPlanService.getEnabledPlansByBillingCycle(cycle);
         
-        // 明确指定泛型类型 - 解决Swagger嵌套对象显示问题
-        return ApiResponse.success("获取套餐列表成功", plans);
+        // Web层组装Response
+        PlansListResponse response = new PlansListResponse();
+        response.setYearlyDiscountRate(yearlyDiscountRate);
+        response.setPlans(webConvert.toResponseList(planDTOs));
+        
+        return ApiResponse.success("获取套餐列表成功", response);
     }
 
     @Operation(

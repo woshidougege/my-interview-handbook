@@ -92,12 +92,6 @@ public class SubscriptionPlanResponse extends BaseResponse {
     private Integer sortOrder;
 
     /**
-     * 按年优惠比例（0-1之间的小数，如0.17表示17%优惠）
-     */
-    @Schema(description = "按年优惠比例（如0.17表示17%优惠）", example = "0.17")
-    private Double yearlyDiscountRate;
-
-    /**
      * 按年订阅总优惠金额（一年总共省多少钱）
      */
     @Schema(description = "按年订阅总优惠金额（元）", example = "80.00")
