@@ -18,6 +18,27 @@
 #
 # ==================================================================================================
 
+# === 颜色定义 ===
+# ANSI 颜色代码
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[0;37m'
+BOLD='\033[1m'
+UNDERLINE='\033[4m'
+# 背景色
+BG_RED='\033[41m'
+BG_GREEN='\033[42m'
+BG_YELLOW='\033[43m'
+BG_BLUE='\033[44m'
+BG_PURPLE='\033[45m'
+BG_CYAN='\033[46m'
+# 重置颜色
+NC='\033[0m' # No Color
+
 # === 基本配置 ===
 # 应用名称 (必须与 Spring Boot application.name 一致)
 APP_NAME="super-agent"
@@ -76,16 +97,16 @@ SPRING_OPTS="--spring.config.location=$CONF_DIR/"
 # 打印配置加载摘要
 print_config_summary() {
     echo ""
-    echo "🔧 加载的配置文件预览:"
+    echo -e "${CYAN}🔧 加载的配置文件预览:${NC}"
     
     local main_config_file="${CONF_DIR}/application.yml"
     
     if [ -r "$main_config_file" ]; then
-        echo "   - 主文件: $main_config_file"
+        echo -e "   ${GREEN}- 主文件:${NC} ${BLUE}$main_config_file${NC}"
         # 使用awk解析import块，更健壮
-        awk '/import:/,/^[^[:space:]]/{if(/classpath:/) {gsub("classpath:",""); printf "     -> %s\n", $2}}' "$main_config_file"
+        awk '/import:/,/^[^[:space:]]/{if(/classpath:/) {gsub("classpath:",""); printf "     \033[0;35m-> \033[0;33m%s\033[0m\n", $2}}' "$main_config_file"
     else
-        echo "   - 警告: 主配置文件 application.yml 不存在或不可读。"
+        echo -e "   ${YELLOW}- 警告:${NC} ${RED}主配置文件 application.yml 不存在或不可读。${NC}"
     fi
     echo ""
 }
@@ -93,13 +114,13 @@ print_config_summary() {
 # 检查Java环境
 check_java() {
     if ! command -v $JAVA_CMD &> /dev/null; then
-        echo "❌ 错误: 未找到Java运行环境，请安装JDK 11+"
+        echo -e "${RED}❌ 错误:${NC} 未找到Java运行环境，请安装JDK 11+"
         exit 1
     fi
     
     JAVA_VERSION=$($JAVA_CMD -version 2>&1 | grep "version" | cut -d'"' -f2 | cut -d'.' -f1)
     if [ "$JAVA_VERSION" -lt "11" ]; then
-        echo "❌ 错误: Java版本过低，需要JDK 11+，当前版本: $JAVA_VERSION"
+        echo -e "${RED}❌ 错误:${NC} Java版本过低，需要JDK 11+，当前版本: ${YELLOW}$JAVA_VERSION${NC}"
         exit 1
     fi
 }
@@ -250,7 +271,7 @@ start() {
     if [ -f "$PID_FILE" ]; then
         PID=$(cat "$PID_FILE")
         if ps -p $PID > /dev/null 2>&1; then
-            echo "❌ $APP_NAME 正在运行 (PID: $PID)，请先停止。"
+            echo -e "${RED}❌ $APP_NAME 正在运行 (PID: ${YELLOW}$PID${RED})，请先停止。${NC}"
             exit 1
         fi
     fi
@@ -269,12 +290,12 @@ start() {
     START_CMD="$JAVA_CMD $JVM_OPTS -cp $CLASSPATH $MAIN_CLASS $SPRING_OPTS"
 
     echo ""
-    echo "🚀 启动中，日志将由Logback管理..."
-    echo "   - 控制台将显示彩色日志"
-    echo "   - 文件日志将写入: $LOG_FILE"
-    echo "   - 错误日志将写入: $ERROR_LOG_FILE"
-    echo "📋 按 Ctrl+C 可停止应用"
-    echo "--------------------------------------------------------------------------------"
+    echo -e "${GREEN}🚀 启动中，日志将由Logback管理...${NC}"
+    echo -e "   ${CYAN}- 控制台将显示彩色日志${NC}"
+    echo -e "   ${CYAN}- 文件日志将写入:${NC} ${BLUE}$LOG_FILE${NC}"
+    echo -e "   ${CYAN}- 错误日志将写入:${NC} ${BLUE}$ERROR_LOG_FILE${NC}"
+    echo -e "${BG_BLUE}${WHITE} 📋 按 Ctrl+C 可停止应用 ${NC}"
+    echo -e "${CYAN}--------------------------------------------------------------------------------${NC}"
     
     # 启动持续提示显示
     show_persistent_prompt
@@ -289,24 +310,24 @@ stop() {
     cleanup_old_prompts
     
     if [ ! -f "$PID_FILE" ]; then
-        echo "⚠️  应用未运行"
+        echo -e "${YELLOW}⚠️  应用未运行${NC}"
         return 1
     fi
     
     PID=$(cat "$PID_FILE")
     if ! kill -0 "$PID" 2>/dev/null; then
-        echo "⚠️  应用未运行，清理PID文件"
+        echo -e "${YELLOW}⚠️  应用未运行，清理PID文件${NC}"
         rm -f "$PID_FILE"
         return 1
     fi
     
-    echo "🛑 停止 $APP_NAME (PID: $PID)..."
+    echo -e "${PURPLE}🛑 停止 ${BOLD}$APP_NAME${NC} ${PURPLE}(PID: ${YELLOW}$PID${PURPLE})...${NC}"
     kill "$PID"
     
     # 等待进程结束
     for i in {1..30}; do
         if ! kill -0 "$PID" 2>/dev/null; then
-            echo "✅ $APP_NAME 已停止"
+            echo -e "${GREEN}✅ $APP_NAME 已停止${NC}"
             rm -f "$PID_FILE"
             return 0
         fi
@@ -314,26 +335,26 @@ stop() {
     done
     
     # 强制杀死
-    echo "⚠️  强制停止 $APP_NAME..."
+    echo -e "${YELLOW}⚠️  强制停止 $APP_NAME...${NC}"
     kill -9 "$PID" 2>/dev/null
     rm -f "$PID_FILE"
-    echo "✅ $APP_NAME 已强制停止"
+    echo -e "${GREEN}✅ $APP_NAME 已强制停止${NC}"
 }
 
 # 状态检查函数
 status() {
     if [ ! -f "$PID_FILE" ]; then
-        echo "📋 状态: $APP_NAME 未运行"
+        echo -e "${CYAN}📋 状态:${NC} ${RED}$APP_NAME 未运行${NC}"
         return 1
     fi
     
     PID=$(cat "$PID_FILE")
     if kill -0 "$PID" 2>/dev/null; then
-        echo "📋 状态: $APP_NAME 正在运行，PID: $PID"
-        echo "💾 内存使用: $(ps -o pid,ppid,rss,comm -p $PID | tail -1 | awk '{print $3/1024 "MB"}')"
+        echo -e "${CYAN}📋 状态:${NC} ${GREEN}$APP_NAME 正在运行${NC}，${CYAN}PID:${NC} ${YELLOW}$PID${NC}"
+        echo -e "${CYAN}💾 内存使用:${NC} ${PURPLE}$(ps -o pid,ppid,rss,comm -p $PID | tail -1 | awk '{print $3/1024 "MB"}')${NC}"
         return 0
     else
-        echo "📋 状态: $APP_NAME 未运行（PID文件存在但进程不存在）"
+        echo -e "${CYAN}📋 状态:${NC} ${YELLOW}$APP_NAME 未运行（PID文件存在但进程不存在）${NC}"
         rm -f "$PID_FILE"
         return 1
     fi
@@ -341,7 +362,7 @@ status() {
 
 # 重启应用（后台模式）
 restart() {
-    echo "🔄 重启 $APP_NAME..."
+    echo -e "${BLUE}🔄 重启 ${BOLD}$APP_NAME${NC}${BLUE}...${NC}"
     stop
     sleep 2
     daemon
@@ -350,12 +371,12 @@ restart() {
 # 日志查看函数
 logs() {
     if [ ! -f "$LOG_FILE" ]; then
-        echo "❌ 日志文件不存在: $LOG_FILE"
+        echo -e "${RED}❌ 日志文件不存在:${NC} ${BLUE}$LOG_FILE${NC}"
         exit 1
     fi
     
-    echo "📋 正在查看日志 (按 Ctrl+C 退出): $LOG_FILE"
-    echo "--------------------------------------------------------------------------------"
+    echo -e "${CYAN}📋 正在查看日志 ${YELLOW}(按 Ctrl+C 退出)${CYAN}:${NC} ${BLUE}$LOG_FILE${NC}"
+    echo -e "${CYAN}--------------------------------------------------------------------------------${NC}"
     tail -f "$LOG_FILE"
 }
 
@@ -365,7 +386,7 @@ debug() {
     if [ -f "$PID_FILE" ]; then
         PID=$(cat "$PID_FILE")
         if ps -p $PID > /dev/null 2>&1; then
-            echo "❌ $APP_NAME 正在运行 (PID: $PID)，请先停止再以调试模式启动。"
+            echo -e "${RED}❌ $APP_NAME 正在运行 (PID: ${YELLOW}$PID${RED})，请先停止再以调试模式启动。${NC}"
             exit 1
         fi
     fi
@@ -377,18 +398,18 @@ debug() {
     # 调试端口
     DEBUG_PORT=${3:-5005}
     
-    echo "🐛 远程调试模式启动 $APP_NAME ..."
-    echo "🔌 调试端口: $DEBUG_PORT"
-    echo "🔧 IDE连接: localhost:$DEBUG_PORT"
-    echo "📋 日志将同时显示在控制台，文件由Logback管理: $LOG_FILE"
-    echo "📋 按 Ctrl+C 可停止应用"
+    echo -e "${PURPLE}🐛 远程调试模式启动 ${BOLD}$APP_NAME${NC} ${PURPLE}...${NC}"
+    echo -e "${CYAN}🔌 调试端口:${NC} ${YELLOW}$DEBUG_PORT${NC}"
+    echo -e "${CYAN}🔧 IDE连接:${NC} ${GREEN}localhost:$DEBUG_PORT${NC}"
+    echo -e "${CYAN}📋 日志将同时显示在控制台，文件由Logback管理:${NC} ${BLUE}$LOG_FILE${NC}"
+    echo -e "${BG_PURPLE}${WHITE} 📋 按 Ctrl+C 可停止应用 ${NC}"
 
     # 添加调试参数
     DEBUG_OPTS="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:$DEBUG_PORT"
 
     echo ""
-    echo "🚀 启动中..."
-    echo "--------------------------------------------------------------------------------"
+    echo -e "${GREEN}🚀 启动中...${NC}"
+    echo -e "${CYAN}--------------------------------------------------------------------------------${NC}"
 
     # 启动持续提示显示
     show_persistent_prompt
@@ -402,7 +423,7 @@ daemon() {
     if [ -f "$PID_FILE" ]; then
         PID=$(cat "$PID_FILE")
         if ps -p $PID > /dev/null 2>&1; then
-            echo "❌ $APP_NAME 正在运行 (PID: $PID)，请勿重复启动。"
+            echo -e "${RED}❌ $APP_NAME 正在运行 (PID: ${YELLOW}$PID${RED})，请勿重复启动。${NC}"
             exit 1
         fi
     fi
@@ -411,20 +432,20 @@ daemon() {
     prepare_startup
     print_config_summary
 
-    echo "🚀 后台启动中..."
-    echo "📋 使用Spring Boot内置PID管理"
-    echo "📄 PID文件: $PID_FILE"
+    echo -e "${GREEN}🚀 后台启动中...${NC}"
+    echo -e "${CYAN}📋 使用Spring Boot内置PID管理${NC}"
+    echo -e "${CYAN}📄 PID文件:${NC} ${BLUE}$PID_FILE${NC}"
     
     # 让Spring Boot自己管理PID文件，不再手动写入
     nohup $JAVA_CMD $JVM_OPTS -cp "$CLASSPATH" $MAIN_CLASS $SPRING_OPTS > /dev/null 2>&1 &
     local java_pid=$!
     
     # 等待Spring Boot创建PID文件和应用启动
-    echo "⏳ 等待应用启动和PID文件生成..."
+    echo -e "${YELLOW}⏳ 等待应用启动和PID文件生成...${NC}"
     for i in {1..30}; do
         # 检查Java进程是否还在运行
         if ! kill -0 "$java_pid" 2>/dev/null; then
-            echo "❌ Java进程已退出，启动失败"
+            echo -e "${RED}❌ Java进程已退出，启动失败${NC}"
             break
         fi
         
@@ -432,29 +453,29 @@ daemon() {
         if [ -f "$PID_FILE" ]; then
             local app_pid=$(cat "$PID_FILE" 2>/dev/null)
             if [ -n "$app_pid" ] && [ "$app_pid" -eq "$java_pid" ] 2>/dev/null; then
-                echo "✅ $APP_NAME v1.0.0 启动成功！"
-                echo "📄 PID: $app_pid (文件: $PID_FILE)"
-                echo "📝 日志目录: $LOG_FILE"
-                echo "📝 查看实时日志: $0 logs"
+                echo -e "${GREEN}✅ $APP_NAME v1.0.0 启动成功！${NC}"
+                echo -e "${CYAN}📄 PID:${NC} ${YELLOW}$app_pid${NC} ${CYAN}(文件:${NC} ${BLUE}$PID_FILE${CYAN})${NC}"
+                echo -e "${CYAN}📝 日志目录:${NC} ${BLUE}$LOG_FILE${NC}"
+                echo -e "${CYAN}📝 查看实时日志:${NC} ${GREEN}$0 logs${NC}"
                 return 0
             fi
         fi
         
         # 显示进度
         if [ $((i % 5)) -eq 0 ]; then
-            echo "   ... 仍在等待 (${i}s)"
+            echo -e "   ${CYAN}... 仍在等待 (${i}s)${NC}"
         fi
         sleep 1
     done
     
     # 启动失败处理
-    echo "❌ $APP_NAME 启动失败或超时"
+    echo -e "${RED}❌ $APP_NAME 启动失败或超时${NC}"
     if kill -0 "$java_pid" 2>/dev/null; then
-        echo "🛑 清理Java进程: $java_pid"
+        echo -e "${YELLOW}🛑 清理Java进程:${NC} ${PURPLE}$java_pid${NC}"
         kill "$java_pid" 2>/dev/null
     fi
-    echo "📝 显示最新错误日志:"
-    tail -20 "$LOG_FILE" 2>/dev/null || echo "日志文件不存在"
+    echo -e "${CYAN}📝 显示最新错误日志:${NC}"
+    tail -20 "$LOG_FILE" 2>/dev/null || echo -e "${RED}日志文件不存在${NC}"
     return 1
 }
 
@@ -483,29 +504,29 @@ case "$1" in
         ;;
     cleanup)
         cleanup_old_prompts
-        echo "✅ 已清理所有提示进程"
+        echo -e "${GREEN}✅ 已清理所有提示进程${NC}"
         ;;
     *)
-        echo "用法: $0 {start|daemon|stop|restart|status|logs|debug|cleanup} [urls] [debug_port]"
+        echo -e "${BOLD}${BLUE}用法:${NC} ${GREEN}$0${NC} ${YELLOW}{start|daemon|stop|restart|status|logs|debug|cleanup}${NC} ${CYAN}[urls] [debug_port]${NC}"
         echo ""
-        echo "命令说明:"
-        echo "  start   - 前台启动应用（显示日志，Ctrl+C停止）"
-        echo "  daemon  - 后台启动应用（守护进程模式）"
-        echo "  stop    - 停止应用"
-        echo "  restart - 重启应用"
-        echo "  status  - 查看运行状态"
-        echo "  logs    - 实时查看日志"
-        echo "  debug   - 远程调试模式（前台运行，开启JVM调试端口，默认5005）"
-        echo "  cleanup - 清理残留的提示进程"
+        echo -e "${BOLD}${CYAN}命令说明:${NC}"
+        echo -e "  ${GREEN}start${NC}   - 前台启动应用（显示日志，Ctrl+C停止）"
+        echo -e "  ${GREEN}daemon${NC}  - 后台启动应用（守护进程模式）"
+        echo -e "  ${GREEN}stop${NC}    - 停止应用"
+        echo -e "  ${GREEN}restart${NC} - 重启应用"
+        echo -e "  ${GREEN}status${NC}  - 查看运行状态"
+        echo -e "  ${GREEN}logs${NC}    - 实时查看日志"
+        echo -e "  ${GREEN}debug${NC}   - 远程调试模式（前台运行，开启JVM调试端口，默认5005）"
+        echo -e "  ${GREEN}cleanup${NC} - 清理残留的提示进程"
         echo ""
-        echo "可选参数:"
-        echo "  urls    - 启动时打印 Docs/OpenAPI/Actuator/Druid 访问地址"
+        echo -e "${BOLD}${CYAN}可选参数:${NC}"
+        echo -e "  ${YELLOW}urls${NC}    - 启动时打印 Docs/OpenAPI/Actuator/Druid 访问地址"
         echo ""
-        echo "示例:"
-        echo "  $0 start urls       # 前台启动并打印组件URL"
-        echo "  $0 daemon urls      # 后台启动并打印组件URL"
-        echo "  $0 debug urls 5005  # 调试模式并打印组件URL"
-        echo "  $0 cleanup          # 手动清理提示进程"
+        echo -e "${BOLD}${CYAN}示例:${NC}"
+        echo -e "  ${GREEN}$0 start urls${NC}       ${PURPLE}# 前台启动并打印组件URL${NC}"
+        echo -e "  ${GREEN}$0 daemon urls${NC}      ${PURPLE}# 后台启动并打印组件URL${NC}"
+        echo -e "  ${GREEN}$0 debug urls 5005${NC}  ${PURPLE}# 调试模式并打印组件URL${NC}"
+        echo -e "  ${GREEN}$0 cleanup${NC}          ${PURPLE}# 手动清理提示进程${NC}"
         exit 1
         ;;
 esac
