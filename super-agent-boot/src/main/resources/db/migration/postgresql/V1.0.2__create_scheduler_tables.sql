@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS t_scheduled_chat_task (
     next_execution_time TIMESTAMP,
     task_type SMALLINT NOT NULL DEFAULT 1,
     deleted SMALLINT NOT NULL DEFAULT 0,
+    schedule_config TEXT,
     create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     create_by BIGINT,
@@ -44,6 +45,7 @@ COMMENT ON COLUMN t_scheduled_chat_task.last_execution_time IS '上次执行时�
 COMMENT ON COLUMN t_scheduled_chat_task.next_execution_time IS '下次执行时间';
 COMMENT ON COLUMN t_scheduled_chat_task.task_type IS '任务类型: 0-一次性任务 1-可重复任务';
 COMMENT ON COLUMN t_scheduled_chat_task.deleted IS '删除标记：0-未删除，1-已删除';
+COMMENT ON COLUMN t_scheduled_chat_task.schedule_config IS '任务调度配置（JSON格式存储）';
 COMMENT ON COLUMN t_scheduled_chat_task.create_time IS '创建时间';
 COMMENT ON COLUMN t_scheduled_chat_task.update_time IS '更新时间';
 COMMENT ON COLUMN t_scheduled_chat_task.create_by IS '创建人ID';
@@ -56,6 +58,7 @@ CREATE INDEX idx_scheduled_chat_task_status ON t_scheduled_chat_task(status);
 CREATE INDEX idx_scheduled_chat_task_next_execution_time ON t_scheduled_chat_task(next_execution_time);
 CREATE INDEX idx_scheduled_chat_task_deleted ON t_scheduled_chat_task(deleted);
 CREATE INDEX idx_scheduled_chat_task_user_deleted_status ON t_scheduled_chat_task(user_id, deleted, status);
+CREATE INDEX idx_scheduled_chat_task_schedule_config ON t_scheduled_chat_task(schedule_config);
 
 -- 为定时对话任务表创建更新时间触发器
 CREATE TRIGGER update_t_scheduled_chat_task_updated_at BEFORE UPDATE ON t_scheduled_chat_task

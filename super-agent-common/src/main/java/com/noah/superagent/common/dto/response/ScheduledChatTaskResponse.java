@@ -1,5 +1,7 @@
+
 package com.noah.superagent.common.dto.response;
 
+import com.noah.superagent.common.dto.ScheduleConfig;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -30,8 +32,12 @@ public class ScheduledChatTaskResponse {
     @Schema(description = "任务名称", example = "每日新闻摘要")
     private String taskName;
 
-    @Schema(description = "Cron表达式", example = "0 0 9 * * ?")
+    @Deprecated
+    @Schema(description = "Cron表达式 (已废弃，将来会移除)")
     private String cronExpression;
+
+    @Schema(description = "任务调度配置")
+    private ScheduleConfig scheduleConfig;
 
     @Schema(description = "对话提示词")
     private String prompt;
@@ -44,7 +50,8 @@ public class ScheduledChatTaskResponse {
 
     @Schema(description = "下次执行时间")
     private Date nextExecutionTime;
-    
+
     @Schema(description = "任务类型: 0-一次性任务 1-可重复任务", example = "1")
     private Integer taskType;
+
 }
