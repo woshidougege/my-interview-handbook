@@ -64,66 +64,89 @@ public class SubscriptionController {
                         value = "{" +
                         "\"code\": 200," +
                         "\"message\": \"获取套餐列表成功\"," +
-                        "\"data\": [" +
+                        "\"data\": {" +
+                            "\"yearlyDiscountRate\": 0.17," +
+                            "\"discountPercentageText\": \"17%\"," +
+                            "\"plans\": [" +
                             "{" +
                                 "\"id\": 1," +
                                 "\"planName\": \"免费版\"," +
                                 "\"description\": \"适合轻度使用的个人用户\"," +
+                                "\"planCode\": \"FREE\"," +
                                 "\"features\": [" +
-                                    "{\"text\": \"新用户赠送1000积分(90天有效)\", \"highlight\": true, \"included\": true}," +
-                                    "{\"text\": \"每日登录赠300积分\", \"highlight\": false, \"included\": true}," +
-                                    "{\"text\": \"分享新用户奖励500积分\", \"highlight\": false, \"included\": true}," +
-                                    "{\"text\": \"公共数字分身(限制体验)\", \"highlight\": true, \"included\": true}" +
+                                    "{\"text\": \"每日可获得***新积分\", \"highlight\": true, \"included\": true}," +
+                                    "{\"text\": \"访问聊天\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"公共数字分身（限时体验）\", \"highlight\": false, \"included\": true}" +
                                 "]," +
-                                "\"price\": 0," +
-                                "\"monthlyPrice\": 0," +
-                                "\"yearlyPrice\": 0," +
+                                "\"monthlyOriginalPrice\": 0.00," +
+                                "\"monthlyPrice\": 0.00," +
+                                "\"yearlyOriginalPrice\": 0.00," +
+                                "\"yearlyPrice\": 0.00," +
+                                "\"monthlySavings\": 0.00," +
+                                "\"yearlySavings\": 0.00," +
                                 "\"validityDays\": 90," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": false," +
+                                "\"isCurrentPlan\": false," +
                                 "\"sortOrder\": 1" +
                             "}," +
                             "{" +
                                 "\"id\": 2," +
                                 "\"planName\": \"基础版\"," +
+                                "\"planCode\": \"BASIC\"," +
                                 "\"description\": \"适合中度使用的专业用户\"," +
                                 "\"features\": [" +
-                                    "{\"text\": \"一次性获得1900永久积分\", \"highlight\": true, \"included\": true}," +
-                                    "{\"text\": \"享受所有免费版权益\", \"highlight\": false, \"included\": true}," +
-                                    "{\"text\": \"访问限定天\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"一次性发放1900积分\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"每日可获得300新积分\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"访问聊天\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"公共数字分身\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"幻灯片制作\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"网站开发\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"数据分析\", \"highlight\": false, \"included\": true}," +
-                                    "{\"text\": \"图片、视频生成\", \"highlight\": true, \"included\": true}" +
+                                    "{\"text\": \"图片、视频生成\", \"highlight\": false, \"included\": true}" +
                                 "]," +
-                                "\"price\": 39," +
-                                "\"monthlyPrice\": 39," +
-                                "\"yearlyPrice\": 388," +
+                                "\"monthlyOriginalPrice\": 39.00," +
+                                "\"monthlyPrice\": 29.00," +
+                                "\"yearlyOriginalPrice\": 468.00," +
+                                "\"yearlyPrice\": 388.44," +
+                                "\"monthlySavings\": 10.00," +
+                                "\"yearlySavings\": 79.56," +
                                 "\"validityDays\": 30," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": true," +
+                                "\"isCurrentPlan\": false," +
                                 "\"sortOrder\": 2" +
                             "}," +
                             "{" +
                                 "\"id\": 3," +
                                 "\"planName\": \"高级版\"," +
+                                "\"planCode\": \"PREMIUM\"," +
                                 "\"description\": \"适合重度使用的企业用户\"," +
                                 "\"features\": [" +
-                                    "{\"text\": \"一次性获得19000永久积分\", \"highlight\": true, \"included\": true}," +
-                                    "{\"text\": \"享受所有免费版权益\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"一次性发放1900积分\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"每日可获得300新积分\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"访问聊天\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"专属数字分身\", \"highlight\": true, \"included\": true}," +
+                                    "{\"text\": \"幻灯片制作\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"网站开发\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"数据分析\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"图片、视频生成\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"本机电脑操控\", \"highlight\": true, \"included\": true}" +
                                 "]," +
-                                "\"price\": 199," +
-                                "\"monthlyPrice\": 199," +
-                                "\"yearlyPrice\": 1983," +
+                                "\"monthlyOriginalPrice\": 199.00," +
+                                "\"monthlyPrice\": 179.00," +
+                                "\"yearlyOriginalPrice\": 2388.00," +
+                                "\"yearlyPrice\": 1982.04," +
+                                "\"monthlySavings\": 20.00," +
+                                "\"yearlySavings\": 405.96," +
                                 "\"validityDays\": 30," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": false," +
+                                "\"isCurrentPlan\": false," +
                                 "\"sortOrder\": 3" +
                             "}" +
-                        "]," +
+                            "]" +
+                        "}," +
                         "\"success\": true," +
                         "\"timestamp\": 1736752800000" +
                     "}"
@@ -134,7 +157,11 @@ public class SubscriptionController {
                         value = "{" +
                             "\"code\": 200," +
                             "\"message\": \"获取套餐列表成功\"," +
-                            "\"data\": []," +
+                            "\"data\": {" +
+                                "\"yearlyDiscountRate\": 0.17," +
+                                "\"discountPercentageText\": \"17%\"," +
+                                "\"plans\": []" +
+                            "}," +
                             "\"success\": true," +
                             "\"timestamp\": 1736752800000" +
                         "}"

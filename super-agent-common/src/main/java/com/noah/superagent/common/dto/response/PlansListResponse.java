@@ -27,6 +27,9 @@ public class PlansListResponse {
     /**
      * 套餐列表
      */
-    @Schema(description = "套餐列表") 
+    @Schema(
+        description = "套餐列表",
+        implementation = SubscriptionPlanResponse.class
+    ) 
     private List<SubscriptionPlanResponse> plans;
 }

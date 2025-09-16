@@ -15,7 +15,7 @@ import java.util.List;
 @Schema(description = "分页响应")
 public class PageResponse<T> {
 
-    @Schema(description = "当前页数据")
+    @Schema(description = "当前页数据", type = "array")
     private List<T> records;
 
     @Schema(description = "总记录数", example = "100")

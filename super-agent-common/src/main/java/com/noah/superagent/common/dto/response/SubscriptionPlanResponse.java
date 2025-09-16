@@ -44,8 +44,9 @@ public class SubscriptionPlanResponse extends BaseResponse {
      * 套餐特性描述列表
      */
     @Schema(
-        description = "套餐功能特性列表，展示该套餐包含的功能点", 
-        example = "[{\"text\":\"一次性获得1900永久积分\",\"highlight\":true},{\"text\":\"享受所有免费版权益\",\"highlight\":false},{\"text\":\"图片、视频生成\",\"highlight\":true}]"
+        description = "套餐功能特性列表，展示该套餐包含的功能点",
+        implementation = PlanFeatureResponse.class,
+        example = "[{\"text\":\"一次性获得1900永久积分\",\"highlight\":true,\"included\":true},{\"text\":\"享受所有免费版权益\",\"highlight\":false,\"included\":true},{\"text\":\"图片、视频生成\",\"highlight\":true,\"included\":true}]"
     )
     private List<PlanFeatureResponse> features;
 
