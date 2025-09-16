@@ -25,6 +25,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.URLUtil;
 import cn.hutool.core.lang.Validator;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -96,10 +97,7 @@ public class AuthController {
         return fullUrl;
     }
 
-    /**
-     * 安全地从Map中获取嵌套的Map数据 - 使用hutool工具库
-     */
-    @SuppressWarnings("unchecked")
+
     private Map<String, Object> getDataFromResponse(Map<String, Object> response) {
         if (MapUtil.isEmpty(response)) {
             return MapUtil.newHashMap();
@@ -136,7 +134,7 @@ public class AuthController {
         log.info("密码登录请求，用户名: {}", loginRequest.getUsername());
 
         try {
-            String url = ssoServerUrl + "/agent/sso/doLogin";
+            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent","sso","doLogin").toUriString();
 
             // 使用hutool的MapUtil构建请求参数，代码更简洁
             Map<String, String> requestBody = MapUtil.<String, String>builder()
@@ -200,7 +198,7 @@ public class AuthController {
         log.info("手机验证码登录请求，手机号: {}", loginRequest.getPhone());
 
         try {
-            String url = ssoServerUrl + "/agent/sso/doLogin";
+            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent","sso","doLogin").toUriString();
 
             // 使用hutool的MapUtil构建请求参数，代码更简洁
             Map<String, String> requestBody = MapUtil.<String, String>builder()
@@ -281,7 +279,7 @@ public class AuthController {
                 request.getUsername(), request.getPhone());
         
         try {
-            String url = ssoServerUrl + "/agent/sso/userRegister";
+            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent","sso","userRegister").toUriString();
             
             Map<String, String> requestBody = new HashMap<>();
             requestBody.put("username", request.getUsername());
@@ -337,7 +335,7 @@ public class AuthController {
                 return ApiResponse.success("获取公钥成功", data);
             }
             
-            String url = ssoServerUrl + "/getSysClientInfo";
+            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("getSysClientInfo").toUriString();
             
             // 使用POST请求，将serviceCode作为表单参数
             HttpHeaders headers = new HttpHeaders();
@@ -377,7 +375,7 @@ public class AuthController {
         log.info("找回密码请求，手机号: {}", resetRequest.getPhone());
 
         try {
-            String url = ssoServerUrl + "/agent/sso/resetPassword";
+            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment(  "agent","sso","resetPassword").toUriString();
 
             Map<String, String> requestBody = new HashMap<>();
             requestBody.put("phone", resetRequest.getPhone());

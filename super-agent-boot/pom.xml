@@ -22,6 +22,11 @@
             <artifactId>super-agent-web</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.noah</groupId>
+            <artifactId>super-agent-dao</artifactId>
+        </dependency>
+
         <!-- 调度模块 -->
         <dependency>
             <groupId>com.noah</groupId>

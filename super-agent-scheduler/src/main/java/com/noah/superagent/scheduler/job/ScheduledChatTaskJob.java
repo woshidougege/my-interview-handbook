@@ -12,10 +12,10 @@ import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
 import com.noah.superagent.dao.mapper.ChatTaskMapper;
 import com.noah.superagent.dao.mapper.ScheduledChatTaskMapper;
 import com.noah.superagent.service.AiService;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -46,6 +46,7 @@ public class ScheduledChatTaskJob {
     private AiService aiService;
 
     // RecurringTask 实例
+    @Getter
     private final RecurringTask<Void> task;
 
     public ScheduledChatTaskJob(ScheduledChatTaskMapper scheduledChatTaskMapper,
@@ -57,10 +58,6 @@ public class ScheduledChatTaskJob {
         // 按照官方文档使用 Tasks.recurring 创建重复任务
         this.task = Tasks.recurring(TASK_NAME, Schedules.cron(CRON_EXPRESSION))
                 .execute(this::executeTask);
-    }
-
-    public RecurringTask<Void> getTask() {
-        return task;
     }
 
     /**
@@ -200,12 +197,11 @@ public class ScheduledChatTaskJob {
      */
     private String executeAiTask(ScheduledChatTaskEntity scheduledTask) {
         try {
-            String response = aiService.getAiResponse(
+            return aiService.getAiResponse(
                     scheduledTask.getPrompt(),
                     String.valueOf(scheduledTask.getWorkspaceId()),
                     String.valueOf(scheduledTask.getId())
             );
-            return response;
         } catch (Exception e) {
             log.error("执行AI对话任务失败 - 任务ID: {}, 错误: {}", scheduledTask.getId(), e.getMessage(), e);
             throw new RuntimeException("执行AI对话任务失败: " + e.getMessage(), e);

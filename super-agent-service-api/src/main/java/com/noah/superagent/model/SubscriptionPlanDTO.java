@@ -1,8 +1,5 @@
-package com.noah.superagent.dao.entity;
+package com.noah.superagent.model;
 
-import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Table;
-import com.mybatisflex.core.handler.Fastjson2TypeHandler;
 import com.noah.superagent.common.enums.EnabledEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -11,15 +8,14 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * 订阅套餐表
+ * 订阅套餐DTO
  *
- * @author 任相鹏
+ * @author AI Assistant
  * @since 1.0.0
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@Table("t_subscription_plan")
-public class SubscriptionPlanEntity extends BaseEntity {
+public class SubscriptionPlanDTO extends BaseDTO {
 
     /**
      * 套餐名称
@@ -34,8 +30,7 @@ public class SubscriptionPlanEntity extends BaseEntity {
     /**
      * 套餐特性描述列表
      */
-    @Column(typeHandler = Fastjson2TypeHandler.class)
-    private List<PlanFeature> features;
+    private List<PlanFeatureDTO> features;
 
     /**
      * 套餐价格（兼容字段）

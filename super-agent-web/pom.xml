@@ -20,17 +20,16 @@
             <groupId>com.noah</groupId>
             <artifactId>super-agent-common</artifactId>
         </dependency>
-        
-        <!-- 依赖服务接口模块 -->
-        <dependency>
-            <groupId>com.noah</groupId>
-            <artifactId>super-agent-service-api</artifactId>
-        </dependency>
-        
-        <!-- 依赖服务实现模块 -->
+
         <dependency>
             <groupId>com.noah</groupId>
             <artifactId>super-agent-service-impl</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>super-agent-dao</artifactId>
+                    <groupId>com.noah</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Spring Boot Web - 使用Undertow替代Tomcat，使用Log4j2替代Logback -->

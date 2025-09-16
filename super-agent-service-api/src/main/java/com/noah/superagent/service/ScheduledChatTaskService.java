@@ -1,39 +1,40 @@
 package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
+import com.noah.superagent.model.ScheduledChatTaskDTO;
 
 import java.util.List;
 
 /**
  * 定时对话任务服务接口
+ * 对应数据库表：t_scheduled_chat_task
  *
- * @author System
+ * @author AI Assistant
  * @since 1.0.0
  */
 public interface ScheduledChatTaskService {
 
     /**
      * 创建定时对话任务
-     * @param task 定时对话任务实体
-     * @return 创建后的任务实体
+     * @param taskDTO 定时对话任务DTO
+     * @return 创建后的任务DTO
      */
-    ScheduledChatTaskEntity createScheduledChatTask(ScheduledChatTaskEntity task);
+    ScheduledChatTaskDTO createScheduledChatTask(ScheduledChatTaskDTO taskDTO);
 
     /**
      * 根据ID获取定时对话任务
      * @param id 任务ID
-     * @return 定时对话任务实体
+     * @return 定时对话任务DTO
      */
-    ScheduledChatTaskEntity getScheduledChatTaskById(Long id);
+    ScheduledChatTaskDTO getScheduledChatTaskById(Long id);
 
     /**
      * 更新定时对话任务
      * @param id 任务ID
-     * @param task 更新后的任务实体
-     * @return 更新后的任务实体
+     * @param taskDTO 更新后的任务DTO
+     * @return 更新后的任务DTO
      */
-    ScheduledChatTaskEntity updateScheduledChatTask(Long id, ScheduledChatTaskEntity task);
+    ScheduledChatTaskDTO updateScheduledChatTask(Long id, ScheduledChatTaskDTO taskDTO);
 
     /**
      * 删除定时对话任务
@@ -46,14 +47,14 @@ public interface ScheduledChatTaskService {
      * @param userId 用户ID
      * @return 定时对话任务列表
      */
-    List<ScheduledChatTaskEntity> getScheduledChatTasksByUserId(Long userId);
+    List<ScheduledChatTaskDTO> getScheduledChatTasksByUserId(Long userId);
 
     /**
      * 根据工作空间ID获取定时对话任务列表
      * @param workspaceId 工作空间ID
      * @return 定时对话任务列表
      */
-    List<ScheduledChatTaskEntity> getScheduledChatTasksByWorkspaceId(Long workspaceId);
+    List<ScheduledChatTaskDTO> getScheduledChatTasksByWorkspaceId(Long workspaceId);
 
     /**
      * 分页查询定时对话任务
@@ -63,7 +64,7 @@ public interface ScheduledChatTaskService {
      * @param keyword 关键词
      * @return 分页结果
      */
-    PageResponse<ScheduledChatTaskEntity> getScheduledChatTasksPage(Long workspaceId, Integer pageNum, Integer pageSize, String keyword);
+    PageResponse<ScheduledChatTaskDTO> getScheduledChatTasksPage(Long workspaceId, Integer pageNum, Integer pageSize, String keyword);
 
     /**
      * 启用定时对话任务
