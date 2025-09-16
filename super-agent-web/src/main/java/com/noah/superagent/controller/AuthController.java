@@ -414,7 +414,7 @@ public class AuthController {
 
             Map<String, String> requestBody = new HashMap<>();
             requestBody.put("userId", request.getUserId());
-            requestBody.put("newPwd", request.getNewPwd());
+            requestBody.put("pwd", request.getNewPwd());
             requestBody.put("servicecode", serviceCode);
 
             HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
