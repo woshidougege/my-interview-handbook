@@ -15,6 +15,11 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @Data
+@Schema(
+    name = "BaseResponse",
+    title = "基础响应对象", 
+    description = "包含通用系统字段的基础响应格式"
+)
 public abstract class BaseResponse {
 
     /**

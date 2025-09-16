@@ -14,7 +14,11 @@ import lombok.AllArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "套餐功能特性")
+@Schema(
+    name = "PlanFeatureResponse",
+    title = "套餐功能特性", 
+    description = "套餐功能特性详情，包含功能描述、是否高亮、是否包含等信息"
+)
 public class PlanFeatureResponse {
 
     /**
