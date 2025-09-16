@@ -76,6 +76,7 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
         dto.setIsRecommended(config.getIsRecommended());
         dto.setSortOrder(config.getSortOrder());
         dto.setIsCurrentPlan(false); // 默认为false，在Controller层设置
+        dto.setCreditsAmount(config.getCreditsAmount());
         
         // 转换功能特性
         dto.setFeatures(convertFeatures(config.getFeatures()));

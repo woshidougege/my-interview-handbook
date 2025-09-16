@@ -97,4 +97,9 @@ public class SubscriptionPlanDTO extends BaseDTO {
      * 按年订阅优惠金额（一年总共省多少钱）
      */
     private BigDecimal yearlySavings;
+
+    /**
+     * 积分数量（积分套餐专用）
+     */
+    private Long creditsAmount;
 }

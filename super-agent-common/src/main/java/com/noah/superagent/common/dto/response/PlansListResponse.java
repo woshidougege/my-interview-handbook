@@ -19,6 +19,12 @@ public class PlansListResponse {
     private Double yearlyDiscountRate;
 
     /**
+     * 优惠百分比显示文本（如"17%"）
+     */
+    @Schema(description = "优惠百分比显示文本", example = "17%")
+    private String discountPercentageText;
+
+    /**
      * 套餐列表
      */
     @Schema(description = "套餐列表") 

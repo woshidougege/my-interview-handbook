@@ -65,6 +65,11 @@ public class PlansConfig {
         private BigDecimal yearlySavings = BigDecimal.valueOf(-1);           // 年价优惠金额（-1=自动计算）
 
         /**
+         * 积分数量（积分套餐专用）
+         */
+        private Long creditsAmount;
+
+        /**
          * 有效期天数
          */
         private Integer validityDays;

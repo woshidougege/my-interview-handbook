@@ -131,6 +131,7 @@ super-agent:
         yearly-discounted-price: 59     # 年价优惠后（无优惠）
         monthly-savings: 0              # 月价优惠金额（无优惠）
         yearly-savings: 0               # 年价优惠金额（无优惠）
+        credits-amount: 10000           # 积分数量
         validity-days: 0
         sort-order: 4
         is-recommended: false

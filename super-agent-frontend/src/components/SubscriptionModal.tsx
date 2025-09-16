@@ -37,6 +37,8 @@ interface Plan {
   yearlySavings: number; // 年价优惠金额（后端提供）
   yearlyMonthlySavings: number; // 年价月均优惠金额（后端提供）
   yearlyDiscountRate: number; // 优惠比例（后端提供）
+  discountPercentageText: string; // 优惠百分比显示文本（后端提供）
+  creditsAmount?: number; // 积分数量（积分套餐专用）
   isCurrent: boolean;
   buttonText: string;
   buttonType: 'default' | 'primary';
@@ -65,6 +67,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
 
   const loadPlans = async () => {
     let globalDiscountRate = 0.17; // 默认优惠比例
+    let discountText = "17%"; // 默认优惠显示文本
     
     try {
       setLoading(true);
@@ -72,6 +75,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       const responseData = response.data.data || {};
       const apiPlans = responseData.plans || [];
       globalDiscountRate = responseData.yearlyDiscountRate || 0.17;
+      discountText = responseData.discountPercentageText || "17%";
       
       // 转换API数据为组件需要的格式  
       // 直接使用API数据，不做复杂转换
@@ -88,6 +92,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
         yearlyOriginalPrice: plan.yearlyOriginalPrice || 0,
         yearlySavings: plan.yearlySavings || 0,
         yearlyDiscountRate: globalDiscountRate,
+        discountPercentageText: discountText,
+        creditsAmount: plan.creditsAmount,
         isCurrent: plan.isCurrentPlan || false,
         buttonText: plan.isCurrentPlan ? '当前计划' : '订阅',
         buttonType: plan.isCurrentPlan ? 'default' as const : 'primary' as const,
@@ -233,7 +239,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
                       borderRadius: '4px'
                     }}
                   >
-                    节省{Math.round(discountPlan.yearlyDiscountRate * 100)}%
+                    节省{discountPlan.discountPercentageText}
                   </Tag>
                 );
               })()}
@@ -294,7 +300,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
                       ¥{plan.monthlyOriginalPrice}
                     </span>
                     <span style={{ fontSize: '14px', color: '#666', marginLeft: '4px' }}>
-                      {plan.isCreditsOnly ? ' / 10000积分' : ' / 月'}
+                      {plan.isCreditsOnly ? ` / ${plan.creditsAmount}积分` : ' / 月'}
                     </span>
                   </div>
                 ) : (
@@ -329,7 +335,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
                         ¥{plan.price.yearly}
                       </span>
                       <span style={{ fontSize: '14px', color: '#666', marginLeft: '4px' }}>
-                        {plan.isCreditsOnly ? ' / 10000积分' : ' / 年'}
+                        {plan.isCreditsOnly ? ` / ${plan.creditsAmount}积分` : ' / 年'}
                       </span>
                     </div>
                     

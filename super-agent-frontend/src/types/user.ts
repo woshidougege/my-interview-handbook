@@ -68,6 +68,7 @@ export interface SubscriptionPlan {
   yearlyOriginalPrice: number;     // 年价原价（月价*12，未优惠）
   yearlyPrice: number;             // 年价最终价格（优惠后）
   yearlySavings: number;           // 年价优惠金额
+  creditsAmount?: number;          // 积分数量（积分套餐专用）
   validityDays: number;
   enabled: boolean;
   isRecommended: boolean;

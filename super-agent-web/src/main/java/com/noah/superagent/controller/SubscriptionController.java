@@ -196,6 +196,7 @@ public class SubscriptionController {
         // Web层组装Response
         PlansListResponse response = new PlansListResponse();
         response.setYearlyDiscountRate(yearlyDiscountRate);
+        response.setDiscountPercentageText(Math.round(yearlyDiscountRate * 100) + "%");
         response.setPlans(webConvert.toResponseList(planDTOs));
         
         return ApiResponse.success("获取套餐列表成功", response);
