@@ -2,6 +2,7 @@ package com.noah.superagent.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.mybatisflex.core.paginate.Page;
+import com.noah.superagent.common.config.BillingProperties;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
 import com.noah.superagent.common.dto.response.CreditTransactionResponse;
@@ -18,7 +19,6 @@ import com.noah.superagent.dao.mapper.CreditTransactionMapper;
 import com.noah.superagent.service.UserCreditService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,18 +43,7 @@ public class UserCreditServiceImpl implements UserCreditService {
     private final UserCreditAccountMapper userCreditAccountMapper;
     private final UserCreditBalanceMapper userCreditBalanceMapper;
     private final CreditTransactionMapper creditTransactionMapper;
-
-    /**
-     * 免费套餐每日积分数量（从配置文件读取）
-     */
-    @Value("${super-agent.billing.credits.free-credits.daily-signin:300}")
-    private Integer dailySigninCredits;
-    
-    /**
-     * 新用户积分数量（从配置文件读取）
-     */
-    @Value("${super-agent.billing.credits.free-credits.new-user-amount:1000}")
-    private Integer newUserCredits;
+    private final BillingProperties billingProperties;
     
     // 用于防止重复赠送的日期格式
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -63,14 +52,14 @@ public class UserCreditServiceImpl implements UserCreditService {
      * 获取免费套餐每日积分数量
      */
     private BigDecimal getFreePlanDailyCredits() {
-        return new BigDecimal(dailySigninCredits.toString());
+        return new BigDecimal(billingProperties.getCredits().getFreeCredits().getDailySignin().toString());
     }
     
     /**
      * 获取新用户积分数量
      */
     private BigDecimal getNewUserCredits() {
-        return new BigDecimal(newUserCredits.toString());
+        return new BigDecimal(billingProperties.getCredits().getFreeCredits().getNewUserAmount().toString());
     }
 
     @Override

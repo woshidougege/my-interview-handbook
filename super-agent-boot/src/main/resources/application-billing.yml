@@ -72,23 +72,6 @@ super-agent:
         free: 3                # 免费积分
         paid: 4                # 付费积分
 
-# 异步处理配置
-async:
-  # 资源上报专用线程池配置
-  resource-report:
-    core-pool-size: ${ASYNC_RESOURCE_CORE_POOL_SIZE:4}
-    max-pool-size: ${ASYNC_RESOURCE_MAX_POOL_SIZE:8}
-    queue-capacity: ${ASYNC_RESOURCE_QUEUE_CAPACITY:500}
-    keep-alive-seconds: ${ASYNC_RESOURCE_KEEP_ALIVE:60}
-    thread-name-prefix: "resource-report-"
-    
-  # 计费处理专用线程池
-  billing-process:
-    core-pool-size: ${ASYNC_BILLING_CORE_POOL_SIZE:2}
-    max-pool-size: ${ASYNC_BILLING_MAX_POOL_SIZE:4}
-    queue-capacity: ${ASYNC_BILLING_QUEUE_CAPACITY:200}
-    keep-alive-seconds: ${ASYNC_BILLING_KEEP_ALIVE:60}
-    thread-name-prefix: "billing-process-"
 
 # 缓存配置
 cache:

@@ -304,9 +304,18 @@ export const aiApi = {
 
 // ========== 工作空间相关API ==========
 export const workspaceApi = {
-  // 获取工作空间列表
-  getWorkspaces: (): ApiPromise<WorkspaceInfo[]> => {
-    return api.get(API_ENDPOINTS.WORKSPACE.LIST);
+  // 获取当前用户的工作空间列表
+  getWorkspaces: async (): ApiPromise<WorkspaceInfo[]> => {
+    // 先获取当前用户信息
+    const userResponse = await userApi.getCurrentUser();
+    const userId = userResponse.data.data.userId;
+    // 调用按用户获取工作空间的接口
+    return api.get(API_ENDPOINTS.WORKSPACE.GET_BY_USER(userId.toString()));
+  },
+
+  // 根据用户ID获取工作空间列表  
+  getWorkspacesByUserId: (userId: string): ApiPromise<WorkspaceInfo[]> => {
+    return api.get(API_ENDPOINTS.WORKSPACE.GET_BY_USER(userId));
   },
   
   // 创建工作空间

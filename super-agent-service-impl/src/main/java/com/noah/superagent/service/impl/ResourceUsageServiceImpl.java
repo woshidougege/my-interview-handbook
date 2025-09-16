@@ -2,6 +2,7 @@ package com.noah.superagent.service.impl;
 
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.json.JSONUtil;
+import com.noah.superagent.common.config.BillingProperties;
 import com.noah.superagent.common.dto.request.ResourceUsageRequest;
 import com.noah.superagent.common.enums.ResourceTypeEnum;
 import com.noah.superagent.common.enums.TaskTypeEnum;
@@ -11,12 +12,12 @@ import com.noah.superagent.dao.mapper.ResourceUsageRecordMapper;
 import com.noah.superagent.service.ResourceUsageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,28 +35,7 @@ import java.util.concurrent.CompletableFuture;
 public class ResourceUsageServiceImpl implements ResourceUsageService {
 
     private final ResourceUsageRecordMapper resourceUsageRecordMapper;
-
-    // 计费配置
-    @Value("${super-agent.billing.pricing.input-token:0.0024}")
-    private BigDecimal inputTokenPrice;
-
-    @Value("${super-agent.billing.pricing.output-token:0.0096}")
-    private BigDecimal outputTokenPrice;
-
-    @Value("${super-agent.billing.pricing.image-generation:0.25}")
-    private BigDecimal imageGenerationPrice;
-
-    @Value("${super-agent.billing.pricing.video-generation:0.24}")
-    private BigDecimal videoGenerationPrice;
-
-    @Value("${super-agent.billing.functions.deepsearch:0.001}")
-    private BigDecimal deepsearchPrice;
-
-    @Value("${super-agent.billing.functions.browseruse:0.001}")
-    private BigDecimal browserusePrice;
-
-    @Value("${super-agent.billing.functions.ppt-generation:0.001}")
-    private BigDecimal pptGenerationPrice;
+    private final BillingProperties billingProperties;
 
     /**
      * 异步记录资源使用量
@@ -156,16 +136,24 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         Map<String, Object> usageData = new HashMap<>();
         usageData.put("inputTokens", usageDetail.getInputTokens());
         usageData.put("outputTokens", usageDetail.getOutputTokens());
-        usageData.put("totalTokens", (usageDetail.getInputTokens() != null ? usageDetail.getInputTokens() : 0) + 
-                                    (usageDetail.getOutputTokens() != null ? usageDetail.getOutputTokens() : 0));
+        usageData.put("totalTokens", (usageDetail.getInputTokens() != null ? usageDetail.getInputTokens() : 0L) + 
+                                    (usageDetail.getOutputTokens() != null ? usageDetail.getOutputTokens() : 0L));
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 计费计算 - 暂时按0计费，后续计费系统处理
+        // 计费计算 - 使用实际价格配置
         record.setBillingUnit("TOKEN");
-        record.setUsageAmount(new BigDecimal((usageDetail.getInputTokens() != null ? usageDetail.getInputTokens() : 0) + 
-                                           (usageDetail.getOutputTokens() != null ? usageDetail.getOutputTokens() : 0)));
-        record.setUnitPrice(BigDecimal.ZERO);
-        record.setBillingAmount(BigDecimal.ZERO);
+        
+        long inputTokens = usageDetail.getInputTokens() != null ? usageDetail.getInputTokens() : 0L;
+        long outputTokens = usageDetail.getOutputTokens() != null ? usageDetail.getOutputTokens() : 0L;
+        
+        // 按输入输出Token分别计费
+        BigDecimal inputCost = new BigDecimal(inputTokens).multiply(BigDecimal.valueOf(billingProperties.getPricing().getInputToken())).divide(new BigDecimal("1000"), 6, RoundingMode.HALF_UP);
+        BigDecimal outputCost = new BigDecimal(outputTokens).multiply(BigDecimal.valueOf(billingProperties.getPricing().getOutputToken())).divide(new BigDecimal("1000"), 6, RoundingMode.HALF_UP);
+        BigDecimal totalCost = inputCost.add(outputCost);
+        
+        record.setUsageAmount(new BigDecimal(inputTokens + outputTokens));
+        record.setUnitPrice(totalCost.divide(new BigDecimal(inputTokens + outputTokens + 1), 6, RoundingMode.HALF_UP)); // +1 避免除0
+        record.setBillingAmount(totalCost);
     }
 
     /**
@@ -182,11 +170,14 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         usageData.put("imageCount", usageDetail.getImageCount());
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 计费计算 - 暂时按0计费，后续计费系统处理
+        // 计费计算 - 使用实际价格配置
         record.setBillingUnit("COUNT");
-        record.setUsageAmount(new BigDecimal(usageDetail.getImageCount() != null ? usageDetail.getImageCount() : 0));
-        record.setUnitPrice(BigDecimal.ZERO);
-        record.setBillingAmount(BigDecimal.ZERO);
+        int imageCount = usageDetail.getImageCount() != null ? usageDetail.getImageCount() : 0;
+        BigDecimal unitPrice = BigDecimal.valueOf(billingProperties.getPricing().getImageGeneration());
+        
+        record.setUsageAmount(new BigDecimal(imageCount));
+        record.setUnitPrice(unitPrice);
+        record.setBillingAmount(new BigDecimal(imageCount).multiply(unitPrice));
     }
 
     /**
@@ -203,11 +194,14 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         usageData.put("videoDuration", usageDetail.getVideoDuration());
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 计费计算 - 暂时按0计费，后续计费系统处理
+        // 计费计算 - 使用实际价格配置
         record.setBillingUnit("SECONDS");
-        record.setUsageAmount(new BigDecimal(usageDetail.getVideoDuration() != null ? usageDetail.getVideoDuration() : 0));
-        record.setUnitPrice(BigDecimal.ZERO);
-        record.setBillingAmount(BigDecimal.ZERO);
+        int videoDuration = usageDetail.getVideoDuration() != null ? usageDetail.getVideoDuration() : 0;
+        BigDecimal unitPrice = BigDecimal.valueOf(billingProperties.getPricing().getVideoGeneration());
+        
+        record.setUsageAmount(new BigDecimal(videoDuration));
+        record.setUnitPrice(unitPrice);
+        record.setBillingAmount(new BigDecimal(videoDuration).multiply(unitPrice));
     }
 
     /**
@@ -224,11 +218,14 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         usageData.put("pptPages", usageDetail.getPptPages());
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 计费计算 - 暂时按0计费，后续计费系统处理
+        // 计费计算 - 使用实际价格配置
         record.setBillingUnit("PAGES");
-        record.setUsageAmount(new BigDecimal(usageDetail.getPptPages() != null ? usageDetail.getPptPages() : 0));
-        record.setUnitPrice(BigDecimal.ZERO);
-        record.setBillingAmount(BigDecimal.ZERO);
+        int pptPages = usageDetail.getPptPages() != null ? usageDetail.getPptPages() : 0;
+        BigDecimal unitPrice = BigDecimal.valueOf(billingProperties.getFunctions().getPptGeneration());
+        
+        record.setUsageAmount(new BigDecimal(pptPages));
+        record.setUnitPrice(unitPrice);
+        record.setBillingAmount(new BigDecimal(pptPages).multiply(unitPrice));
     }
 
     /**
@@ -246,11 +243,46 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         usageData.put("taskType", taskType);
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 计费计算 - 暂时按0计费，后续计费系统处理
+        // 计费计算 - 根据功能类型获取价格
         record.setBillingUnit("TIMES");
-        record.setUsageAmount(new BigDecimal(usageDetail.getFunctionTimes() != null ? usageDetail.getFunctionTimes() : 1));
-        record.setUnitPrice(BigDecimal.ZERO);
-        record.setBillingAmount(BigDecimal.ZERO);
+        int functionTimes = usageDetail.getFunctionTimes() != null ? usageDetail.getFunctionTimes() : 1;
+        BigDecimal unitPrice = getFunctionPrice(taskType);
+        
+        record.setUsageAmount(new BigDecimal(functionTimes));
+        record.setUnitPrice(unitPrice);
+        record.setBillingAmount(new BigDecimal(functionTimes).multiply(unitPrice));
+    }
+    
+    /**
+     * 根据功能类型获取价格
+     */
+    private BigDecimal getFunctionPrice(String taskType) {
+        BillingProperties.FunctionsConfig functions = billingProperties.getFunctions();
+        
+        switch (taskType.toLowerCase()) {
+            case "deepsearch":
+                return BigDecimal.valueOf(functions.getDeepsearch());
+            case "browseruse":
+                return BigDecimal.valueOf(functions.getBrowseruse());
+            case "meeting_minutes":
+                return BigDecimal.valueOf(functions.getMeetingMinutes());
+            case "document_writing":
+                return BigDecimal.valueOf(functions.getDocumentWriting());
+            case "coding":
+                return BigDecimal.valueOf(functions.getCoding());
+            case "translation":
+                return BigDecimal.valueOf(functions.getTranslation());
+            case "mind_map":
+                return BigDecimal.valueOf(functions.getMindMap());
+            case "database_analysis":
+                return BigDecimal.valueOf(functions.getDatabaseAnalysis());
+            case "excel_analysis":
+                return BigDecimal.valueOf(functions.getExcelAnalysis());
+            case "software_operation":
+                return BigDecimal.valueOf(functions.getSoftwareOperation());
+            default:
+                return BigDecimal.valueOf(0.001); // 默认价格
+        }
     }
 
     /**

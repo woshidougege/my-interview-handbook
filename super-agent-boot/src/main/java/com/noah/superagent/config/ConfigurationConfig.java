@@ -3,6 +3,10 @@ package com.noah.superagent.config;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import com.noah.superagent.common.config.AiProperties;
+import com.noah.superagent.common.config.BillingProperties;
+import com.noah.superagent.common.config.AsyncProperties;
+import com.noah.superagent.common.config.CacheProperties;
+import com.noah.superagent.common.config.MonitoringProperties;
 
 /**
  * 统一配置管理类
@@ -15,7 +19,11 @@ import com.noah.superagent.common.config.AiProperties;
 @EnableConfigurationProperties({
     OpenApiDocProperties.class,
     WxPayProperties.class,
-    AiProperties.class
+    AiProperties.class,
+    BillingProperties.class,
+    AsyncProperties.class,
+    CacheProperties.class,
+    MonitoringProperties.class
     // 未来有新的配置类时，只需要在这里添加
 })
 public class ConfigurationConfig {
