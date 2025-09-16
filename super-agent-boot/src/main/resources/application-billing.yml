@@ -36,6 +36,11 @@ super-agent:
       excel-analysis: 0.001    # Excel分析（元/次）
       software-operation: 0.001 # 软件操作（元/次）
       
+    # 订阅套餐配置
+    subscription:
+      # 按年订阅优惠比例
+      yearly-discount-rate: 0.17  # 17%优惠
+    
     # 积分系统配置
     credits:
       # 积分兑换比例
@@ -45,11 +50,11 @@ super-agent:
       free-credits:
         new-user-amount: 1000   # 新用户赠送积分
         new-user-validity: 90   # 有效期（天）
+        daily-signin: 300       # 每日签到积分（登录时发放）
+        daily-validity: 1       # 每日积分有效期（天）
         
       # 活动积分配置  
       activity-credits:
-        daily-signin: 300       # 每日签到积分
-        daily-validity: 1       # 当日有效
         share-reward: 500       # 分享奖励积分
         share-validity: 30      # 分享积分有效期（天）
         

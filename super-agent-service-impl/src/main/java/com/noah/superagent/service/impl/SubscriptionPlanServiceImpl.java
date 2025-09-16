@@ -10,6 +10,7 @@ import com.noah.superagent.model.SubscriptionPlanDTO;
 import com.noah.superagent.service.SubscriptionPlanService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -31,6 +32,12 @@ public class SubscriptionPlanServiceImpl extends ServiceImpl<SubscriptionPlanMap
     private final SubscriptionPlanMapper subscriptionPlanMapper;
     private final SubscriptionPlanPersistenceConvert convert;
 
+    /**
+     * 按年订阅优惠比例（从配置文件读取，默认17%）
+     */
+    @Value("${super-agent.billing.subscription.yearly-discount-rate:0.17}")
+    private Double yearlyDiscountRate;
+
     @Override
     public List<SubscriptionPlanDTO> getEnabledPlans() {
         log.info("获取启用的订阅套餐列表");
@@ -39,7 +46,18 @@ public class SubscriptionPlanServiceImpl extends ServiceImpl<SubscriptionPlanMap
                 .stream()
                 .filter(plan -> EnabledEnum.ENABLED.equals(plan.getEnabled()))
                 .map(convert::fromEntity)
+                .map(this::setDiscountRate)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 设置优惠比例（用于按月查询时也提供优惠比例信息）
+     */
+    private SubscriptionPlanDTO setDiscountRate(SubscriptionPlanDTO plan) {
+        // 判断是否为积分套餐
+        boolean isCreditsOnly = plan.getPlanName() != null && plan.getPlanName().contains("积分");
+        plan.setYearlyDiscountRate(isCreditsOnly ? 0.0 : yearlyDiscountRate);
+        return plan;
     }
 
     @Override
@@ -59,19 +77,29 @@ public class SubscriptionPlanServiceImpl extends ServiceImpl<SubscriptionPlanMap
     }
 
     /**
-     * 为按年计费调整价格（优惠17%）
+     * 为按年计费调整价格
+     * 只对非积分套餐进行优惠
      */
     private SubscriptionPlanDTO adjustPriceForYearly(SubscriptionPlanDTO plan) {
-        if (plan.getMonthlyPrice() != null && plan.getMonthlyPrice().compareTo(BigDecimal.ZERO) > 0) {
-            // 按年价格 = 月价格 * 12 * 0.83 (优惠17%)
+        // 判断是否为积分套餐（单独购买积分），如果是则不优惠
+        boolean isCreditsOnly = plan.getPlanName() != null && plan.getPlanName().contains("积分");
+        
+        if (!isCreditsOnly && plan.getMonthlyPrice() != null && plan.getMonthlyPrice().compareTo(BigDecimal.ZERO) > 0) {
+            // 按年价格 = 月价格 * 12 * (1 - 优惠比例)
+            BigDecimal discountMultiplier = BigDecimal.ONE.subtract(BigDecimal.valueOf(yearlyDiscountRate));
             BigDecimal yearlyPrice = plan.getMonthlyPrice()
                     .multiply(BigDecimal.valueOf(12))
-                    .multiply(BigDecimal.valueOf(0.83))
+                    .multiply(discountMultiplier)
                     .setScale(0, RoundingMode.HALF_UP);
             
             plan.setYearlyPrice(yearlyPrice);
             // 兼容字段也设置为按年价格
             plan.setPrice(yearlyPrice);
+            // 设置优惠比例
+            plan.setYearlyDiscountRate(yearlyDiscountRate);
+        } else {
+            // 积分套餐不优惠，优惠比例为0
+            plan.setYearlyDiscountRate(0.0);
         }
         
         return plan;

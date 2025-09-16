@@ -64,10 +64,6 @@ export interface SubscriptionPlan {
   price: number;
   monthlyPrice: number;
   yearlyPrice: number;
-  creditAmount: number;
-  monthlyCreditAmount: number;
-  yearlyCreditAmount: number;
-  dailyRefreshCredit: number;
   validityDays: number;
   enabled: boolean;
   isRecommended: boolean;

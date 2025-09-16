@@ -73,10 +73,6 @@ public class SubscriptionController {
                                 "\"price\": 0," +
                                 "\"monthlyPrice\": 0," +
                                 "\"yearlyPrice\": 0," +
-                                "\"creditAmount\": 1000," +
-                                "\"monthlyCreditAmount\": 0," +
-                                "\"yearlyCreditAmount\": 0," +
-                                "\"dailyRefreshCredit\": 0," +
                                 "\"validityDays\": 90," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": false," +
@@ -99,10 +95,6 @@ public class SubscriptionController {
                                 "\"price\": 39," +
                                 "\"monthlyPrice\": 39," +
                                 "\"yearlyPrice\": 388," +
-                                "\"creditAmount\": 1900," +
-                                "\"monthlyCreditAmount\": 1900," +
-                                "\"yearlyCreditAmount\": 1900," +
-                                "\"dailyRefreshCredit\": 0," +
                                 "\"validityDays\": 30," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": true," +
@@ -121,10 +113,6 @@ public class SubscriptionController {
                                 "\"price\": 199," +
                                 "\"monthlyPrice\": 199," +
                                 "\"yearlyPrice\": 1983," +
-                                "\"creditAmount\": 19000," +
-                                "\"monthlyCreditAmount\": 19000," +
-                                "\"yearlyCreditAmount\": 19000," +
-                                "\"dailyRefreshCredit\": 0," +
                                 "\"validityDays\": 30," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": false," +
@@ -227,7 +215,6 @@ public class SubscriptionController {
                                     "\"startTime\": \"2025-01-01T10:00:00\"," +
                                     "\"endTime\": \"2025-02-01T10:00:00\"," +
                                     "\"paidAmount\": 39.9," +
-                                    "\"creditAmount\": 5000," +
                                     "\"status\": \"ACTIVE\"," +
                                     "\"payOrderNo\": \"ORDER_2025010110001\"," +
                                     "\"remark\": \"基础版套餐订阅\"" +
@@ -369,9 +356,9 @@ public class SubscriptionController {
                     // TODO: 创建免费套餐订阅记录
                     // 暂时跳过订阅记录创建，专注解决积分详情问题
                     
-                    // 立即发放当日积分
+                    // 立即发放当日积分（使用新的登录时发放逻辑）
                     try {
-                        userCreditService.giveFreePlanDailyBonus(userId);
+                        userCreditService.giveFreePlanDailyBonusOnLogin(userId);
                         log.info("用户首次登录积分发放成功 - userId: {}", userId);
                     } catch (Exception dailyBonusError) {
                         log.warn("发放每日积分失败，但不影响账户初始化 - userId: {}, 错误: {}", userId, dailyBonusError.getMessage());

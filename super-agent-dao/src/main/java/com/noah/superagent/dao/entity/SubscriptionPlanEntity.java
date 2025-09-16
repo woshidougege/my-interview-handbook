@@ -59,26 +59,6 @@ public class SubscriptionPlanEntity extends BaseEntity {
     private BigDecimal yearlyPrice;
 
     /**
-     * 赠送积分数量（兼容字段）
-     */
-    private BigDecimal creditAmount;
-
-    /**
-     * 按月赠送积分数量
-     */
-    private BigDecimal monthlyCreditAmount;
-
-    /**
-     * 按年赠送积分数量
-     */
-    private BigDecimal yearlyCreditAmount;
-
-    /**
-     * 每日刷新积分数量
-     */
-    private Integer dailyRefreshCredit;
-
-    /**
      * 套餐有效期（天）
      */
     private Integer validityDays;

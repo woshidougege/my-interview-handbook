@@ -31,6 +31,7 @@ interface Plan {
   name: string;
   code: string;
   price: { monthly: number; yearly: number };
+  yearlyDiscountRate: number; // 优惠比例，如0.17表示17%
   isCurrent: boolean;
   buttonText: string;
   buttonType: 'default' | 'primary';
@@ -70,6 +71,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
         planCode?: string;
         monthlyPrice?: number;
         yearlyPrice?: number;
+        yearlyDiscountRate?: number;
         features?: PlanFeature[];
       }) => ({
         id: plan.id.toString(),
@@ -79,6 +81,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
           monthly: plan.monthlyPrice || 0, 
           yearly: plan.yearlyPrice || 0 
         },
+        yearlyDiscountRate: plan.yearlyDiscountRate || 0,
         isCurrent: false, // TODO: 从用户订阅状态判断
         buttonText: plan.planName === '免费版' ? '当前计划' : '订阅',
         buttonType: plan.planName === '免费版' ? 'default' as const : 'primary' as const,
@@ -104,6 +107,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       name: '免费版',
       code: 'free',
       price: { monthly: 0, yearly: 0 },
+      yearlyDiscountRate: 0,
       isCurrent: true,
       buttonText: '当前计划',
       buttonType: 'default' as const,
@@ -117,6 +121,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       name: '基础版',
       code: 'basic',
       price: { monthly: 39, yearly: 388 },
+      yearlyDiscountRate: 0.17,
       isCurrent: false,
       buttonText: '订阅',
       buttonType: 'primary' as const,
@@ -138,6 +143,17 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
     }
     return plan.price.monthly;
   };
+
+  // 计算优惠金额
+  const getDiscountAmount = (plan: Plan) => {
+    if (billingCycle === 'yearly' && !plan.isCreditsOnly && plan.price.monthly > 0 && plan.yearlyDiscountRate > 0) {
+      const originalYearlyPrice = plan.price.monthly * 12;
+      const discountAmount = originalYearlyPrice * plan.yearlyDiscountRate;
+      return Math.round(discountAmount);
+    }
+    return 0;
+  };
+
 
   const handleSubscribe = (planId: string) => {
     const plan = plans.find(p => p.id === planId);
@@ -258,7 +274,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
                   borderRadius: '4px'
                 }}
               >
-                节省17%
+                节省{plans.find(p => p.yearlyDiscountRate > 0) ? Math.round(plans.find(p => p.yearlyDiscountRate > 0)!.yearlyDiscountRate * 100) : 17}%
               </Tag>
             </div>
           </div>
@@ -310,6 +326,29 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
 
               {/* 价格 */}
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                {/* 按年且有优惠时显示原价和优惠信息 */}
+                {billingCycle === 'yearly' && !plan.isCreditsOnly && getDiscountAmount(plan) > 0 && (
+                  <div style={{ marginBottom: '8px' }}>
+                    <span style={{ 
+                      fontSize: '16px', 
+                      color: '#999', 
+                      textDecoration: 'line-through',
+                      marginRight: '8px'
+                    }}>
+                      ¥{plan.price.monthly * 12}
+                    </span>
+                    <span style={{ 
+                      fontSize: '12px', 
+                      color: '#ff4d4f',
+                      background: '#fff2f0',
+                      padding: '2px 6px',
+                      borderRadius: '3px'
+                    }}>
+                      省¥{getDiscountAmount(plan)}
+                    </span>
+                  </div>
+                )}
+                
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
                   <span style={{ fontSize: '32px', fontWeight: 600, color: '#333' }}>
                     ¥{getDisplayPrice(plan)}
@@ -318,10 +357,11 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
                     {plan.isCreditsOnly ? ' / 10000积分' : (billingCycle === 'monthly' ? ' / 月' : ' / 年')}
                   </span>
                 </div>
+                
                 {/* 按年时显示月均价格提示 */}
                 {billingCycle === 'yearly' && !plan.isCreditsOnly && getDisplayPrice(plan) > 0 && (
                   <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-                    {getMonthlyEquivalent(plan)}元/月
+                    平均 {getMonthlyEquivalent(plan)}元/月
                   </div>
                 )}
               </div>
