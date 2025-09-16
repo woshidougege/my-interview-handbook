@@ -10,7 +10,7 @@
     </formats>
 
     <includeBaseDirectory>true</includeBaseDirectory>
-    <baseDirectory>super-agent-${project.version}</baseDirectory>
+    <baseDirectory>super-agent</baseDirectory>
 
     <fileSets>
         <!-- 启动脚本 -->

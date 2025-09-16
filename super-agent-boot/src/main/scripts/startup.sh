@@ -110,7 +110,7 @@ prepare_startup() {
     mkdir -p "$APP_HOME/logs"
     mkdir -p "$APP_HOME/pid"
     export SPRING_OUTPUT_ANSI_ENABLED=ALWAYS
-    # 设置日志路径，确保logback写入到项目目录而不是当前工作目录
+    # 设置日志路径为绝对路径，确保无论在哪个目录启动都写入到项目根目录
     export LOG_PATH="$APP_HOME/logs"
     # 设置PID文件路径，让Spring Boot自己管理PID文件
     export PID_FILE_PATH="$PID_FILE"
