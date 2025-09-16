@@ -110,10 +110,8 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         
         // DTO -> Entity
         ChatTaskEntity updateTask = chatTaskPersistenceConvert.toEntity(chatTaskDO);
-        // 执行更新（只更新非空字段，避免更新 createTime 字段）
-        int result = chatTaskMapper.updateByQuery(updateTask, 
-                com.mybatisflex.core.query.QueryWrapper.create()
-                        .where(com.noah.superagent.dao.entity.table.ChatTaskEntityTableDef.CHAT_TASK_ENTITY.ID.eq(chatTaskDO.getId())));
+        // 执行更新（忽略空值字段）
+        int result = chatTaskMapper.update(updateTask);
         if (result <= 0) {
             throw new RuntimeException("对话任务更新失败");
         }
