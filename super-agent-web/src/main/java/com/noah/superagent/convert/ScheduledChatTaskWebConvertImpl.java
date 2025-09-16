@@ -37,8 +37,8 @@ public class ScheduledChatTaskWebConvertImpl extends ScheduledChatTaskWebConvert
         ScheduledChatTaskDTO dto = new ScheduledChatTaskDTO();
         dto.setUserId(request.getUserId());
         dto.setWorkspaceId(request.getWorkspaceId());
-        // 任务名称自动截取前10个字符
-        dto.setTaskName(trimTaskName(request.getTaskName()));
+        // 任务名称自动截取前10个字符，如果为空则从prompt中生成
+        dto.setTaskName(generateTaskName(request.getTaskName(), request.getPrompt()));
         dto.setPrompt(request.getPrompt());
         dto.setStatus(request.getStatus());
         // 根据调度配置自动判断任务类型
@@ -82,8 +82,8 @@ public class ScheduledChatTaskWebConvertImpl extends ScheduledChatTaskWebConvert
     @Override
     public ScheduledChatTaskDTO fromUpdateRequest(ScheduledChatTaskUpdateRequest request) {
         ScheduledChatTaskDTO dto = new ScheduledChatTaskDTO();
-        // 任务名称自动截取前10个字符
-        dto.setTaskName(trimTaskName(request.getTaskName()));
+        // 任务名称自动截取前10个字符，如果为空则从prompt中生成
+        dto.setTaskName(generateTaskName(request.getTaskName(), request.getPrompt()));
         dto.setPrompt(request.getPrompt());
         dto.setStatus(request.getStatus());
         dto.setChatTaskId(request.getChatTaskId());
@@ -182,7 +182,7 @@ public class ScheduledChatTaskWebConvertImpl extends ScheduledChatTaskWebConvert
      */
     private String trimTaskName(String taskName) {
         if (StringUtils.isBlank(taskName)) {
-            return taskName;
+            return "未命名任务";
         }
         
         if (taskName.length() > 10) {
@@ -190,6 +190,28 @@ public class ScheduledChatTaskWebConvertImpl extends ScheduledChatTaskWebConvert
         }
         
         return taskName;
+    }
+    
+    /**
+     * 生成任务名称：如果任务名称不为空则使用任务名称，否则从prompt中截取
+     * 
+     * @param taskName 任务名称
+     * @param prompt 提示词
+     * @return 生成的任务名称
+     */
+    private String generateTaskName(String taskName, String prompt) {
+        // 如果任务名称不为空，直接使用并截取前10个字符
+        if (StringUtils.isNotBlank(taskName)) {
+            return trimTaskName(taskName);
+        }
+        
+        // 如果任务名称为空，从prompt中截取前10个字符作为任务名称
+        if (StringUtils.isNotBlank(prompt)) {
+            return trimTaskName(prompt);
+        }
+        
+        // 如果任务名称和prompt都为空，使用默认名称
+        return "未命名任务";
     }
     
     /**

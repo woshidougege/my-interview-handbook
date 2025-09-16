@@ -27,7 +27,6 @@ public class ScheduledChatTaskCreateRequest implements Serializable {
     @Schema(description = "工作空间ID", example = "1234567890123456789")
     private Long workspaceId;
 
-    @NotBlank(message = "任务名称不能为空")
     @Schema(description = "任务名称", example = "每日新闻摘要")
     private String taskName;
 

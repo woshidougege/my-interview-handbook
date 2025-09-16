@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class ScheduledChatTaskMappingHelper {
 
     /**
-     * 截取任务名称前10个字符
+     * 截取任务名称前10个字符，如果任务名称为空则从prompt中截取
      *
      * @param taskName 原始任务名称
      * @return 截取后的任务名称
@@ -22,7 +22,7 @@ public class ScheduledChatTaskMappingHelper {
     @Named("trimTaskName")
     public String trimTaskName(String taskName) {
         if (StringUtils.isBlank(taskName)) {
-            return taskName;
+            return "未命名任务";
         }
 
         if (taskName.length() > 10) {
@@ -30,6 +30,26 @@ public class ScheduledChatTaskMappingHelper {
         }
 
         return taskName;
+    }
+    
+    /**
+     * 从prompt生成任务名称的方法
+     * 
+     * @param prompt 提示词
+     * @return 基于prompt生成的任务名称
+     */
+    @Named("generateTaskNameFromPrompt")
+    public String generateTaskNameFromPrompt(String prompt) {
+        if (StringUtils.isBlank(prompt)) {
+            return "未命名任务";
+        }
+        
+        // 从prompt中截取前10个字符作为任务名称
+        if (prompt.length() > 10) {
+            return prompt.substring(0, 10);
+        }
+        
+        return prompt;
     }
     
     /**
