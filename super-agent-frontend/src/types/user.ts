@@ -18,6 +18,12 @@ export interface UserCredit {
   totalSpent: number;
   createTime: string;
   updateTime: string;
+  // 新增字段
+  availableCredits?: number;
+  hasCreditAccount?: boolean;
+  planName?: string;
+  limitedCredits?: number;
+  dailyRefreshCredits?: number;
 }
 
 // 积分交易记录类型定义

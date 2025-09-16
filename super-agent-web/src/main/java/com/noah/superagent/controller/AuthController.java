@@ -1,5 +1,6 @@
 package com.noah.superagent.controller;
 
+import cn.hutool.core.util.ObjUtil;
 import com.noah.superagent.common.dto.request.PasswordLoginRequest;
 import com.noah.superagent.common.dto.request.PhoneLoginRequest;
 import com.noah.superagent.common.dto.request.RegisterRequest;
@@ -26,6 +27,7 @@ import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.URLUtil;
 import cn.hutool.core.lang.Validator;
 import org.springframework.web.util.UriComponentsBuilder;
+import com.noah.superagent.util.UserContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -401,6 +403,76 @@ public class AuthController {
         } catch (Exception e) {
             log.error("找回密码失败: {}", e.getMessage(), e);
             return ApiResponse.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 修改密码接口
+     * 用于已登录用户修改自己的密码
+     */
+    @PostMapping("/change-password")
+    @Operation(
+            summary = "修改密码",
+            description = "已登录用户修改自己的密码，对接SSO系统",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "修改密码请求参数",
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "修改密码示例",
+                                    value = "{\n" +
+                                            "  \"newPassword\": \"SM2加密后的新密码\"\n" +
+                                            "}"
+                            )
+                    )
+            )
+    )
+    public ApiResponse<String> changePassword(@RequestBody Map<String, String> request) {
+        String newPassword = request.get("newPassword");
+        
+        if (StrUtil.isBlank(newPassword)) {
+            return ApiResponse.error("新密码不能为空");
+        }
+        
+        // 从用户上下文获取当前用户ID
+        Long currentUserId = UserContext.getCurrentUserId();
+        if (ObjUtil.isNull(currentUserId)) {
+            return ApiResponse.error("用户未登录或登录已过期");
+        }
+        
+        log.info("修改密码请求，用户ID: {}", currentUserId);
+
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl)
+                    .pathSegment("agent", "sso", "restPassword")
+                    .toUriString();
+
+            // 构建请求参数
+            Map<String, String> requestBody = MapUtil.<String, String>builder()
+                    .put("userId", currentUserId.toString())
+                    .put("pwd", newPassword) // 前端已经SM2加密过的密码
+                    .put("servicecode", serviceCode)
+                    .build();
+
+            HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity, MAP_TYPE_REFERENCE);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    return ApiResponse.success("密码修改成功");
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
+            }
+
+            return ApiResponse.error("密码修改失败，请稍后重试");
+
+        } catch (Exception e) {
+            log.error("修改密码失败: {}", e.getMessage(), e);
+            return ApiResponse.error("修改密码失败: " + e.getMessage());
         }
     }
 }
