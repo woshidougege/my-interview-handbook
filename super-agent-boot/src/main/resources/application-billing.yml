@@ -40,6 +40,12 @@ super-agent:
     subscription:
       # 按年订阅优惠比例
       yearly-discount-rate: 0.17  # 17%优惠
+      
+      # 套餐积分配置（key为套餐ID，value为积分数量）
+      plan-credits:
+        2: 1900    # 基础版 - 1900永久积分
+        3: 1900   # 高级版 - 19000永久积分 
+        4: 10000   # 额外购买积分 - 10000永久积分
     
     # 积分系统配置
     credits:

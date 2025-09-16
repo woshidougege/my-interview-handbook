@@ -34,6 +34,7 @@ import com.github.binarywang.wxpay.service.WxPayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 
@@ -64,6 +66,10 @@ public class PaymentServiceImpl implements PaymentService {
     // 使用ApplicationEventPublisher发布支付状态事件，避免循环依赖
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+    
+    // 套餐积分配置
+    @Value("#{${super-agent.billing.subscription.plan-credits:{}}}")
+    private Map<String, Integer> planCreditsConfig;
     
     // 自注入以解决事务自调用问题
     @Lazy
@@ -393,19 +399,21 @@ public class PaymentServiceImpl implements PaymentService {
             SubscriptionPlanEntity plan = subscriptionPlanMapper.selectOneById(order.getPlanId());
             if (plan != null) {
                 try {
-                    // 发放付费套餐永久积分
-                    Long creditAmount = "monthly".equals(order.getBillingCycle()) 
-                        ? plan.getMonthlyCreditAmount().longValue()
-                        : plan.getYearlyCreditAmount().longValue();
-                        
-                    userCreditService.grantPaidPlanCredits(
-                        order.getUserId(), 
-                        creditAmount, 
-                        order.getId(), 
-                        plan.getPlanName()
-                    );
+                    // 从配置文件获取套餐积分数量
+                    String planIdStr = String.valueOf(order.getPlanId());
+                    Integer creditAmount = planCreditsConfig.get(planIdStr);
                     
-                    // 积分发放成功
+                    if (creditAmount != null && creditAmount > 0) {
+                        userCreditService.grantPaidPlanCredits(
+                            order.getUserId(), 
+                            creditAmount.longValue(), 
+                            order.getId(), 
+                            plan.getPlanName()
+                        );
+                        log.info("套餐积分发放成功 - planId: {}, creditAmount: {}", order.getPlanId(), creditAmount);
+                    } else {
+                        log.info("套餐不包含积分或积分为0 - planId: {}", order.getPlanId());
+                    }
                         
                 } catch (Exception e) {
                     log.error("发放积分失败: userId={}, planName={}, error={}", 
@@ -415,7 +423,7 @@ public class PaymentServiceImpl implements PaymentService {
                 
                 // 激活用户订阅
                 try {
-                    activateUserSubscription(order, plan);
+                    activateUserSubscription(order);
                 } catch (Exception e) {
                     log.error("激活用户订阅失败: userId={}, planId={}, orderId={}, error={}", 
                         order.getUserId(), order.getPlanId(), order.getId(), e.getMessage(), e);
@@ -459,7 +467,7 @@ public class PaymentServiceImpl implements PaymentService {
     /**
      * 简化的订阅激活逻辑
      */
-    private void activateUserSubscription(SubscriptionOrderEntity order, SubscriptionPlanEntity plan) {
+    private void activateUserSubscription(SubscriptionOrderEntity order) {
         try {
             // 计算订阅时间
             LocalDateTime startTime = LocalDateTime.now();
@@ -477,7 +485,10 @@ public class PaymentServiceImpl implements PaymentService {
             subscription.setStartTime(startTime);
             subscription.setEndTime(endTime);
             subscription.setPaidAmount(order.getAmount());
-            subscription.setCreditAmount(plan.getMonthlyCreditAmount()); // 简化，都用月度积分
+            // 从配置文件获取积分数量用于记录
+            String planIdStr = String.valueOf(order.getPlanId());
+            Integer creditAmount = planCreditsConfig.get(planIdStr);
+            subscription.setCreditAmount(creditAmount != null ? new BigDecimal(creditAmount) : BigDecimal.ZERO);
             subscription.setStatus(SubscriptionStatusEnum.ACTIVE);
             subscription.setPayOrderNo(order.getOrderNo());
             subscription.setRemark("套餐订阅激活");
