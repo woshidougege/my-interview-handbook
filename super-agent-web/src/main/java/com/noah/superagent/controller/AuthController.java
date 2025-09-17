@@ -111,10 +111,35 @@ public class AuthController {
             return MapUtil.newHashMap();
         }
         Object data = response.get("data");
-        if (data instanceof Map) {
-            return (Map<String, Object>) data;
+        return convertToStringObjectMap(data);
+    }
+
+    /**
+     * 安全地将Object转换为Map<String, Object>
+     */
+    private Map<String, Object> convertToStringObjectMap(Object obj) {
+        if (!(obj instanceof Map)) {
+            return MapUtil.newHashMap();
         }
-        return MapUtil.newHashMap();
+        
+        Map<?, ?> rawMap = (Map<?, ?>) obj;
+        Map<String, Object> result = MapUtil.newHashMap();
+        
+        // 安全地转换每个键值对
+        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+            
+            // 确保键是String类型
+            if (key instanceof String) {
+                result.put((String) key, value);
+            } else if (key != null) {
+                // 如果键不是String，转换为String
+                result.put(key.toString(), value);
+            }
+        }
+        
+        return result;
     }
 
     @PostMapping("/password-login")
