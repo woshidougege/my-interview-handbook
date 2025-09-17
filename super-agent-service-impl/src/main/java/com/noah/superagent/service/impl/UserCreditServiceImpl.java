@@ -17,13 +17,19 @@ import com.noah.superagent.dao.entity.CreditTransactionEntity;
 import com.noah.superagent.dao.mapper.UserCreditAccountMapper;
 import com.noah.superagent.dao.mapper.UserCreditBalanceMapper;
 import com.noah.superagent.dao.mapper.CreditTransactionMapper;
+import com.noah.superagent.dao.mapper.UserDailyLoginMapper;
+import com.noah.superagent.dao.entity.UserDailyLoginEntity;
 import com.noah.superagent.service.UserCreditService;
+import com.noah.superagent.service.UserSubscriptionService;
+import com.noah.superagent.service.SubscriptionPlanService;
+import com.noah.superagent.model.UserSubscriptionDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -44,16 +50,49 @@ public class UserCreditServiceImpl implements UserCreditService {
     private final UserCreditAccountMapper userCreditAccountMapper;
     private final UserCreditBalanceMapper userCreditBalanceMapper;
     private final CreditTransactionMapper creditTransactionMapper;
+    private final UserDailyLoginMapper userDailyLoginMapper;
     private final BillingProperties billingProperties;
+    private final UserSubscriptionService userSubscriptionService;
+    private final SubscriptionPlanService subscriptionPlanService;
     
     // 用于防止重复赠送的日期格式
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
      * 获取每日积分数量（根据产品需求：每日登录打卡获得300积分）
+     * @deprecated 请使用 getDailyCreditsForUser(Long userId) 根据用户套餐获取
      */
+    @Deprecated
     private BigDecimal getDailyCredits() {
         return BigDecimal.valueOf(300);
+    }
+
+    /**
+     * 根据用户当前套餐获取每日积分数量
+     * @param userId 用户ID
+     * @return 每日积分数量
+     */
+    private BigDecimal getDailyCreditsForUser(Long userId) {
+        try {
+            // 获取用户当前订阅套餐
+            UserSubscriptionDTO subscription = userSubscriptionService.getCurrentActiveSubscription(userId);
+            if (subscription != null && subscription.getPlanId() != null) {
+                var plan = subscriptionPlanService.getPlanById(subscription.getPlanId());
+                if (plan != null && plan.getDailyRefreshCredits() != null) {
+                    log.debug("用户套餐每日积分 - userId: {}, planName: {}, dailyCredits: {}", 
+                        userId, plan.getPlanName(), plan.getDailyRefreshCredits());
+                    return BigDecimal.valueOf(plan.getDailyRefreshCredits());
+                }
+            }
+            
+            // 默认免费版积分（如果无法获取套餐信息）
+            log.warn("无法获取用户套餐信息，使用默认免费版积分 - userId: {}", userId);
+            return BigDecimal.valueOf(300);
+        } catch (Exception e) {
+            log.error("获取用户套餐每日积分失败 - userId: {}, 错误: {}", userId, e.getMessage());
+            // 异常情况下返回免费版积分
+            return BigDecimal.valueOf(300);
+        }
     }
     
     /**
@@ -424,7 +463,8 @@ public class UserCreditServiceImpl implements UserCreditService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserCreditResponse giveFreePlanDailyBonusOnLogin(Long userId) {
-        log.info("用户登录时检查并发放免费套餐每日积分 - userId: {}, 积分数量: {}", userId, getDailyCredits());
+        BigDecimal dailyCredits = getDailyCreditsForUser(userId);
+        log.info("用户登录时检查并发放每日积分（根据套餐配置） - userId: {}, 积分数量: {}", userId, dailyCredits);
         
         // 1. 查询用户积分账户，如果不存在则先初始化
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
@@ -442,24 +482,18 @@ public class UserCreditServiceImpl implements UserCreditService {
         }
         
         // 2. 检查今日是否已经发放过积分（防重）
-        String today = LocalDateTime.now().format(DATE_FORMATTER);
+        LocalDate today = LocalDate.now();
         
-        List<CreditTransactionEntity> todayTransactions = creditTransactionMapper.selectByUserIdAndType(
-            userId, CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY);
-        
-        boolean alreadyGivenToday = todayTransactions.stream()
-                .anyMatch(transaction -> transaction.getDescription() != null && 
-                         transaction.getDescription().contains(today));
-        
-        if (alreadyGivenToday) {
-            log.info("用户今日已经发放过免费套餐积分 - userId: {}", userId);
+        // 检查数据库中当日积分发放状态
+        if (userDailyLoginMapper.isDailyCreditsGranted(userId, today)) {
+            log.info("用户今日已经发放过每日积分 - userId: {}", userId);
             return getUserCredit(userId);
         }
         
         // 3. 更新积分汇总账户
         BigDecimal oldTotalBalance = creditAccount.getTotalBalance();
-        BigDecimal newTotalBalance = oldTotalBalance.add(getDailyCredits());
-        BigDecimal newTotalEarned = creditAccount.getTotalEarned().add(getDailyCredits());
+        BigDecimal newTotalBalance = oldTotalBalance.add(dailyCredits);
+        BigDecimal newTotalEarned = creditAccount.getTotalEarned().add(dailyCredits);
         
         UserCreditAccountEntity updateAccount = new UserCreditAccountEntity();
         updateAccount.setId(creditAccount.getId());
@@ -476,7 +510,7 @@ public class UserCreditServiceImpl implements UserCreditService {
         
         // 4. 创建或更新每日积分余额记录
         UserCreditBalanceEntity dailyBalance = userCreditBalanceMapper.selectByUserIdAndCreditType(userId, CreditTypeEnum.DAILY);
-        BigDecimal newDailyBalance = getDailyCredits();
+        BigDecimal newDailyBalance = dailyCredits;
         
         if (dailyBalance == null) {
             // 创建新的每日积分记录
@@ -484,7 +518,7 @@ public class UserCreditServiceImpl implements UserCreditService {
             dailyBalance.setUserId(userId);
             dailyBalance.setCreditType(CreditTypeEnum.DAILY);
             dailyBalance.setBalance(newDailyBalance);
-            dailyBalance.setTotalEarned(getDailyCredits());
+            dailyBalance.setTotalEarned(dailyCredits);
             dailyBalance.setTotalSpent(BigDecimal.ZERO);
             dailyBalance.setLastEarnTime(LocalDateTime.now());
             dailyBalance.setVersion(0);
@@ -495,11 +529,11 @@ public class UserCreditServiceImpl implements UserCreditService {
                 log.error("创建用户每日积分余额记录失败 - userId: {}", userId);
                 throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "创建每日积分余额记录失败");
             }
-            log.info("创建每日积分记录成功 - userId: {}, 积分: {}", userId, getDailyCredits());
+            log.info("创建每日积分记录成功 - userId: {}, 积分: {}", userId, dailyCredits);
         } else {
             // 更新现有的每日积分记录（直接替换，因为每日积分只保留当天的）
             dailyBalance.setBalance(newDailyBalance); // 每日积分覆盖模式
-            dailyBalance.setTotalEarned(dailyBalance.getTotalEarned().add(getDailyCredits()));
+            dailyBalance.setTotalEarned(dailyBalance.getTotalEarned().add(dailyCredits));
             dailyBalance.setLastEarnTime(LocalDateTime.now());
             dailyBalance.setVersion(dailyBalance.getVersion());
             dailyBalance.setUpdateBy(userId);
@@ -517,10 +551,10 @@ public class UserCreditServiceImpl implements UserCreditService {
         transaction.setUserId(userId);
         transaction.setTransactionType(CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY);
         transaction.setCreditType(CreditTypeEnum.DAILY);
-        transaction.setAmount(getDailyCredits());
+        transaction.setAmount(dailyCredits);
         transaction.setBalanceBefore(oldTotalBalance);
         transaction.setBalanceAfter(newTotalBalance);
-        transaction.setDescription("每日登录赠送积分（24小时有效） - " + today);
+        transaction.setDescription("每日登录赠送积分（根据套餐配置，24小时有效） - " + today);
         transaction.setExpireTime(LocalDateTime.now().plusDays(1)); // 1天后过期
         transaction.setCreateBy(userId);
         
@@ -530,8 +564,43 @@ public class UserCreditServiceImpl implements UserCreditService {
             throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "记录交易失败");
         }
         
-        log.info("免费套餐每日积分发放成功 - userId: {}, 发放积分: {}, 新余额: {}", 
-                userId, getDailyCredits(), newTotalBalance);
+        // 6. 记录用户每日登录状态
+        try {
+            UserDailyLoginEntity dailyLogin = userDailyLoginMapper.selectByUserIdAndDate(userId, today);
+            if (dailyLogin == null) {
+                // 创建新的每日登录记录
+                dailyLogin = new UserDailyLoginEntity();
+                dailyLogin.setUserId(userId);
+                dailyLogin.setLoginDate(today);
+                dailyLogin.setLoginCount(1);
+                dailyLogin.setFirstLoginTime(LocalDateTime.now());
+                dailyLogin.setDailyCreditsGranted(true);
+                dailyLogin.setDailyCreditsAmount(dailyCredits);
+                dailyLogin.setCreateBy(userId);
+                
+                int insertResult = userDailyLoginMapper.insert(dailyLogin);
+                if (insertResult <= 0) {
+                    log.warn("创建用户每日登录记录失败 - userId: {}", userId);
+                }
+            } else {
+                // 更新现有记录
+                dailyLogin.setLoginCount(dailyLogin.getLoginCount() + 1);
+                dailyLogin.setDailyCreditsGranted(true);
+                dailyLogin.setDailyCreditsAmount(dailyCredits);
+                dailyLogin.setUpdateBy(userId);
+                
+                int dailyLoginUpdateResult = userDailyLoginMapper.update(dailyLogin);
+                if (dailyLoginUpdateResult <= 0) {
+                    log.warn("更新用户每日登录记录失败 - userId: {}", userId);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("处理用户每日登录记录失败 - userId: {}, 错误: {}", userId, e.getMessage());
+            // 不影响积分发放流程
+        }
+
+        log.info("每日积分发放成功 - userId: {}, 发放积分: {}, 新余额: {}", 
+                userId, dailyCredits, newTotalBalance);
                 
         // 返回最新的积分信息
         return getUserCredit(userId);

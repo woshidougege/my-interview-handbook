@@ -1,6 +1,7 @@
 package com.noah.superagent.util;
 
 import com.noah.superagent.model.SSOUserInfo;
+import com.noah.superagent.service.UserCreditService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 用户上下文工具类
@@ -21,11 +23,18 @@ import javax.servlet.http.HttpServletRequest;
 public class UserContext {
 
     private static SSOManager ssoManager;
+    private static UserCreditService userCreditService;
 
     @Autowired
     public void setSsoService(SSOManager ssoManager) {
         UserContext.ssoManager = ssoManager;
     }
+
+    @Autowired
+    public void setUserCreditService(UserCreditService userCreditService) {
+        UserContext.userCreditService = userCreditService;
+    }
+
 
     /**
      * 请求属性中用户信息的键名
@@ -63,7 +72,7 @@ public class UserContext {
 
     /**
      * 获取当前登录用户信息
-     * 主动从SSO接口获取用户信息，而不是依赖预设的属性
+     * 主动从SSO接口获取用户信息，并自动检查发放每日积分
      * 
      * @return 当前SSO用户信息，未登录返回null
      */
@@ -78,6 +87,9 @@ public class UserContext {
                 if (user != null && request != null) {
                     // 获取到用户信息后缓存到请求属性中，避免重复请求
                     request.setAttribute(USER_ATTRIBUTE_KEY, user);
+                    
+                    // 异步检查并发放每日积分（避免影响接口性能）
+                    checkAndGiveDailyCredits(user);
                 }
                 return user;
             } catch (Exception e) {
@@ -174,6 +186,37 @@ public class UserContext {
      */
     public static boolean isUserLoggedIn() {
         return getCurrentUser() != null;
+    }
+
+    /**
+     * 检查并发放每日积分（异步执行，避免影响接口性能）
+     * 使用数据库记录避免重复发放
+     * 
+     * @param user SSO用户信息
+     */
+    private static void checkAndGiveDailyCredits(SSOUserInfo user) {
+        if (user == null || user.getUserId() == null || userCreditService == null) {
+            return;
+        }
+        
+        try {
+            // 异步发放每日积分（积分服务内部会检查数据库防重）
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Long userId = Long.valueOf(user.getUserId());
+                    log.debug("开始检查用户每日积分 - userId: {}, userName: {}", userId, user.getUserName());
+                    
+                    userCreditService.giveFreePlanDailyBonusOnLogin(userId);
+                    
+                    log.debug("用户每日积分检查完成 - userId: {}", userId);
+                } catch (Exception e) {
+                    log.warn("发放用户每日积分失败 - userId: {}, 错误: {}", user.getUserId(), e.getMessage());
+                }
+            });
+            
+        } catch (Exception e) {
+            log.warn("检查每日积分时发生错误 - userId: {}, 错误: {}", user.getUserId(), e.getMessage());
+        }
     }
 
     /**

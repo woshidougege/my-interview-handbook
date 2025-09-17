@@ -517,11 +517,6 @@ public class SubscriptionController {
                 if (!hasCreditAccount) {
                     // 用户首次访问，自动初始化积分账户
                     userCreditService.initFreePlanForUser(userId);
-                    try {
-                        userCreditService.giveFreePlanDailyBonusOnLogin(userId);
-                    } catch (Exception dailyBonusError) {
-                        log.warn("发放每日积分失败 - userId: {}", userId);
-                    }
                     hasCreditAccount = true;
                 }
 
