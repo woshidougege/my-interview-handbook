@@ -5,7 +5,6 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.noah.superagent.dao.entity.UserCreditAccountEntity;
 import org.apache.ibatis.annotations.Mapper;
 
-import java.util.List;
 
 import static com.noah.superagent.dao.entity.table.UserCreditAccountEntityTableDef.USER_CREDIT_ACCOUNT_ENTITY;
 
@@ -23,6 +22,16 @@ public interface UserCreditAccountMapper extends BaseMapper<UserCreditAccountEnt
      */
     default UserCreditAccountEntity selectByUserId(Long userId) {
         return selectOneByQuery(QueryWrapper.create()
+                .where(USER_CREDIT_ACCOUNT_ENTITY.USER_ID.eq(userId))
+                .and(USER_CREDIT_ACCOUNT_ENTITY.DELETED.eq(0))
+        );
+    }
+
+    /**
+     * 根据用户ID查询积分账户及关联的积分余额明细（使用 Relations 注解）
+     */
+    default UserCreditAccountEntity selectByUserIdWithRelations(Long userId) {
+        return selectOneWithRelationsByQuery(QueryWrapper.create()
                 .where(USER_CREDIT_ACCOUNT_ENTITY.USER_ID.eq(userId))
                 .and(USER_CREDIT_ACCOUNT_ENTITY.DELETED.eq(0))
         );

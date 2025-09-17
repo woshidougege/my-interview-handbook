@@ -226,14 +226,20 @@ public class UserCreditServiceImpl implements UserCreditService {
     public UserCreditResponse getUserCredit(Long userId) {
         log.info("查询用户积分账户信息 - userId: {}", userId);
         
-        UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
+        // 使用 Relations 注解自动关联查询积分余额明细
+        UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserIdWithRelations(userId);
         if (creditAccount == null) {
             log.warn("用户积分账户不存在 - userId: {}", userId);
             throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
         }
 
-        // 查询用户各类型积分余额
-        List<UserCreditBalanceEntity> balanceList = userCreditBalanceMapper.selectByUserId(userId);
+        // 通过 Relations 注解自动获取的积分余额明细
+        List<UserCreditBalanceEntity> balanceList = creditAccount.getBalances();
+        if (balanceList == null || balanceList.isEmpty()) {
+            log.warn("用户积分余额明细为空 - userId: {}", userId);
+            balanceList = List.of(); // 空列表，避免 NPE
+        }
+        
         log.info("查询到积分余额记录数量: {} - userId: {}", balanceList.size(), userId);
         
         for (UserCreditBalanceEntity balance : balanceList) {

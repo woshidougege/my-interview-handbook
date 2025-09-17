@@ -1,10 +1,12 @@
 package com.noah.superagent.dao.entity;
 
+import com.mybatisflex.annotation.RelationOneToMany;
 import com.mybatisflex.annotation.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 用户积分账户表
@@ -42,4 +44,10 @@ public class UserCreditAccountEntity extends BaseEntity {
      * 版本号（乐观锁）
      */
     private Integer version;
+
+    /**
+     * 用户各类型积分余额明细（一对多关联）
+     */
+    @RelationOneToMany(selfField = "userId", targetField = "userId")
+    private List<UserCreditBalanceEntity> balances;
 }

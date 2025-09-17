@@ -75,14 +75,19 @@ public class UserCreditController {
                     totalBalance = creditDetail.getTotalBalance() != null ? creditDetail.getTotalBalance().longValue() : 0L;
 
                     // 限时积分 = 免费积分 + 活动积分
-                    limitedCredits = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
-                                    (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
+                    long freeCredits = creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L;
+                    long activityCredits = creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L;
+                    limitedCredits = freeCredits + activityCredits;
 
                     // 当日刷新积分
                     dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
 
                     // 永久积分
                     permanentCredits = creditDetail.getPermanentBalance() != null ? creditDetail.getPermanentBalance().longValue() : 0L;
+
+                    // 添加详细日志来调试
+                    log.info("积分详情调试 - userId: {}, total: {}, free: {}, activity: {}, daily: {}, permanent: {}, 计算后 - limited: {}", 
+                            userId, totalBalance, freeCredits, activityCredits, dailyRefreshCredits, permanentCredits, limitedCredits);
                 }
             }
             
