@@ -10,6 +10,7 @@ import com.noah.superagent.dao.mapper.CreditTransactionMapper;
 import com.noah.superagent.dao.mapper.UserCreditAccountMapper;
 import com.noah.superagent.dao.mapper.UserCreditBalanceMapper;
 import com.noah.superagent.dao.mapper.CreditExpiryLogMapper;
+import com.noah.superagent.service.CreditExpiryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CreditExpiryServiceImpl {
+public class CreditExpiryServiceImpl implements CreditExpiryService {
 
     private final UserCreditAccountMapper userCreditAccountMapper;
     private final UserCreditBalanceMapper userCreditBalanceMapper;
