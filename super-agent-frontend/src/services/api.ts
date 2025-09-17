@@ -184,6 +184,21 @@ export const subscriptionApi = {
   },
 };
 
+// ========== 积分相关API ==========
+export const creditApi = {
+  // 获取用户积分详情
+  getCreditDetails: (): ApiPromise<UserCreditDetailsResponse> => {
+    return api.get(API_ENDPOINTS.CREDIT.DETAILS);
+  },
+  
+  // 获取积分交易记录
+  getCreditTransactions: (pageNum?: number, pageSize?: number): ApiPromise<PageResponse<CreditTransaction>> => {
+    return api.get(API_ENDPOINTS.CREDIT.TRANSACTIONS, {
+      params: { pageNum, pageSize }
+    });
+  },
+};
+
 // ========== 用户相关API（基于SSO） ==========
 export const userApi = {
   // 获取当前用户信息（直接从SSO）
