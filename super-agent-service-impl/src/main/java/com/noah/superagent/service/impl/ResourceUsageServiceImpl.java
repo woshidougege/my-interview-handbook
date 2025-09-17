@@ -10,7 +10,7 @@ import com.noah.superagent.common.dto.response.ResourceUsageResponse;
 import com.noah.superagent.dao.entity.ResourceUsageRecordEntity;
 import com.noah.superagent.dao.mapper.ResourceUsageRecordMapper;
 import com.noah.superagent.service.ResourceUsageService;
-import com.noah.superagent.service.CreditConsumeService;
+import com.noah.superagent.service.CreditDeductionTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -37,7 +37,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
 
     private final ResourceUsageRecordMapper resourceUsageRecordMapper;
     private final BillingProperties billingProperties;
-    private final CreditConsumeService creditConsumeService;
+    private final CreditDeductionTaskService creditDeductionTaskService;
 
     /**
      * 异步记录资源使用量
@@ -70,20 +70,21 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
             log.info("资源使用量记录成功 - reportId: {}, 消耗积分: {}, taskType: {}", 
                 reportId, record.getBillingAmount(), request.getTaskType());
 
-            // 4. 扣除用户积分
+            // 4. 立即调度积分扣减任务
             try {
-                creditConsumeService.consumeCredits(
-                    request.getUserId(), 
-                    record.getBillingAmount(), 
-                    String.format("资源使用扣费 - %s", request.getTaskType()), 
-                    null
+                String taskId = creditDeductionTaskService.scheduleImmediateCreditDeduction(
+                    request.getUserId(),
+                    record.getBillingAmount(),
+                    String.format("资源使用扣费 - %s", request.getTaskType()),
+                    null,
+                    record.getId()
                 );
-                log.info("用户积分扣费成功 - userId: {}, 扣费积分: {}", 
-                         request.getUserId(), record.getBillingAmount());
+                log.info("积分扣减任务调度成功 - userId: {}, taskId: {}, 扣费积分: {}", 
+                         request.getUserId(), taskId, record.getBillingAmount());
             } catch (Exception e) {
-                log.error("积分扣费失败 - userId: {}, 扣费积分: {}, 错误: {}", 
+                log.error("调度积分扣减任务失败 - userId: {}, 扣费积分: {}, 错误: {}", 
                           request.getUserId(), record.getBillingAmount(), e.getMessage(), e);
-                // 注意：这里不抛出异常，记录已保存，积分扣费失败可以异步重试或人工处理
+                // 注意：这里不抛出异常，记录已保存，可以通过清理任务重新处理
             }
 
             return CompletableFuture.completedFuture(

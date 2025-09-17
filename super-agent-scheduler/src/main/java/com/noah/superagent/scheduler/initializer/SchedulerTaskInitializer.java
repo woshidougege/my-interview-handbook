@@ -1,6 +1,7 @@
 package com.noah.superagent.scheduler.initializer;
 
 import com.github.kagkarlsson.scheduler.Scheduler;
+import com.noah.superagent.scheduler.job.CreditDeductionTaskJob;
 import com.noah.superagent.scheduler.job.CreditExpiryCleanupJob;
 import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,9 @@ public class SchedulerTaskInitializer implements ApplicationRunner {
             
             // 检查并启动支付状态同步任务
             ensureTaskRunning(PaymentStatusSyncJob.getJobTaskName(), "支付状态同步任务");
+            
+            // 检查并启动积分扣减清理任务
+            ensureTaskRunning(CreditDeductionTaskJob.getCleanupTaskName(), "积分扣减清理任务");
             
             log.info("所有定时任务初始化完成");
             
