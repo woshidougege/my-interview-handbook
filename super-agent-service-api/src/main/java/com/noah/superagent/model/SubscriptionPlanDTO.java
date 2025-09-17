@@ -107,4 +107,9 @@ public class SubscriptionPlanDTO extends BaseDTO {
      * 积分数量（积分套餐专用）
      */
     private Long creditsAmount;
+
+    /**
+     * 是否可订阅（用于前端按钮状态控制）
+     */
+    private Boolean isSubscribable;
 }

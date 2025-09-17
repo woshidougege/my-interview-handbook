@@ -72,6 +72,7 @@ export interface SubscriptionPlan {
   enabled: boolean;
   isRecommended: boolean;
   isCurrentPlan: boolean;          // 是否为用户当前套餐
+  isSubscribable: boolean;         // 是否可订阅（用于按钮状态控制）
   sortOrder: number;
 }
 

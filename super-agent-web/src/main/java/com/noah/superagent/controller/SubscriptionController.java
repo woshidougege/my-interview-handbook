@@ -214,14 +214,8 @@ public class SubscriptionController {
             log.debug("获取当前用户信息失败，继续返回套餐列表 - 错误: {}", e.getMessage());
         }
         
-        // Service层返回DTO（配置文件中已包含完整价格信息）
-        List<com.noah.superagent.model.SubscriptionPlanDTO> planDTOs = subscriptionPlanService.getEnabledPlans();
-        
-        // 标识当前套餐（价格信息已在Service层计算完成）
-        final Long finalCurrentUserPlanId = currentUserPlanId;
-        planDTOs.forEach(planDTO -> {
-            planDTO.setIsCurrentPlan(finalCurrentUserPlanId != null && finalCurrentUserPlanId.equals(planDTO.getId()));
-        });
+        // Service层返回带有状态标识的DTO列表（业务逻辑在Service层处理）
+        List<com.noah.superagent.model.SubscriptionPlanDTO> planDTOs = subscriptionPlanService.getEnabledPlansWithStatus(currentUserPlanId);
         
         // Web层组装Response
         PlansListResponse response = new PlansListResponse();

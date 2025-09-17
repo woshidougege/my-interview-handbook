@@ -121,4 +121,10 @@ public class SubscriptionPlanResponse extends BaseResponse {
      */
     @Schema(description = "积分数量（积分套餐专用）", example = "10000")
     private Long creditsAmount;
+
+    /**
+     * 是否可订阅（用于前端按钮状态控制）
+     */
+    @Schema(description = "是否可订阅（true-显示可点击按钮，false-显示置灰按钮）", example = "true")
+    private Boolean isSubscribable;
 }

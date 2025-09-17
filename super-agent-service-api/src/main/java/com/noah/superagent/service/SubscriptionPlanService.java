@@ -1,6 +1,5 @@
 package com.noah.superagent.service;
 
-import com.noah.superagent.common.enums.BillingCycleEnum;
 import com.noah.superagent.model.SubscriptionPlanDTO;
 
 import java.util.List;
@@ -28,4 +27,13 @@ public interface SubscriptionPlanService {
      * @return 套餐信息
      */
     SubscriptionPlanDTO getPlanById(Long planId);
+
+    /**
+     * 获取带有当前套餐和可订阅状态的套餐列表
+     * 用于前端展示套餐卡片时的状态控制
+     *
+     * @param currentUserPlanId 用户当前套餐ID（可为空）
+     * @return 带有状态标识的套餐列表
+     */
+    List<SubscriptionPlanDTO> getEnabledPlansWithStatus(Long currentUserPlanId);
 }

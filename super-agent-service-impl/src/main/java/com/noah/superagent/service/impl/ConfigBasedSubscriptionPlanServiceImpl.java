@@ -84,6 +84,43 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
         return dto;
     }
 
+    @Override
+    public List<SubscriptionPlanDTO> getEnabledPlansWithStatus(Long currentUserPlanId) {
+        log.info("获取带状态的启用套餐列表 - currentUserPlanId: {}", currentUserPlanId);
+        
+        List<SubscriptionPlanDTO> planDTOs = getEnabledPlans();
+        
+        // 设置套餐状态逻辑
+        planDTOs.forEach(planDTO -> {
+            // 判断套餐类型
+            boolean isCreditPack = planDTO.getPlanCode() != null && planDTO.getPlanCode().isCreditPack();
+            boolean isFreePlan = planDTO.getPlanCode() != null && planDTO.getPlanCode().isFree();
+            
+            // 设置是否为当前套餐：积分套餐永远显示false，其他套餐按用户当前订阅判断
+            if (isCreditPack) {
+                // 积分套餐永远不是"当前计划"
+                planDTO.setIsCurrentPlan(false);
+            } else {
+                // 其他套餐（包括免费版）按正常逻辑判断
+                planDTO.setIsCurrentPlan(currentUserPlanId != null && currentUserPlanId.equals(planDTO.getId()));
+            }
+            
+            // 设置是否可订阅
+            if (isCreditPack) {
+                // 积分套餐一直可以购买
+                planDTO.setIsSubscribable(true);
+            } else if (isFreePlan) {
+                // 免费版永远不能订阅（总是置灰）
+                planDTO.setIsSubscribable(false);
+            } else {
+                // 其他付费套餐：如果是当前套餐则不可订阅，否则可以订阅
+                planDTO.setIsSubscribable(!planDTO.getIsCurrentPlan());
+            }
+        });
+        
+        return planDTOs;
+    }
+
     /**
      * 计算价格相关字段
      * 支持配置文件控制：-1表示自动计算，否则使用配置值

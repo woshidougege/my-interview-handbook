@@ -40,6 +40,7 @@ interface Plan {
   discountPercentageText: string; // 优惠百分比显示文本（后端提供）
   creditsAmount?: number; // 积分数量（积分套餐专用）
   isCurrent: boolean;
+  isSubscribable?: boolean; // 是否可订阅（用于按钮状态控制）
   buttonText: string;
   buttonType: 'default' | 'primary';
   isCreditsOnly?: boolean;
@@ -97,6 +98,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
         discountPercentageText: discountText,
         creditsAmount: plan.creditsAmount,
         isCurrent: plan.isCurrentPlan || false,
+        isSubscribable: plan.isSubscribable !== false, // 默认为true，除非明确为false
         buttonText: plan.isCurrentPlan ? '当前计划' : (plan.planCode === 'CREDIT_PACK' ? '立即购买' : '订阅'),
         buttonType: plan.isCurrentPlan ? 'default' as const : 'primary' as const,
         isCreditsOnly: plan.planCode === 'CREDIT_PACK',
@@ -375,27 +377,27 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
                   type={plan.buttonType}
                   block
                   size="middle"
-                  disabled={plan.isCurrent}
+                  disabled={!plan.isSubscribable}
                   onClick={() => handleSubscribe(plan.id)}
                   style={{
                     height: '40px',
                     borderRadius: '6px',
                     fontWeight: 500,
                     fontSize: '14px',
-                    background: plan.isCurrent 
+                    background: !plan.isSubscribable 
                       ? '#f5f5f5' 
                       : plan.buttonType === 'primary' 
                       ? '#000000'
                       : '#ffffff',
-                    borderColor: plan.isCurrent 
+                    borderColor: !plan.isSubscribable 
                       ? '#d9d9d9' 
                       : '#000000',
-                    color: plan.isCurrent 
+                    color: !plan.isSubscribable 
                       ? '#999' 
                       : plan.buttonType === 'primary' 
                       ? '#ffffff'
                       : '#000000',
-                    border: plan.isCurrent ? '1px solid #d9d9d9' : '1px solid #000000'
+                    border: !plan.isSubscribable ? '1px solid #d9d9d9' : '1px solid #000000'
                   }}
                 >
                   {plan.buttonText}
