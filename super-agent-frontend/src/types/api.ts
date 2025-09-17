@@ -165,11 +165,27 @@ export interface SubscriptionCreateRequest {
   paymentMethod: string;
 }
 
+// ========== 用户订阅响应类型 ==========
+export interface UserSubscriptionResponse {
+  subscription: SubscriptionInfo | null;
+  planName: string;
+  planCode: string;
+}
+
 // ========== 积分相关类型 ==========
 export interface CreditBalance {
   availableCredits: number;
   totalCredits: number;
   usedCredits: number;
+}
+
+// ========== 用户积分详情响应类型 ==========
+export interface UserCreditDetailsResponse {
+  totalBalance: string; // 总积分
+  dailyRefreshCredits: string; // 当日刷新积分
+  permanentCredits: string; // 永久积分
+  limitedCredits: string; // 限时积分
+  hasCreditAccount: boolean; // 是否有积分账户
 }
 
 export interface CreditTransaction {
@@ -188,6 +204,27 @@ export interface CreditConsumeRequest {
 export interface CreditRechargeRequest {
   amount: number;
   paymentMethod: string;
+}
+
+// ========== 积分购买配置相关类型 ==========
+export interface CreditPurchaseConfig {
+  planName: string;
+  planCode: string;
+  creditValidityDays: number; // 积分有效期天数，0表示永久有效
+  availableCredits: string; // 可用积分总数
+  dailyRefreshCredits: string; // 每日刷新积分
+  limitedCredits: string; // 限时积分
+  creditPackages: CreditPackageConfig[];
+}
+
+export interface CreditPackageConfig {
+  id: string;
+  name: string;
+  code: string;
+  creditsAmount: number;
+  price: number;
+  isRecommended: boolean;
+  features: string[];
 }
 
 // ========== 资源使用相关类型 ==========

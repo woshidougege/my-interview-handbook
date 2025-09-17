@@ -7,6 +7,7 @@ import com.noah.superagent.common.dto.RefundRequest;
 import com.noah.superagent.common.dto.RefundResponse;
 import com.noah.superagent.common.dto.PaymentStatusEvent;
 import com.noah.superagent.common.constants.PaymentStatus;
+import com.noah.superagent.common.config.CreditPurchaseConfig;
 import org.springframework.context.ApplicationEventPublisher;
 import com.noah.superagent.dao.entity.PaymentRecordEntity;
 import com.noah.superagent.dao.entity.SubscriptionOrderEntity;
@@ -62,6 +63,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserCreditService userCreditService;
     private final UserSubscriptionMapper userSubscriptionMapper;
     private final WxPayService wxPayService;
+    private final CreditPurchaseConfig creditPurchaseConfig;
     
     // 使用ApplicationEventPublisher发布支付状态事件，避免循环依赖
     @Autowired
@@ -92,9 +94,30 @@ public class PaymentServiceImpl implements PaymentService {
             }
 
             // 3. 计算订单金额
-            BigDecimal amount = "monthly".equals(request.getBillingCycle()) 
-                ? plan.getMonthlyPrice() 
-                : plan.getYearlyPrice();
+            BigDecimal amount;
+            String actualPlanName = plan.getPlanName();
+            
+            // 如果是购买积分套餐(ID=100)，需要特殊处理
+            if (request.getPlanId() == 100L) {
+                if (request.getCreditPackageId() == null || request.getCreditPackageId().isEmpty()) {
+                    throw new RuntimeException("购买积分时必须指定积分包ID");
+                }
+                
+                // 从积分购买配置中获取对应的积分包
+                CreditPurchaseConfig.CreditPackageConfig creditPackage = creditPurchaseConfig.getPackages()
+                    .stream()
+                    .filter(pkg -> pkg.getId().equals(request.getCreditPackageId()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("积分包不存在: " + request.getCreditPackageId()));
+                
+                amount = creditPackage.getPrice();
+                actualPlanName = creditPackage.getName(); // 使用积分包名称
+            } else {
+                // 普通套餐订阅
+                amount = "monthly".equals(request.getBillingCycle()) 
+                    ? plan.getMonthlyPrice() 
+                    : plan.getYearlyPrice();
+            }
 
             // 4. 创建订单
             String orderNo = generateOrderNo();
@@ -102,12 +125,17 @@ public class PaymentServiceImpl implements PaymentService {
             order.setOrderNo(orderNo);
             order.setUserId(userId);
             order.setPlanId(request.getPlanId());
-            order.setPlanName(plan.getPlanName());
+            order.setPlanName(actualPlanName);
             order.setAmount(amount);
             order.setBillingCycle(request.getBillingCycle());
             order.setStatus(PaymentStatus.WAITING.getValue());
             order.setPaymentMethod("wechat");
             order.setExpiredAt(LocalDateTime.now().plusMinutes(15)); // 15分钟后过期
+            
+            // 如果是积分购买，在备注中保存积分包ID
+            if (request.getPlanId() == 100L && request.getCreditPackageId() != null) {
+                order.setRemark("credit_package_id:" + request.getCreditPackageId());
+            }
             
             subscriptionOrderMapper.insert(order);
 
@@ -357,6 +385,22 @@ public class PaymentServiceImpl implements PaymentService {
         return "ORDER_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
+    /**
+     * 从订单备注中提取积分包ID
+     */
+    private String extractCreditPackageId(String remark) {
+        if (remark == null || remark.isEmpty()) {
+            return null;
+        }
+        
+        String prefix = "credit_package_id:";
+        if (remark.startsWith(prefix)) {
+            return remark.substring(prefix.length());
+        }
+        
+        return null;
+    }
+
 
     /**
      * 处理支付成功的业务逻辑
@@ -395,38 +439,77 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentRecordMapper.update(payment);
             }
 
-            // 4. 发放积分
+            // 4. 处理积分发放和订阅激活
             SubscriptionPlanDTO plan = subscriptionPlanService.getPlanById(order.getPlanId());
             if (plan != null) {
-                try {
-                    // 从配置文件获取套餐积分数量
-                    String planIdStr = String.valueOf(order.getPlanId());
-                    Integer creditAmount = planCreditsConfig.get(planIdStr);
-                    
-                    if (creditAmount != null && creditAmount > 0) {
-                        userCreditService.grantPaidPlanCredits(
-                            order.getUserId(), 
-                            creditAmount.longValue(), 
-                            order.getId(), 
-                            plan.getPlanName()
-                        );
-                        log.info("套餐积分发放成功 - planId: {}, creditAmount: {}", order.getPlanId(), creditAmount);
-                    } else {
-                        log.info("套餐不包含积分或积分为0 - planId: {}", order.getPlanId());
+                // 检查是否是积分购买订单
+                if (order.getPlanId() == 100L) {
+                    // 积分购买订单的特殊处理
+                    try {
+                        // 从备注中提取积分包ID
+                        String creditPackageId = extractCreditPackageId(order.getRemark());
+                        if (creditPackageId != null) {
+                            // 从积分购买配置中获取积分数量
+                            CreditPurchaseConfig.CreditPackageConfig creditPackage = creditPurchaseConfig.getPackages()
+                                .stream()
+                                .filter(pkg -> pkg.getId().equals(creditPackageId))
+                                .findFirst()
+                                .orElse(null);
+                            
+                            if (creditPackage != null) {
+                                // 发放积分（使用永久积分类型）
+                                userCreditService.grantPaidPlanCredits(
+                                    order.getUserId(),
+                                    creditPackage.getCreditsAmount(),
+                                    order.getId(),
+                                    creditPackage.getName()
+                                );
+                                log.info("积分购买发放成功 - packageId: {}, creditAmount: {}", 
+                                    creditPackageId, creditPackage.getCreditsAmount());
+                            } else {
+                                log.error("积分包配置不存在: creditPackageId={}", creditPackageId);
+                            }
+                        } else {
+                            log.error("无法从订单备注中提取积分包ID: remark={}", order.getRemark());
+                        }
+                    } catch (Exception e) {
+                        log.error("积分购买发放失败: userId={}, orderId={}, error={}", 
+                            order.getUserId(), order.getId(), e.getMessage(), e);
+                        // 积分发放失败不影响支付成功状态，但需要记录日志用于后续处理
                     }
+                    // 注意：积分购买不需要激活订阅
+                } else {
+                    // 普通订阅套餐的处理
+                    try {
+                        // 从配置文件获取套餐积分数量
+                        String planIdStr = String.valueOf(order.getPlanId());
+                        Integer creditAmount = planCreditsConfig.get(planIdStr);
                         
-                } catch (Exception e) {
-                    log.error("发放积分失败: userId={}, planName={}, error={}", 
-                        order.getUserId(), plan.getPlanName(), e.getMessage(), e);
-                    // 积分发放失败不影响支付成功状态，但需要记录日志用于后续处理
-                }
-                
-                // 激活用户订阅
-                try {
-                    activateUserSubscription(order);
-                } catch (Exception e) {
-                    log.error("激活用户订阅失败: userId={}, planId={}, orderId={}, error={}", 
-                        order.getUserId(), order.getPlanId(), order.getId(), e.getMessage(), e);
+                        if (creditAmount != null && creditAmount > 0) {
+                            userCreditService.grantPaidPlanCredits(
+                                order.getUserId(), 
+                                creditAmount.longValue(), 
+                                order.getId(), 
+                                plan.getPlanName()
+                            );
+                            log.info("套餐积分发放成功 - planId: {}, creditAmount: {}", order.getPlanId(), creditAmount);
+                        } else {
+                            log.info("套餐不包含积分或积分为0 - planId: {}", order.getPlanId());
+                        }
+                            
+                    } catch (Exception e) {
+                        log.error("发放积分失败: userId={}, planName={}, error={}", 
+                            order.getUserId(), plan.getPlanName(), e.getMessage(), e);
+                        // 积分发放失败不影响支付成功状态，但需要记录日志用于后续处理
+                    }
+                    
+                    // 激活用户订阅
+                    try {
+                        activateUserSubscription(order);
+                    } catch (Exception e) {
+                        log.error("激活用户订阅失败: userId={}, planId={}, orderId={}, error={}", 
+                            order.getUserId(), order.getPlanId(), order.getId(), e.getMessage(), e);
+                    }
                 }
             }
             

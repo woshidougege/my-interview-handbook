@@ -119,9 +119,9 @@ super-agent:
             highlight: true
             included: true
             
-      # 额外购买积分
+      # 购买积分套餐
       - id: "100"
-        name: "额外购买积分"
+        name: "购买积分"
         code: "CREDIT_PACK"
         description: "直接购买永久积分，无订阅期限"
         # 价格配置（积分包无优惠，原价即最终价）
@@ -132,7 +132,7 @@ super-agent:
         monthly-savings: 0              # 月价优惠金额（无优惠）
         yearly-savings: 0               # 年价优惠金额（无优惠）
         credits-amount: 10000           # 积分数量
-        validity-days: 0
+        validity-days: 0                # 有效期0表示永久有效
         sort-order: 4
         is-recommended: false
         enabled: true
@@ -149,6 +149,52 @@ super-agent:
           - text: "约生成10-14个图片"
             highlight: false
             included: true
-          - text: "约2分4个套餐"
+          - text: "约分析4-7个表格"
             highlight: false
             included: true
+
+  # 积分购买配置（独立于套餐配置）
+  credit-purchase:
+    # 积分有效期（0表示永久有效）
+    validity-days: 0
+    
+    # 积分包配置列表
+    packages:
+      - id: "100"
+        name: "10000积分"
+        credits-amount: 10000
+        price: 59
+        is-recommended: false
+        description: "适合轻度使用"
+        features:
+          - "约生成10-14个PPT"
+          - "约生成7-9个深度研究报告"
+          - "约生成2-4个网站"
+          - "约生成10-14个图片"
+          - "约分析4-7个表格"
+          
+      - id: "101"
+        name: "20000积分"
+        credits-amount: 20000
+        price: 99
+        is-recommended: false
+        description: "适合中度使用"
+        features:
+          - "约生成20-28个PPT"
+          - "约生成14-18个深度研究报告"
+          - "约生成4-8个网站"
+          - "约生成20-28个图片"
+          - "约分析8-14个表格"
+          
+      - id: "102"
+        name: "50000积分"
+        credits-amount: 50000
+        price: 199
+        is-recommended: true
+        description: "适合重度使用，最划算"
+        features:
+          - "约生成50-70个PPT"
+          - "约生成35-45个深度研究报告"
+          - "约生成10-20个网站"
+          - "约生成50-70个图片"
+          - "约分析20-35个表格"

@@ -20,10 +20,13 @@ import {
   PaymentInfo,
   SubscriptionCreateRequest,
   SubscriptionInfo,
+  UserSubscriptionResponse,
   CreditBalance,
   CreditTransaction,
   CreditConsumeRequest,
   CreditRechargeRequest,
+  UserCreditDetailsResponse,
+  CreditPurchaseConfig,
   ResourceUsageReport,
   PageRequest,
   PageResponse,
@@ -137,10 +140,10 @@ export const subscriptionApi = {
     return api.get(API_ENDPOINTS.SUBSCRIPTION.LIST);
   },
   
-  // 获取当前订阅和积分信息（已整合积分数量）
-  getCurrentSubscription: (): ApiPromise<any> => {
-    // 注意：该接口现在同时返回订阅信息和积分数量，不再需要单独调用积分接口
-    // 返回格式: { subscription: SubscriptionInfo, availableCredits: number, hasCreditAccount: boolean }
+  // 获取当前订阅信息（仅返回订阅信息，积分信息通过独立接口获取）
+  getCurrentSubscription: (): ApiPromise<UserSubscriptionResponse> => {
+    // 注意：该接口现在仅返回订阅信息，积分信息需要单独调用 creditApi.getCreditDetails
+    // 返回格式: { subscription: SubscriptionInfo, planName: string, planCode: string }
     return api.get(API_ENDPOINTS.SUBSCRIPTION.CURRENT);
   },
   
@@ -173,6 +176,11 @@ export const subscriptionApi = {
   // 向后兼容的API
   getPlansOld: (): Promise<AxiosResponse<ApiResponse<any[]>>> => {
     return api.get(API_ENDPOINTS.LEGACY.SUBSCRIPTION_PLANS);
+  },
+
+  // 获取积分购买配置
+  getCreditPurchaseConfig: (): ApiPromise<CreditPurchaseConfig> => {
+    return api.get(API_ENDPOINTS.SUBSCRIPTION.CREDIT_PURCHASE_CONFIG);
   },
 };
 
@@ -264,6 +272,7 @@ export const paymentApi = {
     planId: number;
     billingCycle: string;
     paymentMethod: string;
+    creditPackageId?: string;
   }): Promise<AxiosResponse<ApiResponse<any>>> => {
     return api.post(API_ENDPOINTS.LEGACY.PAYMENT_CREATE, data);
   },
@@ -304,7 +313,7 @@ export const aiApi = {
 // ========== 工作空间相关API ==========
 export const workspaceApi = {
   // 获取当前用户的工作空间列表
-  getWorkspaces: async (): ApiPromise<WorkspaceInfo[]> => {
+  getWorkspaces: async (): Promise<AxiosResponse<ApiResponse<WorkspaceInfo[]>>> => {
     // 先获取当前用户信息
     const userResponse = await userApi.getCurrentUser();
     const userId = userResponse.data.data.userId;

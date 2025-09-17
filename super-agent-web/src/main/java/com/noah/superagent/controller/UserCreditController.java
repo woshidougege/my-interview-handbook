@@ -2,7 +2,7 @@ package com.noah.superagent.controller;
 
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
-import com.noah.superagent.common.dto.response.UserCreditStatusResponse;
+import com.noah.superagent.common.dto.response.UserCreditDetailsResponse;
 import com.noah.superagent.common.dto.response.CreditTransactionResponse;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.service.UserCreditService;
@@ -32,42 +32,69 @@ public class UserCreditController {
 
     private final UserCreditService userCreditService;
 
-    @Operation(
-        summary = "获取当前用户积分完整状态",
-        description = "获取当前登录用户的完整积分状态信息，包括:\n" +
-                "- 总积分余额和各类型积分详情\n" +
-                "- 透支额度、欠费状态、账户状态\n" +
-                "- 积分过期情况和有效期信息\n" +
-                "- 适用于积分管理界面的完整展示"
-    )
-    @SecurityRequirement(name = "Bearer Authentication")
-    @GetMapping("/status")
-    public ApiResponse<UserCreditStatusResponse> getCreditStatus() {
-        Long userId = UserContext.requireCurrentUserId();
-        log.info("查询用户积分完整状态 - userId: {}", userId);
-        
-        try {
-            UserCreditStatusResponse creditStatus = userCreditService.getUserCreditStatus(userId);
-            return ApiResponse.success("获取积分状态成功", creditStatus);
-        } catch (Exception e) {
-            log.error("查询用户积分状态失败 - userId: {}, 错误: {}", userId, e.getMessage(), e);
-            return ApiResponse.error("查询失败: " + e.getMessage());
-        }
-    }
 
     @Operation(
         summary = "获取当前用户积分详情",
-        description = "获取当前登录用户的详细积分信息，包括各类型积分余额、累计获得/消费积分等"
+        description = "获取当前登录用户的积分详情，仅包含积分数据（总积分、当日刷新积分、永久积分、限时积分），订阅信息通过独立接口获取"
     )
     @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/details")
-    public ApiResponse<UserCreditResponse> getCreditDetails() {
+    public ApiResponse<UserCreditDetailsResponse> getCreditDetails() {
         Long userId = UserContext.requireCurrentUserId();
         log.info("查询用户积分详情 - userId: {}", userId);
         
         try {
-            UserCreditResponse creditDetails = userCreditService.getUserCredit(userId);
-            return ApiResponse.success("获取积分详情成功", creditDetails);
+            boolean hasCreditAccount = false;
+            long totalBalance = 0L;
+            long limitedCredits = 0L;
+            long dailyRefreshCredits = 0L;
+            long permanentCredits = 0L;
+            
+            // 检查用户是否有积分账户
+            hasCreditAccount = userCreditService.hasUserCredit(userId);
+            if (!hasCreditAccount) {
+                // 用户首次访问，自动初始化积分账户
+                log.info("用户首次访问，自动初始化积分账户 - userId: {}", userId);
+                userCreditService.initFreePlanForUser(userId);
+                
+                // 立即发放当日积分
+                try {
+                    userCreditService.giveFreePlanDailyBonusOnLogin(userId);
+                    log.info("用户首次登录积分发放成功 - userId: {}", userId);
+                } catch (Exception dailyBonusError) {
+                    log.warn("发放每日积分失败，但不影响账户初始化 - userId: {}, 错误: {}", userId, dailyBonusError.getMessage());
+                }
+                
+                hasCreditAccount = true;
+            }
+
+            if (hasCreditAccount) {
+                // 获取详细积分信息
+                var creditDetail = userCreditService.getUserCredit(userId);
+                if (creditDetail != null) {
+                    totalBalance = creditDetail.getTotalBalance() != null ? creditDetail.getTotalBalance().longValue() : 0L;
+
+                    // 限时积分 = 免费积分 + 活动积分
+                    limitedCredits = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
+                                    (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
+
+                    // 当日刷新积分
+                    dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
+
+                    // 永久积分
+                    permanentCredits = creditDetail.getPermanentBalance() != null ? creditDetail.getPermanentBalance().longValue() : 0L;
+                }
+            }
+            
+            // 构建响应
+            UserCreditDetailsResponse response = new UserCreditDetailsResponse();
+            response.setTotalBalance(String.valueOf(totalBalance));
+            response.setDailyRefreshCredits(String.valueOf(dailyRefreshCredits));
+            response.setPermanentCredits(String.valueOf(permanentCredits));
+            response.setLimitedCredits(String.valueOf(limitedCredits));
+            response.setHasCreditAccount(hasCreditAccount);
+            
+            return ApiResponse.success("获取积分详情成功", response);
         } catch (Exception e) {
             log.error("查询用户积分详情失败 - userId: {}, 错误: {}", userId, e.getMessage(), e);
             return ApiResponse.error("查询失败: " + e.getMessage());

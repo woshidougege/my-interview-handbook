@@ -13,17 +13,23 @@ import java.util.List;
 @Schema(description = "积分购买配置响应数据")
 public class CreditPurchaseConfigResponse {
 
-    @Schema(description = "当前套餐信息", example = "基础版用户")
-    private String currentPlan;
+    @Schema(description = "当前套餐名称", example = "基础版")
+    private String planName;
 
-    @Schema(description = "当前套餐代码", example = "BASIC")
-    private String currentPlanCode;
+    @Schema(description = "当前套餐代码", example = "basic")
+    private String planCode;
 
     @Schema(description = "积分有效期天数，0表示永久有效", example = "0")
     private Integer creditValidityDays;
 
-    @Schema(description = "微信支付二维码", example = "微信支付二维码")
-    private String wechatPaymentQrCode;
+    @Schema(description = "可用积分总数", example = "3200")
+    private String availableCredits;
+
+    @Schema(description = "每日刷新积分", example = "300")
+    private String dailyRefreshCredits;
+
+    @Schema(description = "限时积分", example = "0")
+    private String limitedCredits;
 
     @Schema(description = "积分套餐配置列表")
     private List<CreditPackageConfig> creditPackages;
