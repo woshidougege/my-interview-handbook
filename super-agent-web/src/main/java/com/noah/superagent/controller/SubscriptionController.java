@@ -1,10 +1,12 @@
 package com.noah.superagent.controller;
 
 import com.noah.superagent.common.dto.response.PlansListResponse;
+import com.noah.superagent.common.dto.response.CreditPurchaseConfigResponse;
+import com.noah.superagent.common.config.CreditPurchaseConfig;
 import com.noah.superagent.convert.SubscriptionPlanWebConvert;
 import com.noah.superagent.model.UserSubscriptionDTO;
 import com.noah.superagent.response.ApiResponse;
-import com.noah.superagent.response.UserSubscriptionWithCreditResponse;
+import com.noah.superagent.response.UserSubscriptionResponse;
 import com.noah.superagent.service.SubscriptionPlanService;
 import com.noah.superagent.service.UserSubscriptionService;
 import com.noah.superagent.service.UserCreditService;
@@ -38,6 +40,7 @@ public class SubscriptionController {
     private final SubscriptionPlanWebConvert webConvert;
     private final UserSubscriptionService userSubscriptionService;
     private final UserCreditService userCreditService;
+    private final CreditPurchaseConfig creditPurchaseConfig;
 
     /**
      * 按年订阅优惠比例（Web层配置）
@@ -230,17 +233,15 @@ public class SubscriptionController {
     }
 
     @Operation(
-        summary = "获取当前登录用户的有效订阅信息以及可用积分总数",
-        description = "获取当前登录用户的有效订阅信息以及可用积分总数。该接口整合了订阅和积分信息，一次调用即可获取用户的完整状态。" +
+        summary = "获取当前登录用户的有效订阅信息",
+        description = "获取当前登录用户的有效订阅信息。该接口仅返回订阅相关信息，积分信息通过独立接口获取。" +
             "功能说明：" +
             "- 查询用户当前有效的订阅信息（如果存在）" +
-            "- 查询用户可用积分总数" +
-            "- 查询用户是否有积分账户" +
-            "- 积分查询失败不影响订阅信息返回。" +
+            "- 查询套餐名称和代码" +
             "返回数据说明：" +
             "- subscription: 用户当前有效订阅，无订阅时为null" +
-            "- availableCredits: 用户可用积分总数" +
-            "- hasCreditAccount: 用户是否有积分账户",
+            "- planName: 套餐名称" +
+            "- planCode: 套餐代码",
         tags = {"订阅管理"}
     )
     @SecurityRequirement(name = "Bearer Authentication")
@@ -366,23 +367,17 @@ public class SubscriptionController {
         )
     })
     @GetMapping("/current")
-    public ApiResponse<UserSubscriptionWithCreditResponse> getCurrentSubscriptionWithCredit() {
+    public ApiResponse<UserSubscriptionResponse> getCurrentSubscription() {
         
         Long userId = UserContext.requireCurrentUserId();
-        log.info("查询用户当前订阅和积分信息 - userId: {}", userId);
+        log.info("查询用户当前订阅信息 - userId: {}", userId);
         
         try {
             // 查询用户当前有效订阅
             UserSubscriptionDTO subscription = userSubscriptionService.getCurrentActiveSubscription(userId);
             
-            // 查询用户可用积分
-            long availableCredits = 0L;
-            boolean hasCreditAccount = false;
             String planName = null;
             String planCode = null;
-            long limitedCredits = 0L;
-            long dailyRefreshCredits = 0L;
-            long permanentCredits = 0L;
             
             // 获取套餐名称和代码
             if (subscription != null && subscription.getPlanId() != null) {
@@ -397,73 +392,188 @@ public class SubscriptionController {
                 }
             }
             
+            // 构建响应
+            UserSubscriptionResponse response = new UserSubscriptionResponse();
+            response.setSubscription(subscription);
+            response.setPlanName(planName);
+            response.setPlanCode(planCode);
+            
+            return ApiResponse.success("获取订阅信息成功", response);
+            
+        } catch (Exception e) {
+            log.error("获取用户订阅信息失败 - userId: {}, 错误: {}", userId, e.getMessage(), e);
+            return ApiResponse.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    @Operation(
+        summary = "获取积分购买配置",
+        description = "获取购买积分窗口所需的数据，包括价格配置、当前套餐信息和积分有效期",
+        tags = {"订阅管理"}
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200", 
+            description = "获取成功",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ApiResponse.class),
+                examples = {
+                    @ExampleObject(
+                        name = "成功响应示例",
+                        description = "返回积分购买配置信息",
+                        value = "{" +
+                        "\"code\": 200," +
+                        "\"message\": \"获取积分购买配置成功\"," +
+                        "\"data\": {" +
+                            "\"planName\": \"基础版\"," +
+                            "\"planCode\": \"basic\"," +
+                            "\"creditValidityDays\": 0," +
+                            "\"availableCredits\": \"3200\"," +
+                            "\"dailyRefreshCredits\": \"300\"," +
+                            "\"limitedCredits\": \"0\"," +
+                            "\"creditPackages\": [" +
+                            "{" +
+                                "\"id\": \"100\"," +
+                                "\"name\": \"10000积分\"," +
+                                "\"code\": \"CREDIT_PACK_10000\"," +
+                                "\"creditsAmount\": 10000," +
+                                "\"price\": 59," +
+                                "\"isRecommended\": false," +
+                                "\"features\": [\"约生成10-14个PPT\", \"约生成7-9个深度研究报告\"]" +
+                            "}," +
+                            "{" +
+                                "\"id\": \"101\"," +
+                                "\"name\": \"20000积分\"," +
+                                "\"code\": \"CREDIT_PACK_20000\"," +
+                                "\"creditsAmount\": 20000," +
+                                "\"price\": 99," +
+                                "\"isRecommended\": false," +
+                                "\"features\": [\"约生成10-14个PPT\", \"约生成7-9个深度研究报告\"]" +
+                            "}," +
+                            "{" +
+                                "\"id\": \"102\"," +
+                                "\"name\": \"50000积分\"," +
+                                "\"code\": \"CREDIT_PACK_50000\"," +
+                                "\"creditsAmount\": 50000," +
+                                "\"price\": 199," +
+                                "\"isRecommended\": true," +
+                                "\"features\": [\"约生成10-14个PPT\", \"约生成7-9个深度研究报告\"]" +
+                            "}" +
+                            "]" +
+                        "}," +
+                        "\"success\": true," +
+                        "\"timestamp\": 1736752800000" +
+                    "}"
+                    )
+                }
+            )
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "401", 
+            description = "未登录或token无效"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "500", 
+            description = "系统内部错误"
+        )
+    })
+    @GetMapping("/credit-purchase-config")
+    public ApiResponse<CreditPurchaseConfigResponse> getCreditPurchaseConfig() {
+        
+        Long userId = UserContext.requireCurrentUserId();
+        log.info("获取用户积分购买配置 - userId: {}", userId);
+        
+        try {
+            CreditPurchaseConfigResponse response = new CreditPurchaseConfigResponse();
+            
+            // 获取当前用户订阅信息
+            String planName = "免费版";
+            String planCode = "free";
+            
             try {
-                hasCreditAccount = userCreditService.hasUserCredit(userId);
+                UserSubscriptionDTO subscription = userSubscriptionService.getCurrentActiveSubscription(userId);
+                if (subscription != null && subscription.getPlanId() != null) {
+                    var plan = subscriptionPlanService.getPlanById(subscription.getPlanId());
+                    if (plan != null) {
+                        planName = plan.getPlanName();
+                        planCode = plan.getPlanCode() != null ? plan.getPlanCode().getCode() : null;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("查询用户订阅信息失败 - userId: {}, 错误: {}", userId, e.getMessage());
+            }
+            
+            // 获取当前用户积分信息
+            String availableCredits = "0";
+            String dailyRefreshCredits = "0";
+            String limitedCredits = "0";
+            
+            try {
+                boolean hasCreditAccount = userCreditService.hasUserCredit(userId);
                 if (!hasCreditAccount) {
-                    // 用户首次登录，自动初始化积分账户
-                    log.info("用户首次登录，自动初始化积分账户 - userId: {}", userId);
+                    // 用户首次访问，自动初始化积分账户
                     userCreditService.initFreePlanForUser(userId);
-                    
-                    // TODO: 创建免费套餐订阅记录
-                    // 暂时跳过订阅记录创建，专注解决积分详情问题
-                    
-                    // 立即发放当日积分（使用新的登录时发放逻辑）
                     try {
                         userCreditService.giveFreePlanDailyBonusOnLogin(userId);
-                        log.info("用户首次登录积分发放成功 - userId: {}", userId);
                     } catch (Exception dailyBonusError) {
-                        log.warn("发放每日积分失败，但不影响账户初始化 - userId: {}, 错误: {}", userId, dailyBonusError.getMessage());
+                        log.warn("发放每日积分失败 - userId: {}", userId);
                     }
-                    
                     hasCreditAccount = true;
                 }
 
                 if (hasCreditAccount) {
-                    // 获取详细积分信息
                     var creditDetail = userCreditService.getUserCredit(userId);
                     if (creditDetail != null) {
-                        availableCredits = creditDetail.getTotalBalance() != null ? creditDetail.getTotalBalance().longValue() : 0L;
-
-                        // 限时积分 = 免费积分 + 活动积分
-                        limitedCredits = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
-                                        (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
-
-                        // 当日刷新积分
-                        dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
-
-                        // 永久积分
-                        permanentCredits = creditDetail.getPermanentBalance() != null ? creditDetail.getPermanentBalance().longValue() : 0L;
-
-                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}, permanent: {}",
-                                userId, availableCredits,
-                                creditDetail.getFreeBalance(),
-                                creditDetail.getActivityBalance(),
-                                creditDetail.getDailyBalance(),
-                                creditDetail.getPermanentBalance());
+                        long totalBalance = creditDetail.getTotalBalance() != null ? creditDetail.getTotalBalance().longValue() : 0L;
+                        long limitedCreditsLong = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
+                                                (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
+                        long dailyRefreshCreditsLong = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
+                        
+                        availableCredits = String.valueOf(totalBalance);
+                        dailyRefreshCredits = String.valueOf(dailyRefreshCreditsLong);
+                        limitedCredits = String.valueOf(limitedCreditsLong);
                     }
                 }
             } catch (Exception e) {
                 log.warn("查询用户积分信息失败 - userId: {}, 错误: {}", userId, e.getMessage());
-                // 积分查询失败不影响订阅信息返回
             }
             
-            // 构建响应
-            UserSubscriptionWithCreditResponse response = new UserSubscriptionWithCreditResponse();
-            response.setSubscription(subscription);
-            response.setAvailableCredits(availableCredits);
-            response.setHasCreditAccount(hasCreditAccount);
             response.setPlanName(planName);
             response.setPlanCode(planCode);
-            response.setLimitedCredits(limitedCredits);
+            response.setAvailableCredits(availableCredits);
             response.setDailyRefreshCredits(dailyRefreshCredits);
-            response.setPermanentCredits(permanentCredits);
+            response.setLimitedCredits(limitedCredits);
             
-            // 明确指定泛型类型 - 解决Swagger嵌套对象显示问题
-            return ApiResponse.success("获取订阅和积分信息成功", response);
+            // 从积分购买配置中获取积分包信息
+            List<CreditPurchaseConfigResponse.CreditPackageConfig> creditPackages = 
+                creditPurchaseConfig.getPackages().stream()
+                    .map(pkg -> {
+                        CreditPurchaseConfigResponse.CreditPackageConfig config = new CreditPurchaseConfigResponse.CreditPackageConfig();
+                        config.setId(pkg.getId());
+                        config.setName(pkg.getName());
+                        config.setCode("CREDIT_PACK_" + pkg.getId()); // 生成代码
+                        config.setCreditsAmount(pkg.getCreditsAmount());
+                        config.setPrice(pkg.getPrice());
+                        config.setIsRecommended(pkg.getIsRecommended());
+                        config.setFeatures(pkg.getFeatures());
+                        
+                        return config;
+                    })
+                    .sorted((a, b) -> a.getPrice().compareTo(b.getPrice())) // 按价格排序
+                    .collect(java.util.stream.Collectors.toList());
+            
+            response.setCreditPackages(creditPackages);
+            
+            // 设置积分有效期（从配置中读取）
+            response.setCreditValidityDays(creditPurchaseConfig.getValidityDays());
+            
+            return ApiResponse.success("获取积分购买配置成功", response);
             
         } catch (Exception e) {
-            log.error("查询用户订阅和积分信息失败 - userId: {}, 错误: {}", userId, e.getMessage(), e);
-            return ApiResponse.error("查询失败: " + e.getMessage());
+            log.error("获取积分购买配置失败 - userId: {}, 错误: {}", userId, e.getMessage(), e);
+            return ApiResponse.error("获取配置失败: " + e.getMessage());
         }
     }
 }

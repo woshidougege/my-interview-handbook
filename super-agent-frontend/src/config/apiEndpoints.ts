@@ -104,6 +104,7 @@ export const API_ENDPOINTS = {
     CANCEL: (subscriptionId: string) => `subscription/${subscriptionId}/cancel`,
     RENEW: (subscriptionId: string) => `subscription/${subscriptionId}/renew`,
     PLANS: 'subscription/plans',
+    CREDIT_PURCHASE_CONFIG: 'subscription/credit-purchase-config',
   },
 
   // ========== 用户积分相关 ==========

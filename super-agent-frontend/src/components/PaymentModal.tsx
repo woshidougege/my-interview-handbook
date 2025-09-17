@@ -210,15 +210,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // 创建订单并发起支付
   const handleCreatePayment = useCallback(async () => {
-    if (!userId) {
-      message.error('用户信息未加载，请稍后重试');
-      return;
-    }
-    
     try {
       setLoading(true);
       
-      const response = await paymentApi.createOrder(userId, {
+      const response = await paymentApi.createOrder({
         planId: parseInt(planId),
         billingCycle,
         paymentMethod: 'wechat'
@@ -239,7 +234,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [userId, planId, billingCycle, startPaymentSSEListener, startCountdown]);
+  }, [planId, billingCycle, startPaymentSSEListener, startCountdown]);
 
   // 格式化倒计时
   const formatCountdown = (seconds: number) => {

@@ -1,7 +1,6 @@
 package com.noah.superagent.service.impl;
 
 import com.noah.superagent.common.config.PlansConfig;
-import com.noah.superagent.common.enums.BillingCycleEnum;
 import com.noah.superagent.common.enums.PlanCodeEnum;
 import com.noah.superagent.model.PlanFeatureDTO;
 import com.noah.superagent.model.SubscriptionPlanDTO;
@@ -163,10 +162,16 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
             return null;
         }
         try {
+            // 先尝试按枚举常量名解析（如CREDIT_PACK）
             return PlanCodeEnum.valueOf(code);
-        } catch (IllegalArgumentException e) {
-            log.warn("未知的套餐代码: {}", code);
-            return null;
+        } catch (IllegalArgumentException e1) {
+            try {
+                // 再尝试按code值解析（如credit_pack）
+                return PlanCodeEnum.getByCode(code);
+            } catch (Exception e2) {
+                log.warn("未知的套餐代码: {}", code);
+                return null;
+            }
         }
     }
 

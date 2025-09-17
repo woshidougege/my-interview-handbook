@@ -24,4 +24,7 @@ public class CreateOrderRequest {
     @NotBlank(message = "支付方式不能为空")
     @Schema(description = "支付方式", example = "wechat", allowableValues = {"wechat"})
     private String paymentMethod;
+
+    @Schema(description = "积分包ID（仅购买积分时需要）", example = "100")
+    private String creditPackageId;
 }

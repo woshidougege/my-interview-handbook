@@ -12,6 +12,7 @@ import {
   CloseOutlined
 } from '@ant-design/icons';
 import PaymentModal from './PaymentModal';
+import CreditPurchaseModal from './CreditPurchaseModal';
 import { subscriptionApi } from '../services/api';
 
 interface SubscriptionModalProps {
@@ -49,6 +50,7 @@ interface Plan {
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose, currentSubscription }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [paymentVisible, setPaymentVisible] = useState(false);
+  const [creditPurchaseVisible, setCreditPurchaseVisible] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<{
     id: string;
     name: string;
@@ -73,13 +75,13 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       setLoading(true);
       const response = await subscriptionApi.getPlansWithBillingCycle(billingCycle);
       const responseData = response.data.data || {};
-      const apiPlans = responseData.plans || [];
+      const apiPlans: Array<Record<string, any>> = responseData.plans || [];
       globalDiscountRate = responseData.yearlyDiscountRate || 0.17;
-      discountText = responseData.discountPercentageText || "17%";
+      discountText = (responseData as { discountPercentageText?: string }).discountPercentageText || "17%";
       
       // 转换API数据为组件需要的格式  
       // 直接使用API数据，不做复杂转换
-      const formattedPlans: Plan[] = apiPlans.map((plan: any) => ({
+      const formattedPlans: Plan[] = apiPlans.map((plan: Record<string, any>) => ({
         id: plan.id.toString(),
         name: plan.planName,
         code: plan.planCode || plan.planName.toLowerCase(),
@@ -91,13 +93,14 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
         monthlySavings: plan.monthlySavings || 0,
         yearlyOriginalPrice: plan.yearlyOriginalPrice || 0,
         yearlySavings: plan.yearlySavings || 0,
+        yearlyMonthlySavings: Math.round((plan.yearlySavings || 0) / 12), // 年付月均优惠金额
         yearlyDiscountRate: globalDiscountRate,
         discountPercentageText: discountText,
         creditsAmount: plan.creditsAmount,
         isCurrent: plan.isCurrentPlan || false,
-        buttonText: plan.isCurrentPlan ? '当前计划' : '订阅',
+        buttonText: plan.isCurrentPlan ? '当前计划' : (plan.planCode === 'CREDIT_PACK' ? '立即购买' : '订阅'),
         buttonType: plan.isCurrentPlan ? 'default' as const : 'primary' as const,
-        isCreditsOnly: plan.planName.includes('积分'),
+        isCreditsOnly: plan.planCode === 'CREDIT_PACK',
         features: plan.features || []
       }));
       
@@ -123,20 +126,33 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
       return; // 当前计划不需要处理
     }
 
-    // 月付使用原价，年付使用优惠后价格
-    const amount = billingCycle === 'yearly' ? plan.price.yearly : plan.monthlyOriginalPrice;
-    setSelectedPlan({
-      id: planId,
-      name: plan.name,
-      amount: amount
-    });
-    setPaymentVisible(true);
+    // 检查是否是积分购买套餐
+    if (plan.isCreditsOnly || plan.code === 'CREDIT_PACK') {
+      // 打开积分购买弹窗
+      setCreditPurchaseVisible(true);
+    } else {
+      // 打开普通订阅支付弹窗
+      // 月付使用原价，年付使用优惠后价格
+      const amount = billingCycle === 'yearly' ? plan.price.yearly : plan.monthlyOriginalPrice;
+      setSelectedPlan({
+        id: planId,
+        name: plan.name,
+        amount: amount
+      });
+      setPaymentVisible(true);
+    }
   };
 
   const handlePaymentSuccess = () => {
     setPaymentVisible(false);
     onClose();
     // TODO: 刷新用户套餐信息
+  };
+
+  const handleCreditPurchaseSuccess = () => {
+    setCreditPurchaseVisible(false);
+    onClose();
+    // TODO: 刷新用户积分信息
   };
 
   return (
@@ -444,6 +460,13 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
           currentSubscription={currentSubscription}
         />
       )}
+
+      {/* 积分购买弹窗 */}
+      <CreditPurchaseModal
+        visible={creditPurchaseVisible}
+        onClose={() => setCreditPurchaseVisible(false)}
+        onSuccess={handleCreditPurchaseSuccess}
+      />
     </Modal>
   );
 };

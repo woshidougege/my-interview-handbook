@@ -32,18 +32,14 @@ public interface UserCreditBalanceMapper extends BaseMapper<UserCreditBalanceEnt
     }
 
     /**
-     * 根据用户ID查询所有积分余额，按消费优先级排序
+     * 根据用户ID查询所有积分余额（简化版，不进行关联查询）
+     * 注意: 推荐使用 Relations 注解方式进行关联查询
      */
     default List<UserCreditBalanceEntity> selectByUserId(Long userId) {
         return selectListByQuery(QueryWrapper.create()
-                .select(USER_CREDIT_BALANCE_ENTITY.ALL_COLUMNS)
-                .from(USER_CREDIT_BALANCE_ENTITY)
-                .leftJoin("t_credit_type_config").as("config")
-                .on("t_user_credit_balance.credit_type = config.type_code")
                 .where(USER_CREDIT_BALANCE_ENTITY.USER_ID.eq(userId))
                 .and(USER_CREDIT_BALANCE_ENTITY.DELETED.eq(0))
-                .and("config.enabled = 1")
-                .orderBy("config.consume_priority", true)
+                .orderBy(USER_CREDIT_BALANCE_ENTITY.CREDIT_TYPE.asc())
         );
     }
 
