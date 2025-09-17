@@ -7,34 +7,145 @@ super-agent:
     # 是否启用计费
     enabled: true
     
-    # 模型计费价格配置（单位：元）
-    pricing:
-      # Token计费价格（每千个Token）
-      input-token: 0.0024    # 输入Token价格
-      output-token: 0.0096   # 输出Token价格
+    # 欠费配置
+    overdraft:
+      enabled: true         # 是否允许欠费
+      max-amount: 300      # 最大欠费额度（积分）
+      warning-threshold: 50 # 欠费警告阈值（积分）
+    
+    # === 模型类默认积分消耗（底层AI服务） ===
+    model-defaults:
+      # 文本生成（千token/积分）
+      text-generation:
+        input-token: 2.4
+        output-token: 9.6
       
-      # 媒体生成价格
-      image-generation: 0.25  # 图片生成价格（元/张）
-      video-generation: 0.24  # 视频生成价格（元/秒）
+      # 文生图（张/积分）
+      image-generation: 25
       
-    # 功能计费价格配置（单位：元）
-    functions:
-      # 搜索类功能
-      deepsearch: 0.001        # 深度搜索（元/次）
-      browseruse: 0.001        # 浏览器使用（元/次）
+      # 文生视频（秒/积分）  
+      video-generation: 24
+    
+    # === 功能类默认积分消耗（上层业务功能） ===  
+    function-defaults:
+      browseruse: 0.1           # 次/积分
+      deepsearch: 0.1           # 次/积分
+      software-operation: 0.1   # 次/积分
+      ppt-generation: 0.1       # 页/积分
+      meeting-minutes: 0.1      # 次/积分
+      document-writing: 0.1     # 次/积分（word文档）
+      coding: 0.1               # 次/积分（编码+执行）
+      function-video-generation: 24  # 秒/积分（功能类文生视频）
+      function-image-generation: 25  # 张/积分（功能类图片生成）
+      translation: 0.1          # 次/积分
+      mind-map: 0.1            # 次/积分
+      database-analysis: 0.1    # 次/积分
+      excel-analysis: 0.1       # 次/积分
+    
+    # 按模型特定配置（仅阿里云百炼模型）
+    models:
+      # === 通义千问基础系列 ===
+      qwen-plus:
+        description: "能力均衡，推理效果、成本和速度介于通义千问Max和通义千问Flash之间，适合中等复杂任务"
+        text-generation:
+          input-token: 1.0      # 平衡型，性能与成本兼顾
+          output-token: 3.0
+          
+      qwen-flash:
+        description: "通义千问系列速度最快、成本极低的模型，适合简单任务。采用灵活的阶梯定价，相比通义千问Turbo计费更合理"
+        text-generation:
+          input-token: 0.3      # 极低成本，高速处理
+          output-token: 1.0
+          
+      qwen-turbo:
+        description: "通义千问Turbo 后续不再更新，建议替换为通义千问Flash"
+        text-generation:
+          input-token: 0.5      # 经济型，适合日常对话
+          output-token: 1.5
       
-      # 生成类功能
-      ppt-generation: 0.001    # PPT生成（元/页）
-      meeting-minutes: 0.001   # 会议纪要（元/次）
-      document-writing: 0.001  # 文档编写（元/次）
-      coding: 0.001           # 编码（元/次）
-      translation: 0.001      # 翻译（元/次）
-      mind-map: 0.001         # 思维导图（元/次）
-      
-      # 分析类功能
-      database-analysis: 0.001 # 数据库分析（元/次）
-      excel-analysis: 0.001    # Excel分析（元/次）
-      software-operation: 0.001 # 软件操作（元/次）
+      # === 通义千问多模态系列 ===
+      qwen-omni-turbo:
+        description: "通义千问全新多模态理解生成大模型，支持文本、图像、语音与视频输入，并输出文本与音频，提供了4种自然对话音色"
+        text-generation:
+          input-token: 2.0      # 多模态处理成本较高
+          output-token: 6.0
+        image-generation: 30    # 支持图像理解
+        video-generation: 35    # 支持视频理解
+        
+      qwen-omni-turbo-realtime:
+        description: "相比于通义千问Omni，支持音频的流式输入，且内置 VAD（Voice Activity Detection，语音活动检测）功能"
+        extends: qwen-omni-turbo # 继承Omni配置
+        
+      # === 通义千问专业视觉系列 ===
+      qvq-max:
+        description: "QVQ是视觉推理模型，支持视觉输入及思维链输出，在数学、编程、视觉分析、创作以及通用任务上都表现了更强的能力"
+        text-generation:
+          input-token: 3.0      # 视觉推理复杂度高
+          output-token: 10.0
+        image-generation: 40    # 专业视觉分析
+        
+      qwen-vl-max:
+        description: "通义千问VL是具有视觉（图像）理解能力的文本生成模型，能进行OCR，还能进一步总结和推理"
+        text-generation:
+          input-token: 2.5      # 视觉理解能力
+          output-token: 8.0
+        image-generation: 25    # 图像理解
+        
+      qwen-vl-ocr:
+        description: "专用于文字提取的模型，专注于文档、表格、试题、手写体文字等类型图像的文字提取，识别多种语言"
+        text-generation:
+          input-token: 1.5      # OCR专用，相对简单
+          output-token: 4.0
+        image-generation: 15    # OCR处理
+        
+      # === 通义千问音频系列 ===
+      qwen-audio-turbo:
+        description: "音频理解模型，支持多种音频和文本输入输出，具备语音转录、语义理解、情感分析、音频事件检测等能力"
+        text-generation:
+          input-token: 2.0      # 音频处理复杂
+          output-token: 6.0
+        function-video-generation: 20  # 音频处理按功能计费
+        
+      qwen3-asr-flash:
+        description: "提供正式版（Qwen3-ASR）和Beta版（Qwen-Audio-ASR）两种模型，正式版具备更强的功能和稳定性"
+        text-generation:
+          input-token: 1.0      # ASR专用
+          output-token: 2.0
+        function-video-generation: 15  # 语音识别按功能计费
+        
+      # === 通义千问专业领域系列 ===
+      qwen-math-plus:
+        description: "通义千问数学模型是专门用于数学解题的语言模型"
+        text-generation:
+          input-token: 2.0      # 数学推理复杂
+          output-token: 7.0
+          
+      qwen3-coder-plus:
+        description: "基于 Qwen3 的代码生成模型，具有强大的Coding Agent能力，擅长工具调用和环境交互，能够实现自主编程"
+        text-generation:
+          input-token: 2.5      # 代码生成复杂度高
+          output-token: 8.0
+        coding: 0.15            # 代码功能专项计费
+        
+      qwen-mt-plus:
+        description: "基于 Qwen 3全面升级的旗舰级翻译大模型，支持92个语种互译，提供更稳定的术语定制、格式还原度"
+        text-generation:
+          input-token: 1.5      # 翻译专用
+          output-token: 4.5
+        translation: 0.08       # 翻译功能专项计费
+        
+      # === DeepSeek系列 ===
+      deepseek-r1:
+        description: "DeepSeek-R1 在后训练阶段大规模使用了强化学习技术，极大提升了模型推理能力，尤其在数学、代码、自然语言推理等任务上"
+        text-generation:
+          input-token: 1.8      # 强化学习模型，推理能力强
+          output-token: 5.5
+          
+      deepseek-v3.1:
+        description: "DeepSeek-V3 为 MoE 模型，671B 参数，激活 37B，在长文本、代码、数学、百科、中文能力上表现优秀"
+        text-generation:
+          input-token: 2.2      # 大规模MoE模型
+          output-token: 6.5
       
     # 订阅套餐配置
     subscription:
@@ -73,30 +184,3 @@ super-agent:
         paid: 4                # 付费积分
 
 
-# 缓存配置
-cache:
-  # 计费缓存配置
-  billing:
-    # 价格缓存（避免频繁读取配置）
-    pricing-cache-ttl: 3600    # 价格缓存过期时间（秒）
-    
-    # 用户积分缓存
-    user-credits-cache-ttl: 300 # 用户积分缓存过期时间（秒）
-    
-    # 计费规则缓存
-    billing-rules-cache-ttl: 1800 # 计费规则缓存过期时间（秒）
-
-# 监控和告警配置
-monitoring:
-  billing:
-    # 计费异常告警
-    alert:
-      enabled: true
-      threshold:
-        billing-failure-rate: 0.05   # 计费失败率阈值（5%）
-        credit-insufficient-rate: 0.1 # 积分不足率阈值（10%）
-        
-    # 统计配置
-    metrics:
-      enabled: true
-      collection-interval: 60        # 指标收集间隔（秒）

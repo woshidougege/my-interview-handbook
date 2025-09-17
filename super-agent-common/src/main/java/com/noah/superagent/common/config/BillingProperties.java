@@ -3,6 +3,8 @@ package com.noah.superagent.common.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -22,14 +24,24 @@ public class BillingProperties {
     private Boolean enabled = true;
 
     /**
-     * 模型计费价格配置
+     * 欠费配置
      */
-    private PricingConfig pricing = new PricingConfig();
+    private OverdraftConfig overdraft = new OverdraftConfig();
 
     /**
-     * 功能计费价格配置
+     * 模型类默认积分消耗配置
      */
-    private FunctionsConfig functions = new FunctionsConfig();
+    private ModelDefaultsConfig modelDefaults = new ModelDefaultsConfig();
+
+    /**
+     * 功能类默认积分消耗配置
+     */
+    private FunctionDefaultsConfig functionDefaults = new FunctionDefaultsConfig();
+
+    /**
+     * 按模型特定配置
+     */
+    private Map<String, ModelConfig> models = new HashMap<>();
 
     /**
      * 订阅套餐配置
@@ -42,46 +54,106 @@ public class BillingProperties {
     private CreditsConfig credits = new CreditsConfig();
 
     @Data
-    public static class PricingConfig {
+    public static class OverdraftConfig {
         /**
-         * 输入Token价格（每千个Token）
+         * 是否允许欠费
          */
-        private Double inputToken = 0.0024;
+        private Boolean enabled = true;
 
         /**
-         * 输出Token价格（每千个Token）
+         * 最大欠费额度（积分）
          */
-        private Double outputToken = 0.0096;
+        private BigDecimal maxAmount = BigDecimal.valueOf(300);
 
         /**
-         * 图片生成价格（元/张）
+         * 欠费警告阈值（积分）
          */
-        private Double imageGeneration = 0.25;
-
-        /**
-         * 视频生成价格（元/秒）
-         */
-        private Double videoGeneration = 0.24;
+        private BigDecimal warningThreshold = BigDecimal.valueOf(50);
     }
 
     @Data
-    public static class FunctionsConfig {
-        // 搜索类功能
-        private Double deepsearch = 0.001;
-        private Double browseruse = 0.001;
+    public static class ModelDefaultsConfig {
+        /**
+         * 文本生成默认积分消耗
+         */
+        private TextGenerationConfig textGeneration = new TextGenerationConfig();
 
-        // 生成类功能
-        private Double pptGeneration = 0.001;
-        private Double meetingMinutes = 0.001;
-        private Double documentWriting = 0.001;
-        private Double coding = 0.001;
-        private Double translation = 0.001;
-        private Double mindMap = 0.001;
+        /**
+         * 图片生成默认积分消耗（张/积分）
+         */
+        private Double imageGeneration = 25.0;
 
-        // 分析类功能
-        private Double databaseAnalysis = 0.001;
-        private Double excelAnalysis = 0.001;
-        private Double softwareOperation = 0.001;
+        /**
+         * 视频生成默认积分消耗（秒/积分）
+         */
+        private Double videoGeneration = 24.0;
+    }
+
+    @Data
+    public static class FunctionDefaultsConfig {
+        // 功能类积分消耗（次/积分或页/积分）
+        private Double browseruse = 0.1;
+        private Double deepsearch = 0.1;
+        private Double softwareOperation = 0.1;
+        private Double pptGeneration = 0.1;        // 页/积分
+        private Double meetingMinutes = 0.1;
+        private Double documentWriting = 0.1;      // word文档
+        private Double coding = 0.1;               // 编码+执行
+        private Double functionVideoGeneration = 24.0; // 功能类文生视频（秒/积分）
+        private Double functionImageGeneration = 25.0; // 功能类图片生成（张/积分）
+        private Double translation = 0.1;
+        private Double mindMap = 0.1;
+        private Double databaseAnalysis = 0.1;
+        private Double excelAnalysis = 0.1;
+    }
+
+    @Data
+    public static class ModelConfig {
+        /**
+         * 继承的父模型配置
+         */
+        private String extendsModel;
+        
+        /**
+         * 文本生成积分消耗配置
+         */
+        private TextGenerationConfig textGeneration;
+
+        /**
+         * 图片生成积分消耗（张/积分）
+         */
+        private Double imageGeneration;
+
+        /**
+         * 视频生成积分消耗（秒/积分）
+         */
+        private Double videoGeneration;
+
+        // 功能类积分消耗覆盖
+        private Double browseruse;
+        private Double deepsearch;
+        private Double softwareOperation;
+        private Double pptGeneration;
+        private Double meetingMinutes;
+        private Double documentWriting;
+        private Double coding;
+        private Double translation;
+        private Double mindMap;
+        private Double databaseAnalysis;
+        private Double excelAnalysis;
+    }
+
+    @Data
+    public static class TextGenerationConfig {
+        /**
+         * 输入Token积分消耗（每千个Token）
+         */
+        private Double inputToken = 2.4;
+
+        /**
+         * 输出Token积分消耗（每千个Token）
+         */
+        private Double outputToken = 9.6;
     }
 
     @Data
