@@ -2,7 +2,10 @@ package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
+import com.noah.superagent.common.dto.response.UserCreditStatusResponse;
 import com.noah.superagent.common.dto.response.CreditTransactionResponse;
+
+import java.math.BigDecimal;
 
 /**
  * 用户积分服务接口
@@ -11,6 +14,24 @@ import com.noah.superagent.common.dto.response.CreditTransactionResponse;
  * @since 1.0.0
  */
 public interface UserCreditService {
+
+    /**
+     * 获取用户积分详细状态
+     * （包含总积分、各类型积分、透支额度、账户状态等完整信息）
+     *
+     * @param userId 用户ID
+     * @return 积分详细状态信息
+     */
+    UserCreditStatusResponse getUserCreditStatus(Long userId);
+
+    /**
+     * 检查用户是否可以消费指定积分（包含透支检查）
+     *
+     * @param userId 用户ID
+     * @param amount 需要的积分数量
+     * @return 是否可以消费
+     */
+    boolean canConsumeCredits(Long userId, BigDecimal amount);
 
     /**
      * 查询用户积分账户信息

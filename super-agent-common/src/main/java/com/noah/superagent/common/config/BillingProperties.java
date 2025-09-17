@@ -110,6 +110,11 @@ public class BillingProperties {
     @Data
     public static class ModelConfig {
         /**
+         * 模型描述信息
+         */
+        private String description;
+        
+        /**
          * 继承的父模型配置
          */
         private String extendsModel;
@@ -141,6 +146,8 @@ public class BillingProperties {
         private Double mindMap;
         private Double databaseAnalysis;
         private Double excelAnalysis;
+        private Double functionVideoGeneration;
+        private Double functionImageGeneration;
     }
 
     @Data
@@ -172,82 +179,31 @@ public class BillingProperties {
     @Data
     public static class CreditsConfig {
         /**
-         * 积分兑换比例
+         * 积分类型配置
          */
-        private Double exchangeRate = 0.01;
-
-        /**
-         * 免费积分配置
-         */
-        private FreeCreditsConfig freeCredits = new FreeCreditsConfig();
-
-        /**
-         * 活动积分配置
-         */
-        private ActivityCreditsConfig activityCredits = new ActivityCreditsConfig();
-
-        /**
-         * 积分扣费优先级
-         */
-        private DeductionPriorityConfig deductionPriority = new DeductionPriorityConfig();
+        private Map<String, CreditTypeConfig> types = new HashMap<>();
     }
 
     @Data
-    public static class FreeCreditsConfig {
+    public static class CreditTypeConfig {
         /**
-         * 新用户赠送积分
+         * 积分类型名称
          */
-        private Integer newUserAmount = 1000;
+        private String name;
 
         /**
-         * 新用户积分有效期（天）
+         * 积分类型描述
          */
-        private Integer newUserValidity = 90;
+        private String description;
 
         /**
-         * 每日签到积分（登录时发放）
+         * 有效期天数（0表示永久有效）
          */
-        private Integer dailySignin = 300;
+        private Integer validityDays;
 
         /**
-         * 每日积分有效期（天）
+         * 扣费优先级（数字越小优先级越高）
          */
-        private Integer dailyValidity = 1;
-    }
-
-    @Data
-    public static class ActivityCreditsConfig {
-        /**
-         * 分享奖励积分
-         */
-        private Integer shareReward = 500;
-
-        /**
-         * 分享积分有效期（天）
-         */
-        private Integer shareValidity = 30;
-    }
-
-    @Data
-    public static class DeductionPriorityConfig {
-        /**
-         * 当日积分
-         */
-        private Integer daily = 1;
-
-        /**
-         * 活动积分
-         */
-        private Integer activity = 2;
-
-        /**
-         * 免费积分
-         */
-        private Integer free = 3;
-
-        /**
-         * 付费积分
-         */
-        private Integer paid = 4;
+        private Integer deductionPriority;
     }
 }

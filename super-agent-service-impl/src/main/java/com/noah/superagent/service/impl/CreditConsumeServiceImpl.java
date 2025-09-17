@@ -59,19 +59,10 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
         }
         
-        // 2. 检查总积分是否足够（考虑透支额度）
-        BigDecimal currentBalance = creditAccount.getTotalBalance();
-        BigDecimal availableBalance = getAvailableBalance(currentBalance);
+        // 注意：这里不再进行余额检查，调用方应该在调用前进行检查
+        // 积分扣减服务只负责纯粹的扣减操作
         
-        if (availableBalance.compareTo(amount) < 0) {
-            String message = billingProperties.getOverdraft().getEnabled() 
-                ? String.format("积分余额不足（含透支），当前余额: %s，透支额度: %s，可用余额: %s，需要: %s", 
-                    currentBalance, billingProperties.getOverdraft().getMaxAmount(), availableBalance, amount)
-                : String.format("积分余额不足，当前余额: %s，需要: %s", currentBalance, amount);
-            throw new BusinessException(ResponseCodeEnum.INSUFFICIENT_CREDITS, message);
-        }
-        
-        // 3. 获取用户各类型积分余额并按优先级排序
+        // 2. 获取用户各类型积分余额并按优先级排序
         List<UserCreditBalanceEntity> balanceList = userCreditBalanceMapper.selectByUserId(userId);
         Map<CreditTypeEnum, UserCreditBalanceEntity> balanceMap = balanceList.stream()
                 .collect(Collectors.toMap(
@@ -79,10 +70,10 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
                         balance -> balance
                 ));
         
-        // 4. 按优先级计算扣费方案
+        // 3. 按优先级计算扣费方案
         List<CreditDeduction> deductions = calculateDeductions(balanceMap, amount);
         
-        // 5. 更新积分汇总账户
+        // 4. 更新积分汇总账户
         BigDecimal oldTotalBalance = creditAccount.getTotalBalance();
         BigDecimal newTotalBalance = oldTotalBalance.subtract(amount);
         BigDecimal newTotalSpent = creditAccount.getTotalSpent().add(amount);
@@ -100,7 +91,7 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新积分账户失败");
         }
         
-        // 6. 分别更新各类型积分余额并记录交易
+        // 5. 分别更新各类型积分余额并记录交易
         for (CreditDeduction deduction : deductions) {
             UserCreditBalanceEntity balance = balanceMap.get(deduction.getType());
             if (balance == null) {
@@ -143,15 +134,8 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         }
         
         log.info("用户积分扣费成功 - userId: {}, 扣费金额: {}, 新余额: {}", userId, amount, newTotalBalance);
-        
-        // 6. 检查透支警告
-        if (needsOverdraftWarning(newTotalBalance)) {
-            BigDecimal overdraftAmount = newTotalBalance.abs();
-            log.warn("用户积分透支警告 - userId: {}, 透支金额: {}, 警告阈值: {}", 
-                    userId, overdraftAmount, billingProperties.getOverdraft().getWarningThreshold());
-        }
-        
-        // 7. 返回最新的积分信息
+
+        // 6. 返回最新的积分信息
         UserCreditResponse response = new UserCreditResponse();
         response.setUserId(userId);
         response.setTotalBalance(newTotalBalance);
@@ -174,8 +158,8 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             return false;
         }
         
-        BigDecimal availableBalance = getAvailableBalance(creditAccount.getTotalBalance());
-        return availableBalance.compareTo(amount) >= 0;
+        // 只检查实际余额，不考虑透支
+        return creditAccount.getTotalBalance().compareTo(amount) >= 0;
     }
 
     @Override
@@ -186,15 +170,8 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         }
         
         BigDecimal currentBalance = creditAccount.getTotalBalance();
-        BigDecimal availableBalance = getAvailableBalance(currentBalance);
-        
-        if (availableBalance.compareTo(amount) < 0) {
-            String message = billingProperties.getOverdraft().getEnabled() 
-                ? "积分余额不足（含透支），当前余额: " + currentBalance 
-                  + "，透支额度: " + billingProperties.getOverdraft().getMaxAmount()
-                  + "，可用余额: " + availableBalance + "，需要: " + amount
-                : "积分余额不足，当前余额: " + currentBalance + "，需要: " + amount;
-            return message;
+        if (currentBalance.compareTo(amount) < 0) {
+            return "积分余额不足，当前余额: " + currentBalance + "，需要: " + amount;
         }
         
         // 获取用户各类型积分余额
@@ -261,37 +238,6 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         return deductions;
     }
 
-    /**
-     * 获取可用余额（考虑透支额度）
-     * @param currentBalance 当前余额
-     * @return 可用余额 = 当前余额 + 透支额度（如果启用）
-     */
-    private BigDecimal getAvailableBalance(BigDecimal currentBalance) {
-        if (!billingProperties.getOverdraft().getEnabled()) {
-            // 未启用透支，可用余额就是当前余额（但不能小于0）
-            return currentBalance.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : currentBalance;
-        }
-        
-        // 启用透支，可用余额 = 当前余额 + 最大透支额度
-        BigDecimal maxOverdraft = billingProperties.getOverdraft().getMaxAmount();
-        return currentBalance.add(maxOverdraft);
-    }
-
-    /**
-     * 检查是否需要透支警告
-     * @param newBalance 扣费后的新余额
-     * @return 是否需要警告
-     */
-    private boolean needsOverdraftWarning(BigDecimal newBalance) {
-        if (!billingProperties.getOverdraft().getEnabled() || newBalance.compareTo(BigDecimal.ZERO) >= 0) {
-            return false;
-        }
-        
-        BigDecimal overdraftAmount = newBalance.abs(); // 透支金额（负数转正数）
-        BigDecimal warningThreshold = billingProperties.getOverdraft().getWarningThreshold();
-        
-        return overdraftAmount.compareTo(warningThreshold) >= 0;
-    }
 
     /**
      * 安全获取余额，不存在时返回0
