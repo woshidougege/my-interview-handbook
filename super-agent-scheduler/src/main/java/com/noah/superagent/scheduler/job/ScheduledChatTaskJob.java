@@ -9,7 +9,9 @@ import com.noah.superagent.common.enums.ChatTaskStatusEnum;
 import com.noah.superagent.common.enums.DeletedEnum;
 import com.noah.superagent.dao.entity.ChatTaskEntity;
 import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
+import com.noah.superagent.dao.entity.ScheduledChatTaskExecutionLogEntity;
 import com.noah.superagent.dao.mapper.ChatTaskMapper;
+import com.noah.superagent.dao.mapper.ScheduledChatTaskExecutionLogMapper;
 import com.noah.superagent.dao.mapper.ScheduledChatTaskMapper;
 import com.noah.superagent.service.AiService;
 import com.norinrd.gttoken.util.StringUtils;
@@ -39,6 +41,9 @@ public class ScheduledChatTaskJob {
 
     @Autowired
     private ScheduledChatTaskMapper scheduledChatTaskMapper;
+
+    @Autowired
+    private ScheduledChatTaskExecutionLogMapper scheduledChatTaskExecutionLogMapper;
 
     @Autowired
     private ChatTaskMapper chatTaskMapper;
@@ -99,9 +104,18 @@ public class ScheduledChatTaskJob {
 
         int executedCount = 0;
         for (ScheduledChatTaskEntity scheduledTask : tasksToExecute) {
+            // 创建执行日志记录
+            ScheduledChatTaskExecutionLogEntity executionLog = new ScheduledChatTaskExecutionLogEntity();
+            executionLog.setTaskId(scheduledTask.getId());
+            executionLog.setTaskName(scheduledTask.getTaskName());
+            executionLog.setStartTime(new Date());
+            executionLog.setExecutionStatus(0); // 默认失败
+
             try {
                 // 为定时任务查找或创建对应的对话任务
                 ChatTaskEntity chatTask = findOrCreateChatTask(scheduledTask);
+                // 设置对话任务ID
+                executionLog.setChatTaskId(chatTask.getId());
 
                 // 执行与大模型的对话
                 String response = executeAiTask(scheduledTask);
@@ -130,11 +144,22 @@ public class ScheduledChatTaskJob {
                     updateNextExecutionTime(scheduledTask);
                 }
 
+                // 更新执行日志为成功状态
+                executionLog.setExecutionStatus(1); // 成功
+                executionLog.setExecutionResult(response);
+                
                 executedCount++;
                 log.info("定时对话任务执行成功 - 任务ID: {}, 任务名称: {}", scheduledTask.getId(), scheduledTask.getTaskName());
             } catch (Exception e) {
+                // 记录错误信息
+                executionLog.setErrorMessage(e.getMessage());
                 log.error("定时对话任务执行失败 - 任务ID: {}, 任务名称: {}, 错误: {}",
                         scheduledTask.getId(), scheduledTask.getTaskName(), e.getMessage(), e);
+            } finally {
+                // 完成执行日志记录
+                executionLog.setEndTime(new Date());
+                executionLog.setDuration(System.currentTimeMillis() - executionLog.getStartTime().getTime());
+                scheduledChatTaskExecutionLogMapper.insertSelective(executionLog);
             }
         }
 
@@ -232,8 +257,6 @@ public class ScheduledChatTaskJob {
         // 根据数据库表结构，没有lastResult字段，暂时不保存响应结果
         // 如果需要记录，可以考虑将结果保存到其他字段或日志中
     }
-
-
 
     /**
      * 可重复任务更新下次执行时间
