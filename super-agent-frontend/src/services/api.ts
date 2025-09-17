@@ -260,14 +260,12 @@ export const paymentApi = {
   },
 
   // 向后兼容的API
-  createOrder: (userId: string, data: {
+  createOrder: (data: {
     planId: number;
     billingCycle: string;
     paymentMethod: string;
   }): Promise<AxiosResponse<ApiResponse<any>>> => {
-    return api.post(API_ENDPOINTS.LEGACY.PAYMENT_CREATE, data, {
-      params: { userId }
-    });
+    return api.post(API_ENDPOINTS.LEGACY.PAYMENT_CREATE, data);
   },
   
   queryStatus: (orderNo: string): Promise<AxiosResponse<ApiResponse<any>>> => {

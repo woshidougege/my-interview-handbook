@@ -9,6 +9,7 @@ import com.noah.superagent.common.constants.PaymentStatus;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.service.PaymentService;
 import com.noah.superagent.sse.PaymentSseManager;
+import com.noah.superagent.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -46,9 +47,10 @@ public class PaymentController {
     @Operation(summary = "创建订单并发起支付", description = "创建订阅订单并发起微信支付")
     @PostMapping("/create")
     public ApiResponse<PaymentResponse> createOrderAndPay(
-            @Parameter(description = "用户ID", example = "1") @RequestParam Long userId,
             @Valid @RequestBody CreateOrderRequest request) {
         
+        // 自动获取当前登录用户ID
+        Long userId = UserContext.requireCurrentUserId();
         PaymentResponse response = paymentService.createOrderAndPay(userId, request);
         return ApiResponse.success("创建订单成功", response);
     }
