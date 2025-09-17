@@ -251,8 +251,8 @@ public class UserCreditServiceImpl implements UserCreditService {
         // 设置各类型积分余额
         response.setDailyBalance(balanceMap.getOrDefault(CreditTypeEnum.DAILY, BigDecimal.ZERO));
         response.setActivityBalance(balanceMap.getOrDefault(CreditTypeEnum.ACTIVITY, BigDecimal.ZERO));
-        response.setFreeBalance(balanceMap.getOrDefault(CreditTypeEnum.NEW_USER, BigDecimal.ZERO)); // 新用户积分作为免费积分
-        response.setPermanentBalance(balanceMap.getOrDefault(CreditTypeEnum.PERMANENT, BigDecimal.ZERO));
+        response.setFreeBalance(balanceMap.getOrDefault(CreditTypeEnum.FREE, BigDecimal.ZERO)); // 新用户积分作为免费积分
+        response.setPermanentBalance(balanceMap.getOrDefault(CreditTypeEnum.PAID, BigDecimal.ZERO));
         
         log.info("响应积分详情 - userId: {}, daily: {}, activity: {}, free: {}, permanent: {}", 
                 userId, response.getDailyBalance(), response.getActivityBalance(), 
@@ -369,7 +369,7 @@ public class UserCreditServiceImpl implements UserCreditService {
         // 2. 创建新用户积分余额记录
         UserCreditBalanceEntity newUserBalance = new UserCreditBalanceEntity();
         newUserBalance.setUserId(userId);
-        newUserBalance.setCreditType(CreditTypeEnum.NEW_USER);
+        newUserBalance.setCreditType(CreditTypeEnum.FREE);
         newUserBalance.setBalance(getNewUserCredits());
         newUserBalance.setTotalEarned(getNewUserCredits());
         newUserBalance.setTotalSpent(BigDecimal.ZERO);
@@ -382,13 +382,13 @@ public class UserCreditServiceImpl implements UserCreditService {
             log.error("创建用户积分余额记录失败 - userId: {}", userId);
             throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "创建积分余额记录失败");
         }
-        log.info("创建新用户积分余额记录成功 - userId: {}, type: {}, balance: {}", userId, CreditTypeEnum.NEW_USER, getNewUserCredits());
+        log.info("创建新用户积分余额记录成功 - userId: {}, type: {}, balance: {}", userId, CreditTypeEnum.FREE, getNewUserCredits());
         
         // 3. 记录新用户赠送积分的交易记录
         CreditTransactionEntity transaction = new CreditTransactionEntity();
         transaction.setUserId(userId);
         transaction.setTransactionType(CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY); // TODO: 需要新增新用户赠送类型
-        transaction.setCreditType(CreditTypeEnum.NEW_USER);
+        transaction.setCreditType(CreditTypeEnum.FREE);
         transaction.setAmount(getNewUserCredits());
         transaction.setBalanceBefore(BigDecimal.ZERO);
         transaction.setBalanceAfter(getNewUserCredits());
@@ -565,13 +565,13 @@ public class UserCreditServiceImpl implements UserCreditService {
         }
         
         // 3. 创建或更新永久积分余额记录
-        UserCreditBalanceEntity permanentBalance = userCreditBalanceMapper.selectByUserIdAndCreditType(userId, CreditTypeEnum.PERMANENT);
+        UserCreditBalanceEntity permanentBalance = userCreditBalanceMapper.selectByUserIdAndCreditType(userId, CreditTypeEnum.PAID);
         
         if (permanentBalance == null) {
             // 创建新的永久积分记录
             permanentBalance = new UserCreditBalanceEntity();
             permanentBalance.setUserId(userId);
-            permanentBalance.setCreditType(CreditTypeEnum.PERMANENT);
+            permanentBalance.setCreditType(CreditTypeEnum.PAID);
             permanentBalance.setBalance(credits);
             permanentBalance.setTotalEarned(credits);
             permanentBalance.setTotalSpent(BigDecimal.ZERO);
@@ -589,7 +589,7 @@ public class UserCreditServiceImpl implements UserCreditService {
             permanentBalance.setUpdateBy(userId);
             
             int balanceUpdateResult = userCreditBalanceMapper.updateBalanceByUserIdAndCreditType(
-                userId, CreditTypeEnum.PERMANENT, permanentBalance);
+                userId, CreditTypeEnum.PAID, permanentBalance);
             if (balanceUpdateResult <= 0) {
                 log.error("更新用户永久积分余额失败 - userId: {}", userId);
                 throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新永久积分余额失败");
@@ -600,7 +600,7 @@ public class UserCreditServiceImpl implements UserCreditService {
         CreditTransactionEntity transaction = new CreditTransactionEntity();
         transaction.setUserId(userId);
         transaction.setTransactionType(CreditTransactionTypeEnum.INCOME_PRO_PLAN); // 使用PRO套餐类型代表付费积分
-        transaction.setCreditType(CreditTypeEnum.PERMANENT);
+        transaction.setCreditType(CreditTypeEnum.PAID);
         transaction.setAmount(credits);
         transaction.setBalanceBefore(oldTotalBalance);
         transaction.setBalanceAfter(newTotalBalance);

@@ -10,8 +10,6 @@ import com.noah.superagent.dao.mapper.CreditTransactionMapper;
 import com.noah.superagent.dao.mapper.UserCreditAccountMapper;
 import com.noah.superagent.dao.mapper.UserCreditBalanceMapper;
 import com.noah.superagent.dao.mapper.CreditExpiryLogMapper;
-import com.noah.superagent.service.CreditExpiryService;
-import com.noah.superagent.service.CreditTypeConfigService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,36 +30,31 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CreditExpiryServiceImpl implements CreditExpiryService {
+public class CreditExpiryServiceImpl {
 
     private final UserCreditAccountMapper userCreditAccountMapper;
     private final UserCreditBalanceMapper userCreditBalanceMapper;
     private final CreditTransactionMapper creditTransactionMapper;
     private final CreditExpiryLogMapper creditExpiryLogMapper;
-    private final CreditTypeConfigService creditTypeConfigService;
 
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public int cleanupExpiredDailyCredits() {
         log.info("开始清理过期的每日积分");
         return cleanupExpiredCreditsByType(CreditTypeEnum.DAILY);
     }
 
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public int cleanupExpiredActivityCredits() {
         log.info("开始清理过期的活动积分");
         return cleanupExpiredCreditsByType(CreditTypeEnum.ACTIVITY);
     }
 
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public int cleanupExpiredFreeCredits() {
         log.info("开始清理过期的新用户积分");
-        return cleanupExpiredCreditsByType(CreditTypeEnum.NEW_USER);
+        return cleanupExpiredCreditsByType(CreditTypeEnum.FREE);
     }
 
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean cleanupExpiredCreditsForUser(Long userId) {
         log.info("开始清理用户的过期积分 - userId: {}", userId);
@@ -72,7 +65,7 @@ public class CreditExpiryServiceImpl implements CreditExpiryService {
             // 分别清理各类型过期积分
             totalProcessed += cleanupExpiredUserCreditsByType(userId, CreditTypeEnum.DAILY);
             totalProcessed += cleanupExpiredUserCreditsByType(userId, CreditTypeEnum.ACTIVITY);
-            totalProcessed += cleanupExpiredUserCreditsByType(userId, CreditTypeEnum.NEW_USER);
+            totalProcessed += cleanupExpiredUserCreditsByType(userId, CreditTypeEnum.FREE);
             
             log.info("用户过期积分清理完成 - userId: {}, 处理类型数: {}", userId, totalProcessed);
             return true;
@@ -87,7 +80,7 @@ public class CreditExpiryServiceImpl implements CreditExpiryService {
      */
     private int cleanupExpiredCreditsByType(CreditTypeEnum creditType) {
         // 获取积分类型配置
-        Integer validityDays = creditTypeConfigService.getValidityDays(creditType);
+        Integer validityDays = creditType.getValidityDays();
         if (validityDays == null || validityDays <= 0) {
             log.debug("积分类型 {} 为永久有效，跳过清理", creditType);
             return 0;
@@ -120,7 +113,7 @@ public class CreditExpiryServiceImpl implements CreditExpiryService {
      */
     private int cleanupExpiredUserCreditsByType(Long userId, CreditTypeEnum creditType) {
         // 获取积分类型配置
-        Integer validityDays = creditTypeConfigService.getValidityDays(creditType);
+        Integer validityDays = creditType.getValidityDays();
         if (validityDays == null || validityDays <= 0) {
             return 0; // 永久有效，无需清理
         }
@@ -232,10 +225,10 @@ public class CreditExpiryServiceImpl implements CreditExpiryService {
             case ACTIVITY:
                 // TODO: 需要添加活动积分交易类型
                 return CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY; // 临时使用
-            case NEW_USER:
+            case FREE:
                 // TODO: 需要添加新用户积分交易类型  
                 return CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY; // 临时使用
-            case PERMANENT:
+            case PAID:
                 return CreditTransactionTypeEnum.INCOME_PRO_PLAN;
             case DAILY:
             default:

@@ -1,6 +1,5 @@
 package com.noah.superagent.service.impl;
 
-import com.noah.superagent.common.config.BillingProperties;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
 import com.noah.superagent.common.enums.CreditTransactionTypeEnum;
 import com.noah.superagent.common.enums.CreditTypeEnum;
@@ -13,6 +12,7 @@ import com.noah.superagent.dao.mapper.CreditTransactionMapper;
 import com.noah.superagent.dao.mapper.UserCreditAccountMapper;
 import com.noah.superagent.dao.mapper.UserCreditBalanceMapper;
 import com.noah.superagent.service.CreditConsumeService;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 /**
  * 积分消费服务实现
- * 
+ * <p>
  * 处理积分扣费逻辑，按照有效期优先级顺序扣费
  *
  * @author 任相鹏
@@ -42,7 +42,6 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
     private final UserCreditAccountMapper userCreditAccountMapper;
     private final UserCreditBalanceMapper userCreditBalanceMapper;
     private final CreditTransactionMapper creditTransactionMapper;
-    private final BillingProperties billingProperties;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -145,8 +144,8 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         // 设置各类型积分余额
         response.setDailyBalance(getBalanceSafely(balanceMap, CreditTypeEnum.DAILY));
         response.setActivityBalance(getBalanceSafely(balanceMap, CreditTypeEnum.ACTIVITY));
-        response.setFreeBalance(getBalanceSafely(balanceMap, CreditTypeEnum.NEW_USER));
-        response.setPermanentBalance(getBalanceSafely(balanceMap, CreditTypeEnum.PERMANENT));
+        response.setFreeBalance(getBalanceSafely(balanceMap, CreditTypeEnum.FREE));
+        response.setPermanentBalance(getBalanceSafely(balanceMap, CreditTypeEnum.PAID));
         
         return response;
     }
@@ -250,6 +249,7 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
     /**
      * 积分扣费项
      */
+    @Getter
     private static class CreditDeduction {
         private final CreditTypeEnum type;
         private final BigDecimal amount;
@@ -259,12 +259,5 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             this.amount = amount;
         }
 
-        public CreditTypeEnum getType() {
-            return type;
-        }
-
-        public BigDecimal getAmount() {
-            return amount;
-        }
     }
 }
