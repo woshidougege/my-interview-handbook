@@ -10,14 +10,14 @@ import com.noah.superagent.common.constants.PaymentStatus;
 import org.springframework.context.ApplicationEventPublisher;
 import com.noah.superagent.dao.entity.PaymentRecordEntity;
 import com.noah.superagent.dao.entity.SubscriptionOrderEntity;
-import com.noah.superagent.dao.entity.SubscriptionPlanEntity;
 import com.noah.superagent.dao.entity.UserSubscriptionEntity;
 import com.noah.superagent.dao.mapper.PaymentRecordMapper;
 import com.noah.superagent.dao.mapper.SubscriptionOrderMapper;
-import com.noah.superagent.dao.mapper.SubscriptionPlanMapper;
 import com.noah.superagent.dao.mapper.UserSubscriptionMapper;
 import com.noah.superagent.service.PaymentService;
+import com.noah.superagent.service.SubscriptionPlanService;
 import com.noah.superagent.service.UserCreditService;
+import com.noah.superagent.model.SubscriptionPlanDTO;
 import com.noah.superagent.common.enums.SubscriptionStatusEnum;
 import com.github.binarywang.wxpay.bean.request.WxPayUnifiedOrderV3Request;
 import com.github.binarywang.wxpay.bean.request.WxPayOrderQueryV3Request;
@@ -58,7 +58,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final SubscriptionOrderMapper subscriptionOrderMapper;
     private final PaymentRecordMapper paymentRecordMapper;
-    private final SubscriptionPlanMapper subscriptionPlanMapper;
+    private final SubscriptionPlanService subscriptionPlanService;
     private final UserCreditService userCreditService;
     private final UserSubscriptionMapper userSubscriptionMapper;
     private final WxPayService wxPayService;
@@ -86,7 +86,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
 
             // 2. 查询套餐信息
-            SubscriptionPlanEntity plan = subscriptionPlanMapper.selectOneById(request.getPlanId());
+            SubscriptionPlanDTO plan = subscriptionPlanService.getPlanById(request.getPlanId());
             if (plan == null) {
                 throw new RuntimeException("套餐不存在");
             }
@@ -396,7 +396,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
 
             // 4. 发放积分
-            SubscriptionPlanEntity plan = subscriptionPlanMapper.selectOneById(order.getPlanId());
+            SubscriptionPlanDTO plan = subscriptionPlanService.getPlanById(order.getPlanId());
             if (plan != null) {
                 try {
                     // 从配置文件获取套餐积分数量

@@ -2,6 +2,7 @@ package com.noah.superagent.controller;
 
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
+import com.noah.superagent.common.dto.response.UserCreditStatusResponse;
 import com.noah.superagent.common.dto.response.CreditTransactionResponse;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.service.UserCreditService;
@@ -30,6 +31,29 @@ import org.springframework.web.bind.annotation.*;
 public class UserCreditController {
 
     private final UserCreditService userCreditService;
+
+    @Operation(
+        summary = "获取当前用户积分完整状态",
+        description = "获取当前登录用户的完整积分状态信息，包括:\n" +
+                "- 总积分余额和各类型积分详情\n" +
+                "- 透支额度、欠费状态、账户状态\n" +
+                "- 积分过期情况和有效期信息\n" +
+                "- 适用于积分管理界面的完整展示"
+    )
+    @SecurityRequirement(name = "Bearer Authentication")
+    @GetMapping("/status")
+    public ApiResponse<UserCreditStatusResponse> getCreditStatus() {
+        Long userId = UserContext.requireCurrentUserId();
+        log.info("查询用户积分完整状态 - userId: {}", userId);
+        
+        try {
+            UserCreditStatusResponse creditStatus = userCreditService.getUserCreditStatus(userId);
+            return ApiResponse.success("获取积分状态成功", creditStatus);
+        } catch (Exception e) {
+            log.error("查询用户积分状态失败 - userId: {}, 错误: {}", userId, e.getMessage(), e);
+            return ApiResponse.error("查询失败: " + e.getMessage());
+        }
+    }
 
     @Operation(
         summary = "获取当前用户积分详情",

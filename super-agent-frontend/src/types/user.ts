@@ -61,12 +61,18 @@ export interface SubscriptionPlan {
   planCode: string;
   description: string;
   features: PlanFeature[];
-  price: number;
-  monthlyPrice: number;
-  yearlyPrice: number;
+  // 完整的6个价格字段（命名一致）
+  monthlyOriginalPrice: number;    // 月价原价（未优惠）
+  monthlyPrice: number;            // 月价最终价格（优惠后）
+  monthlySavings: number;          // 月价优惠金额
+  yearlyOriginalPrice: number;     // 年价原价（月价*12，未优惠）
+  yearlyPrice: number;             // 年价最终价格（优惠后）
+  yearlySavings: number;           // 年价优惠金额
+  creditsAmount?: number;          // 积分数量（积分套餐专用）
   validityDays: number;
   enabled: boolean;
   isRecommended: boolean;
+  isCurrentPlan: boolean;          // 是否为用户当前套餐
   sortOrder: number;
 }
 

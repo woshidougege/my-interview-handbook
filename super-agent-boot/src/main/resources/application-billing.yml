@@ -1,118 +1,229 @@
-# 计费系统配置文件
-# 包含所有与计费相关的配置项
+# ==================== 超级智能体计费系统配置文件 ====================
+# 
+# 📋 配置文件说明：
+# 本文件包含系统的完整计费规则配置，包括：
+# - 积分消耗标准（模型类、功能类）
+# - 透支策略配置  
+# - 积分类型定义
+# - 各模型特定计费规则
+#
+# ⚠️  重要提醒：
+# - 生产环境请谨慎修改计费配置，建议先在测试环境验证
+# - 积分数值变更会影响用户消费，需要提前通知用户
+# - 修改配置后需重启应用才能生效
 
-# 计费引擎配置
+# ==================== 计费引擎主配置 ====================
 super-agent:
   billing:
-    # 是否启用计费
+    # 计费系统总开关（生产环境必须为true）
+    # true: 启用计费，用户使用功能时会扣减积分
+    # false: 关闭计费，用户免费使用所有功能（仅限开发/测试环境）
     enabled: true
     
-    # 模型计费价格配置（单位：元）
-    pricing:
-      # Token计费价格（每千个Token）
-      input-token: 0.0024    # 输入Token价格
-      output-token: 0.0096   # 输出Token价格
+    # ==================== 透支策略配置 ====================
+    # 当用户积分不足时的处理策略
+    overdraft:
+      enabled: true         # 是否允许透支：true=允许欠费使用，false=余额不足时拒绝服务
+      max-amount: 300      # 最大透支额度：用户最多可以欠费300积分（超出后拒绝服务）
+      warning-threshold: 50 # 透支警告阈值：欠费达到50积分时向用户发送警告通知
+    
+    # ==================== 模型类默认积分消耗配置 ====================
+    # 底层AI服务的默认计费标准，当具体模型未单独配置时使用这些默认值
+    model-defaults:
+      # 文本生成类模型计费标准
+      # 适用于：GPT、千问、ChatGLM等对话/文本生成模型
+      text-generation:
+        input-token: 2.4        # 输入Token计费：每1000个输入Token消耗2.4积分
+        output-token: 9.6       # 输出Token计费：每1000个输出Token消耗9.6积分
       
-      # 媒体生成价格
-      image-generation: 0.25  # 图片生成价格（元/张）
-      video-generation: 0.24  # 视频生成价格（元/秒）
+      # 图片生成类模型计费标准  
+      # 适用于：DALL-E、Midjourney、通义万相等图像生成模型
+      image-generation: 25      # 每生成1张图片消耗25积分
       
-    # 功能计费价格配置（单位：元）
-    functions:
-      # 搜索类功能
-      deepsearch: 0.001        # 深度搜索（元/次）
-      browseruse: 0.001        # 浏览器使用（元/次）
+      # 视频生成类模型计费标准
+      # 适用于：Sora、通义视频生成等视频生成模型  
+      video-generation: 24      # 每生成1秒视频消耗24积分
+    
+    # ==================== 功能类默认积分消耗配置 ====================  
+    # 上层业务功能的默认计费标准，这些功能可能调用多个底层模型
+    function-defaults:
+      browseruse: 0.1             # 浏览器自动化操作：每次操作消耗0.1积分
+      deepsearch: 0.1             # 深度网络搜索：每次搜索消耗0.1积分
+      software-operation: 0.1     # 软件自动化操作：每次操作消耗0.1积分
+      ppt-generation: 0.1         # PPT自动生成：每页PPT消耗0.1积分  
+      meeting-minutes: 0.1        # 会议纪要生成：每次生成消耗0.1积分
+      document-writing: 0.1       # 文档自动编写：每次生成消耗0.1积分（如Word文档）
+      coding: 0.1                 # 代码编写+执行：每次完整的编程任务消耗0.1积分
+      function-video-generation: 24  # 功能类视频生成：每秒视频消耗24积分
+      function-image-generation: 25  # 功能类图片生成：每张图片消耗25积分
+      translation: 0.1            # 多语言翻译：每次翻译任务消耗0.1积分
+      mind-map: 0.1              # 思维导图生成：每次生成消耗0.1积分
+      database-analysis: 0.1      # 数据库分析：每次数据分析消耗0.1积分
+      excel-analysis: 0.1         # Excel数据分析：每次分析消耗0.1积分
+    
+    # ==================== 特定模型计费配置 ====================
+    # 针对特定AI模型的个性化计费标准，会覆盖上面的默认配置
+    # 目前仅支持阿里云百炼平台的模型，其他平台模型使用默认配置
+    models:
+      # === 通义千问基础系列 ===
+      qwen-plus:
+        description: "能力均衡，推理效果、成本和速度介于通义千问Max和通义千问Flash之间，适合中等复杂任务"
+        text-generation:
+          input-token: 1.0      # 平衡型，性能与成本兼顾
+          output-token: 3.0
+          
+      qwen-flash:
+        description: "通义千问系列速度最快、成本极低的模型，适合简单任务。采用灵活的阶梯定价，相比通义千问Turbo计费更合理"
+        text-generation:
+          input-token: 0.3      # 极低成本，高速处理
+          output-token: 1.0
+          
+      qwen-turbo:
+        description: "通义千问Turbo 后续不再更新，建议替换为通义千问Flash"
+        text-generation:
+          input-token: 0.5      # 经济型，适合日常对话
+          output-token: 1.5
       
-      # 生成类功能
-      ppt-generation: 0.001    # PPT生成（元/页）
-      meeting-minutes: 0.001   # 会议纪要（元/次）
-      document-writing: 0.001  # 文档编写（元/次）
-      coding: 0.001           # 编码（元/次）
-      translation: 0.001      # 翻译（元/次）
-      mind-map: 0.001         # 思维导图（元/次）
+      # === 通义千问多模态系列 ===
+      qwen-omni-turbo:
+        description: "通义千问全新多模态理解生成大模型，支持文本、图像、语音与视频输入，并输出文本与音频，提供了4种自然对话音色"
+        text-generation:
+          input-token: 2.0      # 多模态处理成本较高
+          output-token: 6.0
+        image-generation: 30    # 支持图像理解
+        video-generation: 35    # 支持视频理解
+        
+      qwen-omni-turbo-realtime:
+        description: "相比于通义千问Omni，支持音频的流式输入，且内置 VAD（Voice Activity Detection，语音活动检测）功能"
+        extends-model: qwen-omni-turbo # 继承Omni配置
+        
+      # === 通义千问专业视觉系列 ===
+      qvq-max:
+        description: "QVQ是视觉推理模型，支持视觉输入及思维链输出，在数学、编程、视觉分析、创作以及通用任务上都表现了更强的能力"
+        text-generation:
+          input-token: 3.0      # 视觉推理复杂度高
+          output-token: 10.0
+        image-generation: 40    # 专业视觉分析
+        
+      qwen-vl-max:
+        description: "通义千问VL是具有视觉（图像）理解能力的文本生成模型，能进行OCR，还能进一步总结和推理"
+        text-generation:
+          input-token: 2.5      # 视觉理解能力
+          output-token: 8.0
+        image-generation: 25    # 图像理解
+        
+      qwen-vl-ocr:
+        description: "专用于文字提取的模型，专注于文档、表格、试题、手写体文字等类型图像的文字提取，识别多种语言"
+        text-generation:
+          input-token: 1.5      # OCR专用，相对简单
+          output-token: 4.0
+        image-generation: 15    # OCR处理
+        
+      # === 通义千问音频系列 ===
+      qwen-audio-turbo:
+        description: "音频理解模型，支持多种音频和文本输入输出，具备语音转录、语义理解、情感分析、音频事件检测等能力"
+        text-generation:
+          input-token: 2.0      # 音频处理复杂
+          output-token: 6.0
+        function-video-generation: 20  # 音频处理按功能计费
+        
+      qwen3-asr-flash:
+        description: "提供正式版（Qwen3-ASR）和Beta版（Qwen-Audio-ASR）两种模型，正式版具备更强的功能和稳定性"
+        text-generation:
+          input-token: 1.0      # ASR专用
+          output-token: 2.0
+        function-video-generation: 15  # 语音识别按功能计费
+        
+      # === 通义千问专业领域系列 ===
+      qwen-math-plus:
+        description: "通义千问数学模型是专门用于数学解题的语言模型"
+        text-generation:
+          input-token: 2.0      # 数学推理复杂
+          output-token: 7.0
+          
+      qwen3-coder-plus:
+        description: "基于 Qwen3 的代码生成模型，具有强大的Coding Agent能力，擅长工具调用和环境交互，能够实现自主编程"
+        text-generation:
+          input-token: 2.5      # 代码生成复杂度高
+          output-token: 8.0
+        coding: 0.15            # 代码功能专项计费
+        
+      qwen-mt-plus:
+        description: "基于 Qwen 3全面升级的旗舰级翻译大模型，支持92个语种互译，提供更稳定的术语定制、格式还原度"
+        text-generation:
+          input-token: 1.5      # 翻译专用
+          output-token: 4.5
+        translation: 0.08       # 翻译功能专项计费
+        
+      # === DeepSeek系列 ===
+      deepseek-r1:
+        description: "DeepSeek-R1 在后训练阶段大规模使用了强化学习技术，极大提升了模型推理能力，尤其在数学、代码、自然语言推理等任务上"
+        text-generation:
+          input-token: 1.8      # 强化学习模型，推理能力强
+          output-token: 5.5
+          
+      'deepseek-v3.1':
+        description: "DeepSeek-V3 为 MoE 模型，671B 参数，激活 37B，在长文本、代码、数学、百科、中文能力上表现优秀"
+        text-generation:
+          input-token: 2.2      # 大规模MoE模型
+          output-token: 6.5
       
-      # 分析类功能
-      database-analysis: 0.001 # 数据库分析（元/次）
-      excel-analysis: 0.001    # Excel分析（元/次）
-      software-operation: 0.001 # 软件操作（元/次）
-      
-    # 订阅套餐配置
+    # ==================== 订阅套餐配置 ====================
+    # 用户付费套餐的积分分配和优惠策略
     subscription:
-      # 按年订阅优惠比例
-      yearly-discount-rate: 0.17  # 17%优惠
+      # 年费订阅优惠比例（相比月付的折扣力度）
+      # 0.17 = 17%优惠，即年费用户只需支付原价的83%
+      yearly-discount-rate: 0.17
       
-      # 套餐积分配置（key为套餐ID，value为积分数量）
+      # 各套餐包含的积分数量配置
+      # key: 套餐ID（对应数据库中的订阅套餐记录）
+      # value: 该套餐包含的永久积分数量
       plan-credits:
-        2: 1900    # 基础版 - 1900永久积分
-        3: 1900   # 高级版 - 19000永久积分 
-        4: 10000   # 额外购买积分 - 10000永久积分
+        2: 1900        # 套餐ID=2，基础版套餐，包含1900个永久积分
+        3: 1900       # 套餐ID=3，高级版套餐，包含1900个永久积分（注：可能数值有误，应为19000?）
+        4: 10000       # 套餐ID=4，积分充值包，包含10000个永久积分
+        5: 1000000000  # 套餐ID=5，开发者特殊版本，包含10亿积分（测试用途）
     
-    # 积分系统配置
+    # ==================== 积分系统配置 ====================
     credits:
-      # 积分兑换比例
-      exchange-rate: 0.01      # 1积分 = 0.01元
       
-      # 免费积分配置
-      free-credits:
-        new-user-amount: 1000   # 新用户赠送积分
-        new-user-validity: 90   # 有效期（天）
-        daily-signin: 300       # 每日签到积分（登录时发放）
-        daily-validity: 1       # 每日积分有效期（天）
-        
-      # 活动积分配置  
-      activity-credits:
-        share-reward: 500       # 分享奖励积分
-        share-validity: 30      # 分享积分有效期（天）
-        
-      # 积分扣费优先级（数字越小优先级越高）
-      deduction-priority:
-        daily: 1               # 当日积分
-        activity: 2            # 活动积分  
-        free: 3                # 免费积分
-        paid: 4                # 付费积分
+      # ==================== 积分类型配置 ====================
+      # 根据产品需求定义的4种积分类型，按扣费优先级排序
+      types:
+        # 当日积分配置
+        # 规则：每日登录打卡获得300积分，1天有效期，扣费优先级1（最高）
+        # 用途：鼓励用户每日登录，避免积分过期浪费，优先扣除
+        daily:
+          name: "当日积分"                    # UI显示名称
+          description: "每日登录打卡获得的积分，当天有效，优先扣费"  # 详细说明
+          validity-days: 1                   # 有效期：1天
+          deduction-priority: 1              # 扣费优先级：1（最高，优先扣除）
+          
+        # 活动积分配置（暂时占位）
+        # 规则：各类活动奖励积分（分享、推荐等），90天有效期，扣费优先级2
+        # 状态：本版本暂未开放，仅做配置占位
+        activity:
+          name: "活动积分"                   # UI显示名称
+          description: "各类活动奖励积分（分享、推荐等），本版本暂未开放"  # 详细说明
+          validity-days: 90                 # 有效期：90天（3个月）
+          deduction-priority: 2             # 扣费优先级：2（次优先）
+          
+        # 免费积分配置  
+        # 规则：新用户一次性发放1000积分，90天有效期，扣费优先级3
+        # 用途：新用户体验积分，让新用户可以免费试用产品功能
+        free:
+          name: "免费积分"                   # UI显示名称
+          description: "新用户注册时一次性获得的体验积分"  # 详细说明
+          validity-days: 90                 # 有效期：90天（3个月）
+          deduction-priority: 3             # 扣费优先级：3（第三优先）
+          
+        # 付费积分配置
+        # 规则：购买获得，无期限，扣费优先级4（最低）
+        # 用途：用户付费购买的积分，价值最高，永久有效，最后扣除
+        paid:
+          name: "付费积分"                   # UI显示名称
+          description: "通过购买套餐获得的永久积分，无有效期限制"  # 详细说明
+          validity-days: 0                  # 有效期：0表示永久有效
+          deduction-priority: 4             # 扣费优先级：4（最低，最后扣除）
 
-# 异步处理配置
-async:
-  # 资源上报专用线程池配置
-  resource-report:
-    core-pool-size: ${ASYNC_RESOURCE_CORE_POOL_SIZE:4}
-    max-pool-size: ${ASYNC_RESOURCE_MAX_POOL_SIZE:8}
-    queue-capacity: ${ASYNC_RESOURCE_QUEUE_CAPACITY:500}
-    keep-alive-seconds: ${ASYNC_RESOURCE_KEEP_ALIVE:60}
-    thread-name-prefix: "resource-report-"
-    
-  # 计费处理专用线程池
-  billing-process:
-    core-pool-size: ${ASYNC_BILLING_CORE_POOL_SIZE:2}
-    max-pool-size: ${ASYNC_BILLING_MAX_POOL_SIZE:4}
-    queue-capacity: ${ASYNC_BILLING_QUEUE_CAPACITY:200}
-    keep-alive-seconds: ${ASYNC_BILLING_KEEP_ALIVE:60}
-    thread-name-prefix: "billing-process-"
 
-# 缓存配置
-cache:
-  # 计费缓存配置
-  billing:
-    # 价格缓存（避免频繁读取配置）
-    pricing-cache-ttl: 3600    # 价格缓存过期时间（秒）
-    
-    # 用户积分缓存
-    user-credits-cache-ttl: 300 # 用户积分缓存过期时间（秒）
-    
-    # 计费规则缓存
-    billing-rules-cache-ttl: 1800 # 计费规则缓存过期时间（秒）
-
-# 监控和告警配置
-monitoring:
-  billing:
-    # 计费异常告警
-    alert:
-      enabled: true
-      threshold:
-        billing-failure-rate: 0.05   # 计费失败率阈值（5%）
-        credit-insufficient-rate: 0.1 # 积分不足率阈值（10%）
-        
-    # 统计配置
-    metrics:
-      enabled: true
-      collection-interval: 60        # 指标收集间隔（秒）

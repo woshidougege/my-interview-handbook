@@ -1,7 +1,6 @@
 package com.noah.superagent.controller;
 
-import com.noah.superagent.common.dto.response.SubscriptionPlanResponse;
-import com.noah.superagent.common.enums.BillingCycleEnum;
+import com.noah.superagent.common.dto.response.PlansListResponse;
 import com.noah.superagent.convert.SubscriptionPlanWebConvert;
 import com.noah.superagent.model.UserSubscriptionDTO;
 import com.noah.superagent.response.ApiResponse;
@@ -11,7 +10,6 @@ import com.noah.superagent.service.UserSubscriptionService;
 import com.noah.superagent.service.UserCreditService;
 import com.noah.superagent.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -20,6 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -40,9 +39,15 @@ public class SubscriptionController {
     private final UserSubscriptionService userSubscriptionService;
     private final UserCreditService userCreditService;
 
+    /**
+     * 按年订阅优惠比例（Web层配置）
+     */
+    @Value("${super-agent.billing.subscription.yearly-discount-rate:0.17}")
+    private Double yearlyDiscountRate;
+
     @Operation(
         summary = "获取所有启用的套餐", 
-        description = "获取系统中所有启用状态的订阅套餐列表，包含套餐详情、价格、功能特性等信息。支持按计费周期调整价格（按年优惠17%）。此接口无需认证，可用于展示给未登录用户。",
+        description = "获取系统中所有启用状态的订阅套餐列表，包含套餐详情、完整价格信息、功能特性等。包含月价、年价的原价和优惠信息，以及用户当前套餐标识。此接口无需认证，可用于展示给未登录用户。",
         tags = {"订阅管理"}
     )
     @ApiResponses(value = {
@@ -59,66 +64,89 @@ public class SubscriptionController {
                         value = "{" +
                         "\"code\": 200," +
                         "\"message\": \"获取套餐列表成功\"," +
-                        "\"data\": [" +
+                        "\"data\": {" +
+                            "\"yearlyDiscountRate\": 0.17," +
+                            "\"discountPercentageText\": \"17%\"," +
+                            "\"plans\": [" +
                             "{" +
                                 "\"id\": 1," +
                                 "\"planName\": \"免费版\"," +
                                 "\"description\": \"适合轻度使用的个人用户\"," +
+                                "\"planCode\": \"FREE\"," +
                                 "\"features\": [" +
-                                    "{\"text\": \"新用户赠送1000积分(90天有效)\", \"highlight\": true, \"included\": true}," +
-                                    "{\"text\": \"每日登录赠300积分\", \"highlight\": false, \"included\": true}," +
-                                    "{\"text\": \"分享新用户奖励500积分\", \"highlight\": false, \"included\": true}," +
-                                    "{\"text\": \"公共数字分身(限制体验)\", \"highlight\": true, \"included\": true}" +
+                                    "{\"text\": \"每日可获得***新积分\", \"highlight\": true, \"included\": true}," +
+                                    "{\"text\": \"访问聊天\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"公共数字分身（限时体验）\", \"highlight\": false, \"included\": true}" +
                                 "]," +
-                                "\"price\": 0," +
-                                "\"monthlyPrice\": 0," +
-                                "\"yearlyPrice\": 0," +
+                                "\"monthlyOriginalPrice\": 0.00," +
+                                "\"monthlyPrice\": 0.00," +
+                                "\"yearlyOriginalPrice\": 0.00," +
+                                "\"yearlyPrice\": 0.00," +
+                                "\"monthlySavings\": 0.00," +
+                                "\"yearlySavings\": 0.00," +
                                 "\"validityDays\": 90," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": false," +
+                                "\"isCurrentPlan\": false," +
                                 "\"sortOrder\": 1" +
                             "}," +
                             "{" +
                                 "\"id\": 2," +
                                 "\"planName\": \"基础版\"," +
+                                "\"planCode\": \"BASIC\"," +
                                 "\"description\": \"适合中度使用的专业用户\"," +
                                 "\"features\": [" +
-                                    "{\"text\": \"一次性获得1900永久积分\", \"highlight\": true, \"included\": true}," +
-                                    "{\"text\": \"享受所有免费版权益\", \"highlight\": false, \"included\": true}," +
-                                    "{\"text\": \"访问限定天\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"一次性发放1900积分\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"每日可获得300新积分\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"访问聊天\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"公共数字分身\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"幻灯片制作\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"网站开发\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"数据分析\", \"highlight\": false, \"included\": true}," +
-                                    "{\"text\": \"图片、视频生成\", \"highlight\": true, \"included\": true}" +
+                                    "{\"text\": \"图片、视频生成\", \"highlight\": false, \"included\": true}" +
                                 "]," +
-                                "\"price\": 39," +
-                                "\"monthlyPrice\": 39," +
-                                "\"yearlyPrice\": 388," +
+                                "\"monthlyOriginalPrice\": 39.00," +
+                                "\"monthlyPrice\": 29.00," +
+                                "\"yearlyOriginalPrice\": 468.00," +
+                                "\"yearlyPrice\": 388.44," +
+                                "\"monthlySavings\": 10.00," +
+                                "\"yearlySavings\": 79.56," +
                                 "\"validityDays\": 30," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": true," +
+                                "\"isCurrentPlan\": false," +
                                 "\"sortOrder\": 2" +
                             "}," +
                             "{" +
                                 "\"id\": 3," +
                                 "\"planName\": \"高级版\"," +
+                                "\"planCode\": \"PREMIUM\"," +
                                 "\"description\": \"适合重度使用的企业用户\"," +
                                 "\"features\": [" +
-                                    "{\"text\": \"一次性获得19000永久积分\", \"highlight\": true, \"included\": true}," +
-                                    "{\"text\": \"享受所有免费版权益\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"一次性发放1900积分\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"每日可获得300新积分\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"访问聊天\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"专属数字分身\", \"highlight\": true, \"included\": true}," +
+                                    "{\"text\": \"幻灯片制作\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"网站开发\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"数据分析\", \"highlight\": false, \"included\": true}," +
+                                    "{\"text\": \"图片、视频生成\", \"highlight\": false, \"included\": true}," +
                                     "{\"text\": \"本机电脑操控\", \"highlight\": true, \"included\": true}" +
                                 "]," +
-                                "\"price\": 199," +
-                                "\"monthlyPrice\": 199," +
-                                "\"yearlyPrice\": 1983," +
+                                "\"monthlyOriginalPrice\": 199.00," +
+                                "\"monthlyPrice\": 179.00," +
+                                "\"yearlyOriginalPrice\": 2388.00," +
+                                "\"yearlyPrice\": 1982.04," +
+                                "\"monthlySavings\": 20.00," +
+                                "\"yearlySavings\": 405.96," +
                                 "\"validityDays\": 30," +
                                 "\"enabled\": true," +
                                 "\"isRecommended\": false," +
+                                "\"isCurrentPlan\": false," +
                                 "\"sortOrder\": 3" +
                             "}" +
-                        "]," +
+                            "]" +
+                        "}," +
                         "\"success\": true," +
                         "\"timestamp\": 1736752800000" +
                     "}"
@@ -129,7 +157,11 @@ public class SubscriptionController {
                         value = "{" +
                             "\"code\": 200," +
                             "\"message\": \"获取套餐列表成功\"," +
-                            "\"data\": []," +
+                            "\"data\": {" +
+                                "\"yearlyDiscountRate\": 0.17," +
+                                "\"discountPercentageText\": \"17%\"," +
+                                "\"plans\": []" +
+                            "}," +
                             "\"success\": true," +
                             "\"timestamp\": 1736752800000" +
                         "}"
@@ -160,22 +192,41 @@ public class SubscriptionController {
         )
     })
     @GetMapping("/plans")
-    public ApiResponse<List<SubscriptionPlanResponse>> getPlans(
-            @Parameter(
-                name = "billingCycle",
-                description = "计费周期：monthly(按月) 或 yearly(按年)，按年时自动优惠17%",
-                example = "monthly"
-            )
-            @RequestParam(value = "billingCycle", required = false, defaultValue = "monthly") String billingCycle
-    ) {
-        BillingCycleEnum cycle = BillingCycleEnum.fromCode(billingCycle);
+    public ApiResponse<PlansListResponse> getPlans() {
         
-        List<SubscriptionPlanResponse> plans = webConvert.toResponseList(
-            subscriptionPlanService.getEnabledPlansByBillingCycle(cycle)
-        );
+        // 获取当前用户ID（如果已登录）
+        Long currentUserId;
+        Long currentUserPlanId = null;
+        try {
+            currentUserId = UserContext.getCurrentUserId(); // 使用可空版本，未登录不抛异常
+            if (currentUserId != null) {
+                // 获取用户当前有效订阅
+                UserSubscriptionDTO currentSubscription = userSubscriptionService.getCurrentActiveSubscription(currentUserId);
+                if (currentSubscription != null) {
+                    currentUserPlanId = currentSubscription.getPlanId();
+                }
+            }
+        } catch (Exception e) {
+            // 忽略获取用户信息失败的情况，继续返回套餐列表
+            log.debug("获取当前用户信息失败，继续返回套餐列表 - 错误: {}", e.getMessage());
+        }
         
-        // 明确指定泛型类型 - 解决Swagger嵌套对象显示问题
-        return ApiResponse.success("获取套餐列表成功", plans);
+        // Service层返回DTO（配置文件中已包含完整价格信息）
+        List<com.noah.superagent.model.SubscriptionPlanDTO> planDTOs = subscriptionPlanService.getEnabledPlans();
+        
+        // 标识当前套餐（价格信息已在Service层计算完成）
+        final Long finalCurrentUserPlanId = currentUserPlanId;
+        planDTOs.forEach(planDTO -> {
+            planDTO.setIsCurrentPlan(finalCurrentUserPlanId != null && finalCurrentUserPlanId.equals(planDTO.getId()));
+        });
+        
+        // Web层组装Response
+        PlansListResponse response = new PlansListResponse();
+        response.setYearlyDiscountRate(yearlyDiscountRate);
+        response.setDiscountPercentageText(Math.round(yearlyDiscountRate * 100) + "%");
+        response.setPlans(webConvert.toResponseList(planDTOs));
+        
+        return ApiResponse.success("获取套餐列表成功", response);
     }
 
     @Operation(
@@ -325,13 +376,13 @@ public class SubscriptionController {
             UserSubscriptionDTO subscription = userSubscriptionService.getCurrentActiveSubscription(userId);
             
             // 查询用户可用积分
-            Long availableCredits = 0L;
+            long availableCredits = 0L;
             boolean hasCreditAccount = false;
             String planName = null;
             String planCode = null;
-            Long limitedCredits = 0L;
-            Long dailyRefreshCredits = 0L;
-            Long permanentCredits = 0L;
+            long limitedCredits = 0L;
+            long dailyRefreshCredits = 0L;
+            long permanentCredits = 0L;
             
             // 获取套餐名称和代码
             if (subscription != null && subscription.getPlanId() != null) {
@@ -366,27 +417,27 @@ public class SubscriptionController {
                     
                     hasCreditAccount = true;
                 }
-                
+
                 if (hasCreditAccount) {
                     // 获取详细积分信息
                     var creditDetail = userCreditService.getUserCredit(userId);
                     if (creditDetail != null) {
                         availableCredits = creditDetail.getTotalBalance() != null ? creditDetail.getTotalBalance().longValue() : 0L;
-                        
+
                         // 限时积分 = 免费积分 + 活动积分
                         limitedCredits = (creditDetail.getFreeBalance() != null ? creditDetail.getFreeBalance().longValue() : 0L) +
                                         (creditDetail.getActivityBalance() != null ? creditDetail.getActivityBalance().longValue() : 0L);
-                        
+
                         // 当日刷新积分
                         dailyRefreshCredits = creditDetail.getDailyBalance() != null ? creditDetail.getDailyBalance().longValue() : 0L;
-                        
+
                         // 永久积分
                         permanentCredits = creditDetail.getPermanentBalance() != null ? creditDetail.getPermanentBalance().longValue() : 0L;
-                        
-                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}, permanent: {}", 
-                                userId, availableCredits, 
-                                creditDetail.getFreeBalance(), 
-                                creditDetail.getActivityBalance(), 
+
+                        log.info("积分详情 - userId: {}, total: {}, free: {}, activity: {}, daily: {}, permanent: {}",
+                                userId, availableCredits,
+                                creditDetail.getFreeBalance(),
+                                creditDetail.getActivityBalance(),
                                 creditDetail.getDailyBalance(),
                                 creditDetail.getPermanentBalance());
                     }

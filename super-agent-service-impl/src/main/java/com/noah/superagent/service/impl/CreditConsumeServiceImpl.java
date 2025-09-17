@@ -12,6 +12,7 @@ import com.noah.superagent.dao.mapper.CreditTransactionMapper;
 import com.noah.superagent.dao.mapper.UserCreditAccountMapper;
 import com.noah.superagent.dao.mapper.UserCreditBalanceMapper;
 import com.noah.superagent.service.CreditConsumeService;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
 
 /**
  * 积分消费服务实现
- * 
+ * <p>
  * 处理积分扣费逻辑，按照有效期优先级顺序扣费
  *
  * @author 任相鹏
@@ -57,13 +58,10 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
         }
         
-        // 2. 检查总积分是否足够
-        if (creditAccount.getTotalBalance().compareTo(amount) < 0) {
-            throw new BusinessException(ResponseCodeEnum.INSUFFICIENT_CREDITS, 
-                    String.format("积分余额不足，当前余额: %s，需要: %s", creditAccount.getTotalBalance(), amount));
-        }
+        // 注意：这里不再进行余额检查，调用方应该在调用前进行检查
+        // 积分扣减服务只负责纯粹的扣减操作
         
-        // 3. 获取用户各类型积分余额并按优先级排序
+        // 2. 获取用户各类型积分余额并按优先级排序
         List<UserCreditBalanceEntity> balanceList = userCreditBalanceMapper.selectByUserId(userId);
         Map<CreditTypeEnum, UserCreditBalanceEntity> balanceMap = balanceList.stream()
                 .collect(Collectors.toMap(
@@ -71,10 +69,10 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
                         balance -> balance
                 ));
         
-        // 4. 按优先级计算扣费方案
+        // 3. 按优先级计算扣费方案
         List<CreditDeduction> deductions = calculateDeductions(balanceMap, amount);
         
-        // 5. 更新积分汇总账户
+        // 4. 更新积分汇总账户
         BigDecimal oldTotalBalance = creditAccount.getTotalBalance();
         BigDecimal newTotalBalance = oldTotalBalance.subtract(amount);
         BigDecimal newTotalSpent = creditAccount.getTotalSpent().add(amount);
@@ -92,7 +90,7 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新积分账户失败");
         }
         
-        // 6. 分别更新各类型积分余额并记录交易
+        // 5. 分别更新各类型积分余额并记录交易
         for (CreditDeduction deduction : deductions) {
             UserCreditBalanceEntity balance = balanceMap.get(deduction.getType());
             if (balance == null) {
@@ -135,8 +133,8 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         }
         
         log.info("用户积分扣费成功 - userId: {}, 扣费金额: {}, 新余额: {}", userId, amount, newTotalBalance);
-        
-        // 7. 返回最新的积分信息
+
+        // 6. 返回最新的积分信息
         UserCreditResponse response = new UserCreditResponse();
         response.setUserId(userId);
         response.setTotalBalance(newTotalBalance);
@@ -146,8 +144,8 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         // 设置各类型积分余额
         response.setDailyBalance(getBalanceSafely(balanceMap, CreditTypeEnum.DAILY));
         response.setActivityBalance(getBalanceSafely(balanceMap, CreditTypeEnum.ACTIVITY));
-        response.setFreeBalance(getBalanceSafely(balanceMap, CreditTypeEnum.NEW_USER));
-        response.setPermanentBalance(getBalanceSafely(balanceMap, CreditTypeEnum.PERMANENT));
+        response.setFreeBalance(getBalanceSafely(balanceMap, CreditTypeEnum.FREE));
+        response.setPermanentBalance(getBalanceSafely(balanceMap, CreditTypeEnum.PAID));
         
         return response;
     }
@@ -158,6 +156,8 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         if (creditAccount == null) {
             return false;
         }
+        
+        // 只检查实际余额，不考虑透支
         return creditAccount.getTotalBalance().compareTo(amount) >= 0;
     }
 
@@ -168,8 +168,9 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             return "用户积分账户不存在";
         }
         
-        if (creditAccount.getTotalBalance().compareTo(amount) < 0) {
-            return "积分余额不足，当前余额: " + creditAccount.getTotalBalance() + "，需要: " + amount;
+        BigDecimal currentBalance = creditAccount.getTotalBalance();
+        if (currentBalance.compareTo(amount) < 0) {
+            return "积分余额不足，当前余额: " + currentBalance + "，需要: " + amount;
         }
         
         // 获取用户各类型积分余额
@@ -236,6 +237,7 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
         return deductions;
     }
 
+
     /**
      * 安全获取余额，不存在时返回0
      */
@@ -247,6 +249,7 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
     /**
      * 积分扣费项
      */
+    @Getter
     private static class CreditDeduction {
         private final CreditTypeEnum type;
         private final BigDecimal amount;
@@ -256,12 +259,5 @@ public class CreditConsumeServiceImpl implements CreditConsumeService {
             this.amount = amount;
         }
 
-        public CreditTypeEnum getType() {
-            return type;
-        }
-
-        public BigDecimal getAmount() {
-            return amount;
-        }
     }
 }

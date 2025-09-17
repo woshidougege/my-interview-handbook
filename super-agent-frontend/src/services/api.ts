@@ -149,9 +149,10 @@ export const subscriptionApi = {
     return api.get(API_ENDPOINTS.SUBSCRIPTION.PLANS);
   },
 
-  // 根据计费周期获取套餐列表
-  getPlansWithBillingCycle: (billingCycle: 'monthly' | 'yearly'): ApiPromise<any[]> => {
-    return api.get(`${API_ENDPOINTS.SUBSCRIPTION.PLANS}?billingCycle=${billingCycle}`);
+  // 根据计费周期获取套餐列表（已废弃，现在直接调用getPlans即可）
+  getPlansWithBillingCycle: (billingCycle: 'monthly' | 'yearly'): ApiPromise<{yearlyDiscountRate: number, plans: any[]}> => {
+    // 新接口已包含所有价格信息，不再需要billingCycle参数
+    return api.get(API_ENDPOINTS.SUBSCRIPTION.PLANS);
   },
   
   // 创建订阅
@@ -209,7 +210,7 @@ export const userApi = {
   // 向后兼容的API（逐步废弃）
   getProfile: (): Promise<any> => {
     // 重定向到SSO获取用户信息
-    return this.getCurrentUser();
+    return userApi.getCurrentUser();
   },
   
   updateProfile: (data: UserProfileRequest): ApiPromise<any> => {
@@ -304,9 +305,18 @@ export const aiApi = {
 
 // ========== 工作空间相关API ==========
 export const workspaceApi = {
-  // 获取工作空间列表
-  getWorkspaces: (): ApiPromise<WorkspaceInfo[]> => {
-    return api.get(API_ENDPOINTS.WORKSPACE.LIST);
+  // 获取当前用户的工作空间列表
+  getWorkspaces: async (): ApiPromise<WorkspaceInfo[]> => {
+    // 先获取当前用户信息
+    const userResponse = await userApi.getCurrentUser();
+    const userId = userResponse.data.data.userId;
+    // 调用按用户获取工作空间的接口
+    return api.get(API_ENDPOINTS.WORKSPACE.GET_BY_USER(userId.toString()));
+  },
+
+  // 根据用户ID获取工作空间列表  
+  getWorkspacesByUserId: (userId: string): ApiPromise<WorkspaceInfo[]> => {
+    return api.get(API_ENDPOINTS.WORKSPACE.GET_BY_USER(userId));
   },
   
   // 创建工作空间

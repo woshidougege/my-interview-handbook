@@ -1,6 +1,7 @@
 package com.noah.superagent.scheduler.config;
 
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
+import com.noah.superagent.scheduler.job.CreditDeductionTaskJob;
 import com.noah.superagent.scheduler.job.CreditExpiryCleanupJob;
 import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
 import com.noah.superagent.scheduler.job.ScheduledChatTaskJob;
@@ -40,5 +41,13 @@ public class SchedulerTaskConfig {
     @Bean
     public RecurringTask<Void> scheduledChatTask(ScheduledChatTaskJob scheduledChatTaskJob) {
         return scheduledChatTaskJob.getTask();
+    }
+    
+    /**
+     * 注册积分扣减清理任务
+     */
+    @Bean
+    public RecurringTask<Void> creditDeductionCleanupTask(CreditDeductionTaskJob creditDeductionTaskJob) {
+        return creditDeductionTaskJob.getCleanupTask();
     }
 }

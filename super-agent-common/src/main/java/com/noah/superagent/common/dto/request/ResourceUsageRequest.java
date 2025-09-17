@@ -61,6 +61,9 @@ public class ResourceUsageRequest {
         @Schema(description = "资源类型", example = "TOKEN")
         private ResourceTypeEnum resourceType;
         
+        @Schema(description = "模型名称（可选，用于区分不同模型的计费）", example = "qwen-plus")
+        private String model;
+        
         @Schema(description = "输入Token数量（仅文本生成时使用）", example = "3000")
         private Long inputTokens;
         
