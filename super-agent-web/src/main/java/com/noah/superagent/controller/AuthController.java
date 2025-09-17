@@ -5,9 +5,8 @@ import com.noah.superagent.common.dto.request.PasswordLoginRequest;
 import com.noah.superagent.common.dto.request.PhoneLoginRequest;
 import com.noah.superagent.common.dto.request.RegisterRequest;
 import com.noah.superagent.common.dto.request.ResetPasswordRequest;
-import com.noah.superagent.model.SSOUserInfo;
 import com.noah.superagent.response.ApiResponse;
-import com.norinrd.interfaces.loginFlow.ILoginFlow;
+import com.noah.superagent.service.UserCreditService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -30,12 +29,9 @@ import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.URLUtil;
 import cn.hutool.core.lang.Validator;
 import org.springframework.web.util.UriComponentsBuilder;
-import com.noah.superagent.util.UserContext;
-
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.noah.superagent.util.UserContext.getCurrentUser;
 import static com.noah.superagent.util.UserContext.getCurrentUserId;
 
 /**
@@ -174,6 +170,9 @@ public class AuthController {
                 Map<String, Object> data = getDataFromResponse(result);
                 String ticket = String.valueOf(data.get("ticket"));
 
+                // 登录成功后，异步发放每日积分
+                handleDailyCreditsOnLogin(ticket);
+
                 Map<String, String> responseData = new HashMap<>();
                 responseData.put("ticket", ticket);
                 return ApiResponse.success("登录成功", responseData);
@@ -183,6 +182,38 @@ public class AuthController {
         }
 
         return ApiResponse.error("登录失败，请稍后重试");
+    }
+
+    /**
+     * 处理登录成功后的每日积分发放
+     */
+    private void handleDailyCreditsOnLogin(String ticket) {
+        try {
+            // 通过ticket获取用户ID
+            Object userIdObj = ILoginFlow.checkTicket(ticket, "/sso/doLoginByTicket");
+            if (userIdObj != null) {
+                final long userId;
+                if (userIdObj instanceof Number) {
+                    userId = ((Number) userIdObj).longValue();
+                } else {
+                    userId = Long.parseLong(userIdObj.toString());
+                }
+                
+                log.info("用户登录成功，开始发放每日积分 - userId: {}", userId);
+                
+                // 异步发放每日积分，避免影响登录接口性能
+                new Thread(() -> {
+                    try {
+                        userCreditService.giveFreePlanDailyBonusOnLogin(userId);
+                    } catch (Exception e) {
+                        log.warn("发放每日积分失败 - userId: {}, 错误: {}", userId, e.getMessage());
+                    }
+                }).start();
+            }
+        } catch (Exception e) {
+            log.warn("处理每日积分发放时发生错误: {}", e.getMessage());
+            // 不影响登录流程
+        }
     }
 
     @PostMapping("/phone-login")
@@ -283,6 +314,9 @@ public class AuthController {
     @Autowired
     private com.norinrd.interfaces.loginFlow.ILoginFlow ILoginFlow;
 
+    @Autowired
+    private UserCreditService userCreditService;
+
     /**
      * 用户注册接口
      */
@@ -348,11 +382,11 @@ public class AuthController {
                 return;
             }
             
-            Long userId = null;
+            long userId;
             if (userIdObj instanceof Number) {
                 userId = ((Number) userIdObj).longValue();
             } else {
-                userId = Long.valueOf(userIdObj.toString());
+                userId = Long.parseLong(userIdObj.toString());
             }
             
             log.info("开始执行注册回调 - userId: {}, phoneNum: {}", userId, phone);
@@ -366,7 +400,7 @@ public class AuthController {
             log.debug("回调URL: {}", fullUrl);
             
             // 发送GET请求
-            ResponseEntity<String> forEntity = restTemplate.getForEntity(fullUrl, String.class);
+            restTemplate.getForEntity(fullUrl, String.class);
 
             log.info("注册回调执行成功 - userId: {}, phoneNum: {}", userId, phone);
         } catch (Exception e) {

@@ -5,7 +5,6 @@ import com.mybatisflex.core.paginate.Page;
 import com.noah.superagent.common.config.BillingProperties;
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
-import com.noah.superagent.common.dto.response.UserCreditStatusResponse;
 import com.noah.superagent.common.dto.response.CreditTransactionResponse;
 import com.noah.superagent.common.exception.BusinessException;
 import com.noah.superagent.common.enums.ResponseCodeEnum;
@@ -31,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -54,18 +52,6 @@ public class UserCreditServiceImpl implements UserCreditService {
     private final BillingProperties billingProperties;
     private final UserSubscriptionService userSubscriptionService;
     private final SubscriptionPlanService subscriptionPlanService;
-    
-    // 用于防止重复赠送的日期格式
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-    /**
-     * 获取每日积分数量（根据产品需求：每日登录打卡获得300积分）
-     * @deprecated 请使用 getDailyCreditsForUser(Long userId) 根据用户套餐获取
-     */
-    @Deprecated
-    private BigDecimal getDailyCredits() {
-        return BigDecimal.valueOf(300);
-    }
 
     /**
      * 根据用户当前套餐获取每日积分数量
@@ -103,73 +89,6 @@ public class UserCreditServiceImpl implements UserCreditService {
     }
 
     @Override
-    public UserCreditStatusResponse getUserCreditStatus(Long userId) {
-        log.info("查询用户积分详细状态 - userId: {}", userId);
-        
-        // 1. 获取积分账户信息
-        UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
-        if (creditAccount == null) {
-            log.warn("用户积分账户不存在 - userId: {}", userId);
-            throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
-        }
-
-        // 2. 获取各类型积分余额
-        List<UserCreditBalanceEntity> balanceList = userCreditBalanceMapper.selectByUserId(userId);
-        
-        // 3. 构建积分类型余额列表
-        List<UserCreditStatusResponse.CreditTypeBalance> creditTypeBalances = balanceList.stream()
-            .map(balance -> {
-                LocalDateTime expiryTime = calculateExpiryTime(balance.getCreateTime(), balance.getCreditType());
-                boolean expiringSoon = isExpiringSoon(expiryTime);
-                
-                return UserCreditStatusResponse.CreditTypeBalance.builder()
-                    .creditType(balance.getCreditType().name())
-                    .creditTypeName(getCreditTypeName(balance.getCreditType()))
-                    .balance(balance.getBalance())
-                    .spent(balance.getTotalSpent())
-                    .validityDays(getValidityDays(balance.getCreditType()))
-                    .expiringSoon(expiringSoon)
-                    .expiryTime(expiryTime)
-                    .createdTime(balance.getCreateTime())
-                    .build();
-            })
-            .collect(Collectors.toList());
-
-        // 4. 计算透支相关信息
-        BigDecimal currentBalance = creditAccount.getTotalBalance();
-        boolean overdraftEnabled = billingProperties.getOverdraft().getEnabled();
-        BigDecimal overdraftLimit = overdraftEnabled ? billingProperties.getOverdraft().getMaxAmount() : BigDecimal.ZERO;
-        boolean isOverdrawn = currentBalance.compareTo(BigDecimal.ZERO) < 0;
-        BigDecimal overdraftAmount = isOverdrawn ? currentBalance : BigDecimal.ZERO;
-        BigDecimal remainingOverdraftLimit = overdraftEnabled 
-            ? overdraftLimit.add(currentBalance.min(BigDecimal.ZERO)) 
-            : BigDecimal.ZERO;
-
-        // 5. 确定账户状态
-        UserCreditStatusResponse.AccountStatus accountStatus;
-        if (isOverdrawn) {
-            accountStatus = UserCreditStatusResponse.AccountStatus.OVERDRAWN;
-        } else {
-            accountStatus = UserCreditStatusResponse.AccountStatus.NORMAL;
-        }
-
-        return UserCreditStatusResponse.builder()
-            .userId(userId)
-            .totalBalance(currentBalance)
-            .totalSpent(creditAccount.getTotalSpent())
-            .accountStatus(accountStatus.name())
-            .isOverdrawn(isOverdrawn)
-            .overdraftAmount(overdraftAmount)
-            .overdraftLimit(overdraftLimit)
-            .remainingOverdraftLimit(remainingOverdraftLimit)
-            .overdraftEnabled(overdraftEnabled)
-            .creditTypeBalances(creditTypeBalances)
-            .accountCreatedTime(creditAccount.getCreateTime())
-            .lastUpdateTime(creditAccount.getUpdateTime())
-            .build();
-    }
-
-    @Override
     public boolean canConsumeCredits(Long userId, BigDecimal amount) {
         log.debug("检查用户是否可以消费积分 - userId: {}, amount: {}", userId, amount);
         
@@ -201,64 +120,6 @@ public class UserCreditServiceImpl implements UserCreditService {
         }
         BigDecimal maxOverdraft = billingProperties.getOverdraft().getMaxAmount();
         return currentBalance.add(maxOverdraft);
-    }
-
-    /**
-     * 获取积分类型名称
-     */
-    private String getCreditTypeName(CreditTypeEnum creditType) {
-        String typeKey = creditType.getCode();
-        
-        // 从新版配置中获取
-        Map<String, BillingProperties.CreditTypeConfig> types = billingProperties.getCredits().getTypes();
-        BillingProperties.CreditTypeConfig config = types.get(typeKey);
-        
-        if (config != null && config.getName() != null) {
-            return config.getName();
-        }
-        
-        // 兼容枚举默认值
-        return creditType.getDesc();
-    }
-
-    /**
-     * 获取积分类型有效期天数
-     */
-    private Integer getValidityDays(CreditTypeEnum creditType) {
-        String typeKey = creditType.getCode();
-        
-        // 从新版配置中获取
-        Map<String, BillingProperties.CreditTypeConfig> types = billingProperties.getCredits().getTypes();
-        BillingProperties.CreditTypeConfig config = types.get(typeKey);
-        
-        if (config != null) {
-            Integer days = config.getValidityDays();
-            return days == 0 ? -1 : days; // 0表示永久有效，UI显示为-1
-        }
-        
-        // 兼容枚举默认值
-        return creditType.getValidityDays() == 0 ? -1 : creditType.getValidityDays();
-    }
-
-    /**
-     * 计算过期时间
-     */
-    private LocalDateTime calculateExpiryTime(LocalDateTime createdTime, CreditTypeEnum creditType) {
-        Integer validityDays = getValidityDays(creditType);
-        if (validityDays == null || validityDays == -1) {
-            return null; // 永久有效
-        }
-        return createdTime.plusDays(validityDays);
-    }
-
-    /**
-     * 判断是否即将过期（3天内）
-     */
-    private boolean isExpiringSoon(LocalDateTime expiryTime) {
-        if (expiryTime == null) {
-            return false; // 永久有效
-        }
-        return expiryTime.isBefore(LocalDateTime.now().plusDays(3));
     }
 
     @Override
@@ -330,56 +191,9 @@ public class UserCreditServiceImpl implements UserCreditService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public UserCreditResponse initUserCredit(Long userId) {
-        log.info("初始化用户积分账户 - userId: {}", userId);
-        
-        // 检查是否已存在积分账户
-        UserCreditAccountEntity existingAccount = userCreditAccountMapper.selectByUserId(userId);
-        if (existingAccount != null) {
-            log.warn("用户积分账户已存在 - userId: {}", userId);
-            return getUserCredit(userId);
-        }
-        
-        // 创建新的积分账户（仅创建汇总表，不创建明细表）
-        UserCreditAccountEntity creditAccount = new UserCreditAccountEntity();
-        creditAccount.setUserId(userId);
-        creditAccount.setTotalBalance(BigDecimal.ZERO);
-        creditAccount.setTotalEarned(BigDecimal.ZERO);
-        creditAccount.setTotalSpent(BigDecimal.ZERO);
-        creditAccount.setVersion(0);
-        creditAccount.setCreateBy(userId);
-        
-        int result = userCreditAccountMapper.insertInitAccount(creditAccount);
-        if (result <= 0) {
-            log.error("初始化用户积分账户失败 - userId: {}", userId);
-            throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "初始化用户积分账户失败");
-        }
-        
-        UserCreditResponse response = BeanUtil.copyProperties(creditAccount, UserCreditResponse.class);
-        // 初始化时所有类型积分余额都为0
-        response.setDailyBalance(BigDecimal.ZERO);
-        response.setActivityBalance(BigDecimal.ZERO);
-        response.setFreeBalance(BigDecimal.ZERO);
-        response.setPermanentBalance(BigDecimal.ZERO);
-        
-        log.info("初始化用户积分账户成功 - userId: {}", userId);
-        return response;
-    }
-
-    @Override
     public boolean hasUserCredit(Long userId) {
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
         return creditAccount != null;
-    }
-
-    @Override
-    public Long getAvailableCredits(Long userId) {
-        UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
-        if (creditAccount == null) {
-            return 0L;
-        }
-        return creditAccount.getTotalBalance().longValue();
     }
 
     @Override
@@ -510,14 +324,13 @@ public class UserCreditServiceImpl implements UserCreditService {
         
         // 4. 创建或更新每日积分余额记录
         UserCreditBalanceEntity dailyBalance = userCreditBalanceMapper.selectByUserIdAndCreditType(userId, CreditTypeEnum.DAILY);
-        BigDecimal newDailyBalance = dailyCredits;
-        
+
         if (dailyBalance == null) {
             // 创建新的每日积分记录
             dailyBalance = new UserCreditBalanceEntity();
             dailyBalance.setUserId(userId);
             dailyBalance.setCreditType(CreditTypeEnum.DAILY);
-            dailyBalance.setBalance(newDailyBalance);
+            dailyBalance.setBalance(dailyCredits);
             dailyBalance.setTotalEarned(dailyCredits);
             dailyBalance.setTotalSpent(BigDecimal.ZERO);
             dailyBalance.setLastEarnTime(LocalDateTime.now());
@@ -532,7 +345,7 @@ public class UserCreditServiceImpl implements UserCreditService {
             log.info("创建每日积分记录成功 - userId: {}, 积分: {}", userId, dailyCredits);
         } else {
             // 更新现有的每日积分记录（直接替换，因为每日积分只保留当天的）
-            dailyBalance.setBalance(newDailyBalance); // 每日积分覆盖模式
+            dailyBalance.setBalance(dailyCredits); // 每日积分覆盖模式
             dailyBalance.setTotalEarned(dailyBalance.getTotalEarned().add(dailyCredits));
             dailyBalance.setLastEarnTime(LocalDateTime.now());
             dailyBalance.setVersion(dailyBalance.getVersion());
