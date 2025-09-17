@@ -225,6 +225,7 @@ export interface CreditPackageConfig {
   creditsAmount: number;
   price: number;
   isRecommended: boolean;
+  description?: string;
   features: FeatureConfig[];
 }
 
