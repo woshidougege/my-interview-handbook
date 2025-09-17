@@ -160,11 +160,16 @@ super-agent:
         is-recommended: false
         description: "适合中度使用"
         features:
-          - "约生成20-28个PPT"
-          - "约生成14-18个深度研究报告"
-          - "约生成4-8个网站"
-          - "约生成20-28个图片"
-          - "约分析8-14个表格"
+          - text: "约生成20-28个PPT"
+            highlight: false
+          - text: "约生成14-18个深度研究报告"
+            highlight: false
+          - text: "约生成4-8个网站"
+            highlight: false
+          - text: "约生成20-28个图片"
+            highlight: false
+          - text: "约分析8-14个表格"
+            highlight: false
           
       - id: "102"
         name: "50000积分"
@@ -173,8 +178,13 @@ super-agent:
         is-recommended: true
         description: "适合重度使用，最划算"
         features:
-          - "约生成50-70个PPT"
-          - "约生成35-45个深度研究报告"
-          - "约生成10-20个网站"
-          - "约生成50-70个图片"
-          - "约分析20-35个表格"
+          - text: "约生成50-70个PPT"
+            highlight: false
+          - text: "约生成35-45个深度研究报告"
+            highlight: false
+          - text: "约生成10-20个网站"
+            highlight: false
+          - text: "约生成50-70个图片"
+            highlight: false
+          - text: "约分析20-35个表格"
+            highlight: false
