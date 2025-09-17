@@ -236,7 +236,7 @@ public class ScheduledChatTaskJob {
 
 
     /**
-     * 更新下次执行时间
+     * 可重复任务更新下次执行时间
      * @param task 定时任务
      */
     private void updateNextExecutionTime(ScheduledChatTaskEntity task) {
