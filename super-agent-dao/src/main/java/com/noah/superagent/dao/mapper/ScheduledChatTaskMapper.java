@@ -23,7 +23,8 @@ public interface ScheduledChatTaskMapper extends BaseMapper<ScheduledChatTaskEnt
      */
     default List<ScheduledChatTaskEntity> selectByUserId(Long userId) {
         return selectListByQuery(QueryWrapper.create()
-                .where(ScheduledChatTaskEntity::getUserId).eq(userId));
+                .where(ScheduledChatTaskEntity::getUserId).eq(userId)
+                .and(ScheduledChatTaskEntity::getDeleted).eq(0));
     }
 
     /**
@@ -31,7 +32,8 @@ public interface ScheduledChatTaskMapper extends BaseMapper<ScheduledChatTaskEnt
      */
     default List<ScheduledChatTaskEntity> selectByWorkspaceId(Long workspaceId) {
         return selectListByQuery(QueryWrapper.create()
-                .where(ScheduledChatTaskEntity::getWorkspaceId).eq(workspaceId));
+                .where(ScheduledChatTaskEntity::getWorkspaceId).eq(workspaceId)
+                .and(ScheduledChatTaskEntity::getDeleted).eq(0));
     }
 
     /**
@@ -40,6 +42,7 @@ public interface ScheduledChatTaskMapper extends BaseMapper<ScheduledChatTaskEnt
     default Page<ScheduledChatTaskEntity> selectScheduledChatTaskPage(Page<ScheduledChatTaskEntity> page, Long workspaceId, String keyword) {
         QueryWrapper query = QueryWrapper.create()
                 .where(ScheduledChatTaskEntity::getWorkspaceId).eq(workspaceId)
+                .and(ScheduledChatTaskEntity::getDeleted).eq(0)
                 .and(ScheduledChatTaskEntity::getTaskName).like(keyword, keyword != null)
                 .orderBy(ScheduledChatTaskEntity::getCreateTime).desc();
 
@@ -52,6 +55,7 @@ public interface ScheduledChatTaskMapper extends BaseMapper<ScheduledChatTaskEnt
     default List<ScheduledChatTaskEntity> selectByStatus(Integer status) {
         return selectListByQuery(QueryWrapper.create()
                 .where(ScheduledChatTaskEntity::getStatus).eq(status)
+                .and(ScheduledChatTaskEntity::getDeleted).eq(0)
                 .orderBy(ScheduledChatTaskEntity::getCreateTime).desc());
     }
 
@@ -61,6 +65,7 @@ public interface ScheduledChatTaskMapper extends BaseMapper<ScheduledChatTaskEnt
     default List<ScheduledChatTaskEntity> selectTasksToExecute(Date currentTime) {
         return selectListByQuery(QueryWrapper.create()
                 .where(ScheduledChatTaskEntity::getStatus).eq(1) // 启用状态
+                .and(ScheduledChatTaskEntity::getDeleted).eq(0)
                 .and(ScheduledChatTaskEntity::getNextExecutionTime).le(currentTime)
                 .orderBy(ScheduledChatTaskEntity::getNextExecutionTime).asc());
     }
@@ -71,7 +76,8 @@ public interface ScheduledChatTaskMapper extends BaseMapper<ScheduledChatTaskEnt
     default ScheduledChatTaskEntity selectByTaskName(Long userId, String taskName) {
         return selectOneByQuery(QueryWrapper.create()
                 .where(ScheduledChatTaskEntity::getUserId).eq(userId)
-                .and(ScheduledChatTaskEntity::getTaskName).eq(taskName));
+                .and(ScheduledChatTaskEntity::getTaskName).eq(taskName)
+                .and(ScheduledChatTaskEntity::getDeleted).eq(0));
     }
     
     /**
@@ -82,6 +88,7 @@ public interface ScheduledChatTaskMapper extends BaseMapper<ScheduledChatTaskEnt
             return List.of();
         }
         return selectListByQuery(QueryWrapper.create()
-                .where(ScheduledChatTaskEntity::getChatTaskId).in(chatTaskIds));
+                .where(ScheduledChatTaskEntity::getChatTaskId).in(chatTaskIds)
+                .and(ScheduledChatTaskEntity::getDeleted).eq(0));
     }
 }
