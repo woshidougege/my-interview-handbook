@@ -115,16 +115,19 @@ public class ScheduledChatTaskJob {
                 // 保存对话结果到数据库
                 saveTaskResult(scheduledTask, response);
 
-                // 对于定时任务，不需要推送前端消息，已通过SSE处理
-                // 如果需要记录可以保留日志
-                log.info("定时任务完成 - 用户ID: {}, 任务名称: {}", scheduledTask.getUserId(), scheduledTask.getTaskName());
-
-                // 如果是一次性任务(任务类型为0)，执行后禁用任务
+                // 检查任务类型并进行相应处理
                 if (scheduledTask.getTaskType() != null && scheduledTask.getTaskType() == 0) {
+                    // 对于一次性任务（taskType=0），执行后禁用任务
                     scheduledTask.setStatus(0); // 禁用任务
+                    scheduledTask.setLastExecutionTime(new Date());
+                    // 一次性任务不需要设置下次执行时间，设为null
+                    scheduledTask.setNextExecutionTime(null);
                     scheduledChatTaskMapper.update(scheduledTask);
                     log.info("一次性定时任务执行完成，已禁用任务 - 任务ID: {}, 任务名称: {}",
                             scheduledTask.getId(), scheduledTask.getTaskName());
+                } else {
+                    // 对于可重复任务，更新下次执行时间
+                    updateNextExecutionTime(scheduledTask);
                 }
 
                 executedCount++;
@@ -233,7 +236,7 @@ public class ScheduledChatTaskJob {
 
 
     /**
-     * 更新下次执行时间
+     * 可重复任务更新下次执行时间
      * @param task 定时任务
      */
     private void updateNextExecutionTime(ScheduledChatTaskEntity task) {

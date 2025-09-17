@@ -5,7 +5,9 @@ import com.noah.superagent.common.dto.request.PasswordLoginRequest;
 import com.noah.superagent.common.dto.request.PhoneLoginRequest;
 import com.noah.superagent.common.dto.request.RegisterRequest;
 import com.noah.superagent.common.dto.request.ResetPasswordRequest;
+import com.noah.superagent.model.SSOUserInfo;
 import com.noah.superagent.response.ApiResponse;
+import com.norinrd.interfaces.loginFlow.ILoginFlow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +34,9 @@ import com.noah.superagent.util.UserContext;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.noah.superagent.util.UserContext.getCurrentUser;
+import static com.noah.superagent.util.UserContext.getCurrentUserId;
 
 /**
  * 认证相关控制器 - 方舟认证系统对接
@@ -55,6 +61,10 @@ public class AuthController {
 
     @Value("${sa-token.sso.sm2-key:}")
     private String sm2Key;
+    
+    @Value("${registration.callback.url:}")
+    private String callbackUrl;
+
     /**
      * 创建 ParameterizedTypeReference 用于 Map<String, Object>
      */
@@ -268,6 +278,11 @@ public class AuthController {
         }
     }
 
+
+
+    @Autowired
+    private com.norinrd.interfaces.loginFlow.ILoginFlow ILoginFlow;
+
     /**
      * 用户注册接口
      */
@@ -279,7 +294,7 @@ public class AuthController {
     public ApiResponse<Map<String, String>> register(@RequestBody RegisterRequest request) {
         log.info("用户注册请求，用户名: {}, 手机号: {}", 
                 request.getUsername(), request.getPhone());
-        
+
         try {
             String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent","sso","userRegister").toUriString();
             
@@ -300,6 +315,9 @@ public class AuthController {
                     Map<String, Object> data = getDataFromResponse(result);
                     String ticket = String.valueOf(data.get("ticket"));
                     
+                    // 注册成功后执行回调
+                    executeRegistrationCallback(data, request.getPhone());
+                    
                     Map<String, String> responseData = new HashMap<>();
                     responseData.put("ticket", ticket);
                     return ApiResponse.success("注册成功", responseData);
@@ -313,6 +331,47 @@ public class AuthController {
         } catch (Exception e) {
             log.error("用户注册失败: {}", e.getMessage(), e);
             return ApiResponse.error("注册失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 执行注册回调
+     * @param userData 用户数据
+     * @param phone 手机号
+     */
+    private void executeRegistrationCallback(Map<String, Object> userData, String phone) {
+        try {
+            Object userIdObj = this.ILoginFlow.checkTicket((String) userData.get("ticket"), "/sso/doLoginByTicket");
+
+            if (userIdObj == null) {
+                log.warn("用户数据中未包含用户ID，跳过回调");
+                return;
+            }
+            
+            Long userId = null;
+            if (userIdObj instanceof Number) {
+                userId = ((Number) userIdObj).longValue();
+            } else {
+                userId = Long.valueOf(userIdObj.toString());
+            }
+            
+            log.info("开始执行注册回调 - userId: {}, phoneNum: {}", userId, phone);
+            
+            // 构建回调URL
+            String fullUrl = UriComponentsBuilder.fromHttpUrl(callbackUrl)
+                    .queryParam("userld", userId)  // 注意：接口参数名是userld而非userId
+                    .queryParam("phoneNum", phone)
+                    .toUriString();
+            
+            log.debug("回调URL: {}", fullUrl);
+            
+            // 发送GET请求
+            ResponseEntity<String> forEntity = restTemplate.getForEntity(fullUrl, String.class);
+
+            log.info("注册回调执行成功 - userId: {}, phoneNum: {}", userId, phone);
+        } catch (Exception e) {
+            log.error("注册回调执行失败 - phoneNum: {}, 错误: {}", phone, e.getMessage(), e);
+            // 不抛出异常，避免影响主流程
         }
     }
 
@@ -436,7 +495,7 @@ public class AuthController {
         }
         
         // 从用户上下文获取当前用户ID
-        Long currentUserId = UserContext.getCurrentUserId();
+        Long currentUserId = getCurrentUserId();
         if (ObjUtil.isNull(currentUserId)) {
             return ApiResponse.error("用户未登录或登录已过期");
         }
