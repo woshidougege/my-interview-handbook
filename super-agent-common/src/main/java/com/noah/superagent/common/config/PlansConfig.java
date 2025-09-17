@@ -75,6 +75,11 @@ public class PlansConfig {
         private Integer validityDays;
 
         /**
+         * 每日刷新积分数量
+         */
+        private Integer dailyRefreshCredits;
+
+        /**
          * 排序值
          */
         private Integer sortOrder;

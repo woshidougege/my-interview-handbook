@@ -495,10 +495,30 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
               </div>
             </div>
 
+            {/* 注意事项 */}
+            {config && (
+              <div style={{ 
+                textAlign: 'center', 
+                marginTop: '20px', 
+                paddingTop: '15px', 
+                borderTop: '1px solid #444',
+                fontSize: '12px',
+                color: '#ccc',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '6px',
+                padding: '12px'
+              }}>
+                <div style={{ marginBottom: '4px', color: '#999' }}>
+                  <span style={{ color: '#ff7875' }}>注意：</span>
+                  {config.planName}用户每日可获得{config.planDailyRefreshCredits}积分，此购买会在其基础上进行叠加
+                </div>
+              </div>
+            )}
+
             {/* 底部协议 */}
             <div style={{ 
               textAlign: 'center', 
-              marginTop: '30px', 
+              marginTop: '20px', 
               paddingTop: '20px', 
               borderTop: '1px solid #8b8b8b',
               fontSize: '12px',

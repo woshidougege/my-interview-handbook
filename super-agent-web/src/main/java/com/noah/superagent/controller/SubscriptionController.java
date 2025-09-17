@@ -491,6 +491,7 @@ public class SubscriptionController {
             // 获取当前用户订阅信息
             String planName = "免费版";
             String planCode = "free";
+            Integer planDailyRefreshCredits = 300; // 默认免费版每日刷新积分
             
             try {
                 UserSubscriptionDTO subscription = userSubscriptionService.getCurrentActiveSubscription(userId);
@@ -499,6 +500,7 @@ public class SubscriptionController {
                     if (plan != null) {
                         planName = plan.getPlanName();
                         planCode = plan.getPlanCode() != null ? plan.getPlanCode().getCode() : null;
+                        planDailyRefreshCredits = plan.getDailyRefreshCredits();
                     }
                 }
             } catch (Exception e) {
@@ -545,6 +547,7 @@ public class SubscriptionController {
             response.setAvailableCredits(availableCredits);
             response.setDailyRefreshCredits(dailyRefreshCredits);
             response.setLimitedCredits(limitedCredits);
+            response.setPlanDailyRefreshCredits(planDailyRefreshCredits);
             
             // 从积分购买配置中获取积分包信息
             List<CreditPurchaseConfigResponse.CreditPackageConfig> creditPackages = 

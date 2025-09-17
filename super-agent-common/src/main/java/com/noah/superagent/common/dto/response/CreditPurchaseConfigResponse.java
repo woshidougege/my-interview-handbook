@@ -31,6 +31,9 @@ public class CreditPurchaseConfigResponse {
     @Schema(description = "限时积分", example = "0")
     private String limitedCredits;
 
+    @Schema(description = "当前套餐每日刷新积分配置数量", example = "1900")
+    private Integer planDailyRefreshCredits;
+
     @Schema(description = "积分套餐配置列表")
     private List<CreditPackageConfig> creditPackages;
 

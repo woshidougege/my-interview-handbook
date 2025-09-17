@@ -18,11 +18,12 @@ super-agent:
         monthly-savings: 0
         yearly-savings: 0
         validity-days: 90
+        daily-refresh-credits: 300    # 每日刷新积分数量
         sort-order: 1
         is-recommended: false
         enabled: true
         features:
-          - text: "每日可获得***新积分"
+          - text: "每日可获得300新积分"
             highlight: true
           - text: "访问聊天"
             highlight: false
@@ -37,18 +38,19 @@ super-agent:
         # 价格配置（设置原价，-1表示自动17%优惠计算）
         monthly-original-price: 39      # 月价原价
         yearly-original-price: 468      # 年价原价（39*12）
-        monthly-discounted-price: 29    # 月价优惠后（-1=自动17%优惠）
+        monthly-discounted-price: -1    # 月价优惠后（-1=自动17%优惠）
         yearly-discounted-price: -1     # 年价优惠后（-1=自动17%优惠）
         monthly-savings: -1             # 月价优惠金额（-1=自动计算）
         yearly-savings: -1              # 年价优惠金额（-1=自动计算）
         validity-days: 30
+        daily-refresh-credits: 1900     # 每日刷新积分数量
         sort-order: 2
         is-recommended: true
         enabled: true
         features:
           - text: "一次性发放1900积分"
             highlight: false
-          - text: "每日可获得300新积分"
+          - text: "每日可获得1900新积分"
             highlight: false
           - text: "访问聊天"
             highlight: false
@@ -71,18 +73,19 @@ super-agent:
         # 价格配置（设置原价，-1表示自动17%优惠计算）
         monthly-original-price: 199     # 月价原价
         yearly-original-price: 2388     # 年价原价（199*12）
-        monthly-discounted-price: 179    # 月价优惠后（-1=自动17%优惠）
+        monthly-discounted-price: -1    # 月价优惠后（-1=自动17%优惠）
         yearly-discounted-price: -1     # 年价优惠后（-1=自动17%优惠）
         monthly-savings: -1             # 月价优惠金额（-1=自动计算）
         yearly-savings: -1              # 年价优惠金额（-1=自动计算）
         validity-days: 30
+        daily-refresh-credits: 5900     # 每日刷新积分数量
         sort-order: 3
         is-recommended: false
         enabled: true
         features:
           - text: "一次性发放1900积分"
             highlight: false
-          - text: "每日可获得300新积分"
+          - text: "每日可获得5900新积分"
             highlight: false
           - text: "访问聊天"
             highlight: false

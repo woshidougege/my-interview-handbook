@@ -72,6 +72,7 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
         
         // 其他属性
         dto.setValidityDays(config.getValidityDays());
+        dto.setDailyRefreshCredits(config.getDailyRefreshCredits());
         dto.setIsRecommended(config.getIsRecommended());
         dto.setSortOrder(config.getSortOrder());
         dto.setIsCurrentPlan(false); // 默认为false，在Controller层设置
