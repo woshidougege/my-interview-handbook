@@ -67,4 +67,19 @@ public interface ScheduledChatTaskExecutionLogMapper extends BaseMapper<Schedule
 
         return paginate(page, query);
     }
+
+    /**
+     * 根据对话任务ID分页查询执行日志
+     *
+     * @param page       分页对象
+     * @param chatTaskId 对话任务ID
+     * @return 分页结果
+     */
+    default Page<ScheduledChatTaskExecutionLogEntity> selectExecutionLogPageByChatTaskId(Page<ScheduledChatTaskExecutionLogEntity> page, Long chatTaskId) {
+        QueryWrapper query = QueryWrapper.create()
+                .where(ScheduledChatTaskExecutionLogEntity::getChatTaskId).eq(chatTaskId)
+                .orderBy(ScheduledChatTaskExecutionLogEntity::getStartTime).desc();
+
+        return paginate(page, query);
+    }
 }

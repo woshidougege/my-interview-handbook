@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS t_scheduled_chat_task_execution_log (
     error_message TEXT,
     create_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    create_by BIGINT,
+    update_by BIGINT,
     deleted SMALLINT NOT NULL DEFAULT 0
 );
 
@@ -32,6 +34,8 @@ COMMENT ON COLUMN t_scheduled_chat_task_execution_log.duration IS '执行耗时(
 COMMENT ON COLUMN t_scheduled_chat_task_execution_log.error_message IS '错误信息';
 COMMENT ON COLUMN t_scheduled_chat_task_execution_log.create_time IS '创建时间';
 COMMENT ON COLUMN t_scheduled_chat_task_execution_log.update_time IS '更新时间';
+COMMENT ON COLUMN t_scheduled_chat_task_execution_log.create_by IS '创建人ID';
+COMMENT ON COLUMN t_scheduled_chat_task_execution_log.update_by IS '更新人ID';
 COMMENT ON COLUMN t_scheduled_chat_task_execution_log.deleted IS '删除标记：0-未删除，1-已删除';
 
 CREATE INDEX idx_scheduled_chat_task_execution_log_task_id ON t_scheduled_chat_task_execution_log(task_id);

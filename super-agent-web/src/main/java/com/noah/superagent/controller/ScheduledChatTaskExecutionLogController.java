@@ -48,6 +48,40 @@ public class ScheduledChatTaskExecutionLogController {
         return ApiResponse.success("查询成功", response);
     }
 
+    @GetMapping("/by-chat-task-id")
+    @Operation(summary = "根据对话任务ID分页查询执行日志", description = "根据对话任务ID分页查询执行日志列表")
+    public ApiResponse<PageResponse<ScheduledChatTaskExecutionLogResponse>> getExecutionLogsByChatTaskId(
+            @Parameter(description = "对话任务ID", example = "1234567890")
+            @RequestParam("chatTaskId") Long chatTaskId,
+            @Valid PageRequest request) {
+        log.info("接收根据对话任务ID分页查询执行日志请求: chatTaskId={}, pageRequest={}", chatTaskId, request);
+
+        PageResponse<ScheduledChatTaskExecutionLogDTO> dtoPageResponse = scheduledChatTaskExecutionLogService.getExecutionLogsPageByChatTaskId(
+                chatTaskId, request.getPageNum(), request.getPageSize());
+
+        PageResponse<ScheduledChatTaskExecutionLogResponse> response = new PageResponse<>(
+                scheduledChatTaskExecutionLogWebConvert.toResponseList(dtoPageResponse.getRecords()),
+                dtoPageResponse.getTotal(),
+                dtoPageResponse.getPageNum(),
+                dtoPageResponse.getPageSize()
+        );
+
+        return ApiResponse.success("查询成功", response);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "根据执行日志ID查询执行日志详情", description = "根据执行日志ID查询执行日志详情")
+    public ApiResponse<ScheduledChatTaskExecutionLogResponse> getExecutionLogById(
+            @Parameter(description = "执行日志ID", example = "1234567890")
+            @PathVariable("id") Long id) {
+        log.info("接收根据执行日志ID查询执行日志详情请求: id={}", id);
+
+        ScheduledChatTaskExecutionLogDTO executionLogDTO = scheduledChatTaskExecutionLogService.getExecutionLogById(id);
+        ScheduledChatTaskExecutionLogResponse response = scheduledChatTaskExecutionLogWebConvert.toResponse(executionLogDTO);
+
+        return ApiResponse.success("查询成功", response);
+    }
+
     @GetMapping("/page")
     @Operation(summary = "分页查询执行日志", description = "分页查询执行日志列表")
     public ApiResponse<PageResponse<ScheduledChatTaskExecutionLogResponse>> getExecutionLogsPage(

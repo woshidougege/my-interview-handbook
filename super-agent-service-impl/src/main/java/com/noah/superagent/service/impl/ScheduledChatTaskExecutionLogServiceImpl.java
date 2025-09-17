@@ -59,11 +59,39 @@ public class ScheduledChatTaskExecutionLogServiceImpl implements ScheduledChatTa
     }
 
     @Override
+    public ScheduledChatTaskExecutionLogDTO getExecutionLogById(Long id) {
+        log.info("查询定时对话任务执行日志详情，ID: {}", id);
+
+        ScheduledChatTaskExecutionLogEntity entity = scheduledChatTaskExecutionLogMapper.selectOneById(id);
+        return convert.fromEntity(entity);
+    }
+
+    @Override
     public PageResponse<ScheduledChatTaskExecutionLogDTO> getExecutionLogsPage(String taskName, Integer pageNum, Integer pageSize) {
         log.info("分页查询定时对话任务执行日志列表，任务名称: {}, 页码: {}, 每页数量: {}", taskName, pageNum, pageSize);
 
         Page<ScheduledChatTaskExecutionLogEntity> page = new Page<>(pageNum, pageSize);
         page = scheduledChatTaskExecutionLogMapper.selectExecutionLogPage(page, taskName);
+
+        List<ScheduledChatTaskExecutionLogDTO> records = page.getRecords()
+                .stream()
+                .map(convert::fromEntity)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                records,
+                page.getTotalRow(),
+                (int) page.getPageNumber(),
+                (int) page.getPageSize()
+        );
+    }
+
+    @Override
+    public PageResponse<ScheduledChatTaskExecutionLogDTO> getExecutionLogsPageByChatTaskId(Long chatTaskId, Integer pageNum, Integer pageSize) {
+        log.info("根据对话任务ID分页查询定时对话任务执行日志列表，对话任务ID: {}, 页码: {}, 每页数量: {}", chatTaskId, pageNum, pageSize);
+
+        Page<ScheduledChatTaskExecutionLogEntity> page = new Page<>(pageNum, pageSize);
+        page = scheduledChatTaskExecutionLogMapper.selectExecutionLogPageByChatTaskId(page, chatTaskId);
 
         List<ScheduledChatTaskExecutionLogDTO> records = page.getRecords()
                 .stream()
