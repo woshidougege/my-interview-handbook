@@ -75,6 +75,50 @@ public enum PlanCodeEnum implements BaseEnum<String> {
     }
 
     /**
+     * 获取套餐等级（用于升级/降级判断）
+     * FREE(0) < BASIC(1) < PREMIUM(2)
+     * CREDIT_PACK(-1) 不参与等级比较
+     */
+    public int getLevel() {
+        switch (this) {
+            case FREE:
+                return 0;
+            case BASIC:
+                return 1;
+            case PREMIUM:
+                return 2;
+            case CREDIT_PACK:
+                return -1; // 积分包不参与等级比较
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * 是否可以升级到指定套餐
+     * @param targetPlan 目标套餐
+     * @return true-可以升级，false-不可以升级
+     */
+    public boolean canUpgradeTo(PlanCodeEnum targetPlan) {
+        // 积分包总是可以购买
+        if (targetPlan != null && targetPlan.isCreditPack()) {
+            return true;
+        }
+        
+        // 免费版永远不能被订阅
+        if (targetPlan != null && targetPlan.isFree()) {
+            return false;
+        }
+        
+        // 其他情况：只能升级，不能降级
+        if (targetPlan != null && this.getLevel() >= 0 && targetPlan.getLevel() >= 0) {
+            return targetPlan.getLevel() > this.getLevel();
+        }
+        
+        return false;
+    }
+
+    /**
      * 获取描述信息
      */
     public String getDescription() {
