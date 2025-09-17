@@ -8,8 +8,7 @@ import {
   message
 } from 'antd';
 import {
-  CheckOutlined,
-  CloseOutlined
+  CheckOutlined
 } from '@ant-design/icons';
 import PaymentModal from './PaymentModal';
 import CreditPurchaseModal from './CreditPurchaseModal';
@@ -413,25 +412,15 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ visible, onClose,
                     fontSize: '14px',
                     minHeight: '20px'
                   }}>
-                    {feature.included ? (
-                      <CheckOutlined style={{ 
-                        color: feature.highlight ? '#52c41a' : '#1890ff', 
-                        marginRight: '8px',
-                        marginTop: '2px',
-                        fontSize: '12px',
-                        flexShrink: 0
-                      }} />
-                    ) : (
-                      <CloseOutlined style={{ 
-                        color: '#ccc', 
-                        marginRight: '8px',
-                        marginTop: '2px',
-                        fontSize: '12px',
-                        flexShrink: 0
-                      }} />
-                    )}
+                    <CheckOutlined style={{ 
+                      color: feature.highlight ? '#52c41a' : '#1890ff', 
+                      marginRight: '8px',
+                      marginTop: '2px',
+                      fontSize: '12px',
+                      flexShrink: 0
+                    }} />
                     <span style={{ 
-                      color: feature.included ? '#333' : '#999',
+                      color: '#333',
                       fontWeight: feature.highlight ? 600 : 400,
                       flex: 1,
                       lineHeight: '1.5'

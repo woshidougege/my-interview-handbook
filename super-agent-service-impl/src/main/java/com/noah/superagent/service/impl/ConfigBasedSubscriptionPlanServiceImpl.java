@@ -188,7 +188,6 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
                     PlanFeatureDTO feature = new PlanFeatureDTO();
                     feature.setText(config.getText());
                     feature.setHighlight(config.getHighlight());
-                    feature.setIncluded(config.getIncluded());
                     return feature;
                 })
                 .collect(Collectors.toList());

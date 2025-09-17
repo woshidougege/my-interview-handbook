@@ -224,7 +224,12 @@ export interface CreditPackageConfig {
   creditsAmount: number;
   price: number;
   isRecommended: boolean;
-  features: string[];
+  features: FeatureConfig[];
+}
+
+export interface FeatureConfig {
+  text: string;
+  highlight: boolean;
 }
 
 // ========== 资源使用相关类型 ==========

@@ -67,6 +67,22 @@ public class CreditPurchaseConfig {
         /**
          * 功能特性列表
          */
-        private List<String> features;
+        private List<FeatureConfig> features;
+    }
+
+    /**
+     * 功能特性配置
+     */
+    @Data
+    public static class FeatureConfig {
+        /**
+         * 功能描述文本
+         */
+        private String text;
+
+        /**
+         * 是否高亮显示
+         */
+        private Boolean highlight = false;
     }
 }

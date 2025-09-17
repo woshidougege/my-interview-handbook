@@ -557,7 +557,16 @@ public class SubscriptionController {
                         config.setCreditsAmount(pkg.getCreditsAmount());
                         config.setPrice(pkg.getPrice());
                         config.setIsRecommended(pkg.getIsRecommended());
-                        config.setFeatures(pkg.getFeatures());
+                        // 转换功能特性列表
+                        List<CreditPurchaseConfigResponse.FeatureConfig> features = pkg.getFeatures().stream()
+                            .map(feature -> {
+                                CreditPurchaseConfigResponse.FeatureConfig featureConfig = new CreditPurchaseConfigResponse.FeatureConfig();
+                                featureConfig.setText(feature.getText());
+                                featureConfig.setHighlight(feature.getHighlight());
+                                return featureConfig;
+                            })
+                            .collect(java.util.stream.Collectors.toList());
+                        config.setFeatures(features);
                         
                         return config;
                     })

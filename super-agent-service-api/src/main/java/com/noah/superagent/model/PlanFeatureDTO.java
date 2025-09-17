@@ -24,18 +24,4 @@ public class PlanFeatureDTO {
      * 是否高亮显示
      */
     private Boolean highlight;
-
-    /**
-     * 是否包含此功能（用于前端显示）
-     */
-    private Boolean included = true;
-
-    /**
-     * 构造函数 - 仅文本和高亮
-     */
-    public PlanFeatureDTO(String text, Boolean highlight) {
-        this.text = text;
-        this.highlight = highlight;
-        this.included = true;
-    }
 }

@@ -24,13 +24,10 @@ super-agent:
         features:
           - text: "每日可获得***新积分"
             highlight: true
-            included: true
           - text: "访问聊天"
             highlight: false
-            included: true
           - text: "公共数字分身（限时体验）"
             highlight: false
-            included: true
             
       # 基础版
       - id: "2"
@@ -51,28 +48,20 @@ super-agent:
         features:
           - text: "一次性发放1900积分"
             highlight: false
-            included: true
           - text: "每日可获得300新积分"
             highlight: false
-            included: true
           - text: "访问聊天"
             highlight: false
-            included: true
           - text: "公共数字分身"
             highlight: false
-            included: true
           - text: "幻灯片制作"
             highlight: false
-            included: true
           - text: "网站开发"
             highlight: false
-            included: true
           - text: "数据分析"
             highlight: false
-            included: true
           - text: "图片、视频生成"
             highlight: false
-            included: true
             
       # 高级版
       - id: "3"
@@ -93,31 +82,22 @@ super-agent:
         features:
           - text: "一次性发放1900积分"
             highlight: false
-            included: true
           - text: "每日可获得300新积分"
             highlight: false
-            included: true
           - text: "访问聊天"
             highlight: false
-            included: true
           - text: "专属数字分身"
             highlight: true
-            included: true
           - text: "幻灯片制作"
             highlight: false
-            included: true
           - text: "网站开发"
             highlight: false
-            included: true
           - text: "数据分析"
             highlight: false
-            included: true
           - text: "图片、视频生成"
             highlight: false
-            included: true
           - text: "本机电脑操控"
             highlight: true
-            included: true
             
       # 购买积分套餐
       - id: "100"
@@ -139,19 +119,14 @@ super-agent:
         features:
           - text: "约生成10-14个PPT"
             highlight: false
-            included: true
           - text: "约生成7-9个深度研究报告"
             highlight: false
-            included: true
           - text: "约生成2-4个网站"
             highlight: false
-            included: true
           - text: "约生成10-14个图片"
             highlight: false
-            included: true
           - text: "约分析4-7个表格"
             highlight: false
-            included: true
 
   # 积分购买配置（独立于套餐配置）
   credit-purchase:
@@ -167,11 +142,16 @@ super-agent:
         is-recommended: false
         description: "适合轻度使用"
         features:
-          - "约生成10-14个PPT"
-          - "约生成7-9个深度研究报告"
-          - "约生成2-4个网站"
-          - "约生成10-14个图片"
-          - "约分析4-7个表格"
+          - text: "约生成10-14个PPT"
+            highlight: false
+          - text: "约生成7-9个深度研究报告"
+            highlight: false
+          - text: "约生成2-4个网站"
+            highlight: false
+          - text: "约生成10-14个图片"
+            highlight: false
+          - text: "约分析4-7个表格"
+            highlight: false
           
       - id: "101"
         name: "20000积分"

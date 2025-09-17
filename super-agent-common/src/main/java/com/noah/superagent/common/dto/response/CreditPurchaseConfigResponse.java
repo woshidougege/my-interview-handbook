@@ -60,6 +60,20 @@ public class CreditPurchaseConfigResponse {
         private Boolean isRecommended;
 
         @Schema(description = "功能特性列表")
-        private List<String> features;
+        private List<FeatureConfig> features;
+    }
+
+    /**
+     * 功能特性配置
+     */
+    @Data
+    @Schema(description = "功能特性配置")
+    public static class FeatureConfig {
+
+        @Schema(description = "功能描述文本", example = "约生成10-14个PPT")
+        private String text;
+
+        @Schema(description = "是否高亮显示", example = "false")
+        private Boolean highlight;
     }
 }

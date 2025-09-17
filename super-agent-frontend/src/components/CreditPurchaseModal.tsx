@@ -379,8 +379,13 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
                         marginBottom: '8px',
                         fontSize: '14px'
                       }}>
-                        <span style={{ marginRight: '8px', color: '#52c41a' }}>✓</span>
-                        <span>{feature}</span>
+                        <span style={{ 
+                          marginRight: '8px', 
+                          color: feature.highlight ? '#52c41a' : '#1890ff' 
+                        }}>✓</span>
+                        <span style={{
+                          fontWeight: feature.highlight ? 600 : 400
+                        }}>{feature.text}</span>
                       </div>
                     ))}
                   </div>

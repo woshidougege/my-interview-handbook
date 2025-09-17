@@ -51,7 +51,6 @@ export interface CreditTransaction {
 export interface PlanFeature {
   text: string;
   highlight: boolean;
-  included: boolean;
 }
 
 // 订阅套餐类型定义

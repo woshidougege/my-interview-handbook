@@ -110,9 +110,5 @@ public class PlansConfig {
          */
         private Boolean highlight = false;
 
-        /**
-         * 是否包含此功能
-         */
-        private Boolean included = true;
     }
 }
