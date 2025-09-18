@@ -1,10 +1,8 @@
 package com.noah.superagent.scheduler.initializer;
 
 import com.github.kagkarlsson.scheduler.Scheduler;
-import com.noah.superagent.scheduler.job.CreditDeductionTaskJob;
-import com.noah.superagent.scheduler.job.CreditExpiryCleanupJob;
 import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
-import com.noah.superagent.scheduler.job.DailyCreditGrantJob;
+import com.noah.superagent.scheduler.job.DailyCreditsManagementJob;
 import com.noah.superagent.scheduler.job.SubscriptionExpirationJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,20 +35,20 @@ public class SchedulerTaskInitializer implements ApplicationRunner {
             scheduler.start();
             log.info("DB-Scheduler调度器启动成功");
             
-            // 检查并启动每日积分补发任务Job
-            ensureTaskRunning(DailyCreditGrantJob.getJobTaskName(), "每日积分补发任务Job");
+            // 检查并启动每日积分管理任务Job（合并了清理和补发功能）
+            ensureTaskRunning(DailyCreditsManagementJob.getJobTaskName(), "每日积分管理任务Job");
             
             // 检查并启动订阅到期处理任务Job
             ensureTaskRunning(SubscriptionExpirationJob.getJobTaskName(), "订阅到期处理任务Job");
             
-            // 检查并启动积分过期清理任务
-            ensureTaskRunning(CreditExpiryCleanupJob.getJobTaskName(), "积分过期清理任务");
-            
             // 检查并启动支付状态同步任务
             ensureTaskRunning(PaymentStatusSyncJob.getJobTaskName(), "支付状态同步任务");
             
-            // 检查并启动积分扣减清理任务
-            ensureTaskRunning(CreditDeductionTaskJob.getCleanupTaskName(), "积分扣减清理任务");
+            // 注意：一次性任务（OneTimeTask）不需要在这里初始化
+            // 它们会在需要时动态创建：
+            // - CreditExpiryCleanupTask: 积分获得时安排到期清理
+            // - CreditDeductionTask: 资源上报后立即扣减
+            // - PaymentTimeoutCheckTask: 订单创建时安排超时检查
             
             log.info("所有定时任务初始化完成");
             
