@@ -420,7 +420,7 @@ public class AuthController extends SsoClientController {
             
             // 构建回调URL
             String fullUrl = UriComponentsBuilder.fromHttpUrl(callbackUrl)
-                    .queryParam("userld", userId)  // 注意：接口参数名是userld而非userId
+                    .queryParam("userId", userId)  // 注意：接口参数名是userld而非userId
                     .queryParam("phoneNum", phone)
                     .toUriString();
             
