@@ -276,147 +276,148 @@ public class UserCreditServiceImpl implements UserCreditService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public UserCreditResponse giveFreePlanDailyBonusOnLogin(Long userId) {
-        BigDecimal dailyCredits = getDailyCreditsForUser(userId);
-        log.info("用户登录时检查并发放每日积分（根据套餐配置） - userId: {}, 积分数量: {}", userId, dailyCredits);
+    public void handleUserLogin(Long userId) {
+        LocalDate today = LocalDate.now();
+        UserDailyLoginEntity dailyLogin;
+
+        // 步骤 1: 记录或更新用户的每日登录活动
+        try {
+            dailyLogin = userDailyLoginMapper.selectByUserIdAndDate(userId, today);
+            if (dailyLogin == null) {
+                log.info("记录用户当日首次登录 - userId: {}", userId);
+                dailyLogin = new UserDailyLoginEntity();
+                dailyLogin.setUserId(userId);
+                dailyLogin.setLoginDate(today);
+                dailyLogin.setLoginCount(1);
+                dailyLogin.setFirstLoginTime(LocalDateTime.now());
+                dailyLogin.setDailyCreditsGranted(false);
+                dailyLogin.setDailyCreditsAmount(BigDecimal.ZERO);
+                dailyLogin.setCreateBy(userId);
+                userDailyLoginMapper.insert(dailyLogin);
+            } else {
+                log.debug("更新用户当日登录次数 - userId: {}", userId);
+                dailyLogin.setLoginCount(dailyLogin.getLoginCount() + 1);
+                dailyLogin.setUpdateBy(userId);
+                userDailyLoginMapper.update(dailyLogin);
+            }
+        } catch (Exception e) {
+            log.error("记录用户每日登录失败 - userId: {}, 错误: {}", userId, e.getMessage(), e);
+            // 如果登录记录失败，则不应继续发放积分，抛出异常以回滚事务
+            throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "记录用户登录失败");
+        }
+
+        // 步骤 2: 检查当日积分是否已发放
+        if (Boolean.TRUE.equals(dailyLogin.getDailyCreditsGranted())) {
+            log.info("用户今日已发放过每日积分，仅记录登录活动 - userId: {}", userId);
+            return;
+        }
         
-        // 1. 查询用户积分账户，如果不存在则先初始化
+        // 步骤 3: 执行积分发放逻辑
+        log.info("用户登录时检查并发放每日积分（根据套餐配置） - userId: {}", userId);
+
+        // 3.1 确保用户积分账户存在，不存在则初始化
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);
         if (creditAccount == null) {
-            log.info("用户积分账户不存在，先初始化账户 - userId: {}", userId);
-            // 先初始化免费套餐账户
+            log.info("用户积分账户不存在，先初始化为免费套餐账户 - userId: {}", userId);
             initFreePlanForUser(userId);
-            // 重新查询积分账户
             creditAccount = userCreditAccountMapper.selectByUserId(userId);
             if (creditAccount == null) {
-                log.error("初始化积分账户后仍然为空 - userId: {}", userId);
+                log.error("初始化积分账户后仍然无法查询到 - userId: {}", userId);
                 throw new BusinessException(ResponseCodeEnum.CREDIT_ACCOUNT_NOT_FOUND);
             }
-            log.info("积分账户初始化完成，当前余额: {} - userId: {}", creditAccount.getTotalBalance(), userId);
         }
         
-        // 2. 检查今日是否已经发放过积分（防重）
-        LocalDate today = LocalDate.now();
-        
-        // 检查数据库中当日积分发放状态
-        if (userDailyLoginMapper.isDailyCreditsGranted(userId, today)) {
-            log.info("用户今日已经发放过每日积分 - userId: {}", userId);
-            return getUserCredit(userId);
+        // 3.2 根据用户套餐获取应得的每日积分
+        BigDecimal dailyCredits = getDailyCreditsForUser(userId);
+        if (dailyCredits.compareTo(BigDecimal.ZERO) <= 0) {
+            log.info("用户 {} 的当前套餐没有每日积分，跳过发放。", userId);
+            // 即使不发放积分，也要标记为“已处理”，避免重复检查
+            dailyLogin.setDailyCreditsGranted(true);
+            dailyLogin.setUpdateBy(userId);
+            userDailyLoginMapper.update(dailyLogin);
+            return;
         }
-        
-        // 3. 更新积分汇总账户
+
+        // 3.3 更新总账户余额
         BigDecimal oldTotalBalance = creditAccount.getTotalBalance();
         BigDecimal newTotalBalance = oldTotalBalance.add(dailyCredits);
         BigDecimal newTotalEarned = creditAccount.getTotalEarned().add(dailyCredits);
-        
-        UserCreditAccountEntity updateAccount = new UserCreditAccountEntity();
-        updateAccount.setId(creditAccount.getId());
-        updateAccount.setTotalBalance(newTotalBalance);
-        updateAccount.setTotalEarned(newTotalEarned);
-        updateAccount.setVersion(creditAccount.getVersion());
-        updateAccount.setUpdateBy(userId);
-        
-        int updateResult = userCreditAccountMapper.updateBalanceByUserId(userId, updateAccount);
+        creditAccount.setTotalBalance(newTotalBalance);
+        creditAccount.setTotalEarned(newTotalEarned);
+        creditAccount.setUpdateBy(userId);
+        int updateResult = userCreditAccountMapper.updateBalanceByUserId(userId, creditAccount);
         if (updateResult <= 0) {
-            log.error("更新用户积分账户失败（可能并发冲突） - userId: {}", userId);
-            throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新积分账户失败");
+            log.error("更新用户积分总账户失败（可能并发冲突） - userId: {}", userId);
+            throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新积分总账户失败");
         }
-        
-        // 4. 创建或更新每日积分余额记录
-        UserCreditBalanceEntity dailyBalance = userCreditBalanceMapper.selectByUserIdAndCreditType(userId, CreditTypeEnum.DAILY);
 
+        // 3.4 更新或创建每日积分余额
+        updateDailyCreditBalance(userId, dailyCredits);
+        
+        // 3.5 创建交易流水
+        createDailyCreditTransaction(userId, dailyCredits, oldTotalBalance, newTotalBalance);
+
+        // 步骤 4: 更新登录记录，标记积分为已发放
+        dailyLogin.setDailyCreditsGranted(true);
+        dailyLogin.setDailyCreditsAmount(dailyCredits);
+        dailyLogin.setUpdateBy(userId);
+        int finalUpdate = userDailyLoginMapper.update(dailyLogin);
+        if (finalUpdate <= 0) {
+            log.warn("更新每日登录记录为“已发放”状态失败 - userId: {}", userId);
+        }
+
+        log.info("每日积分发放成功 - userId: {}, 发放积分: {}, 新余额: {}", 
+                userId, dailyCredits, newTotalBalance);
+    }
+    
+    /**
+     * 更新用户的每日积分余额（内部方法）
+     */
+    private void updateDailyCreditBalance(Long userId, BigDecimal dailyCredits) {
+        UserCreditBalanceEntity dailyBalance = userCreditBalanceMapper.selectByUserIdAndCreditType(userId, CreditTypeEnum.DAILY);
+        
         if (dailyBalance == null) {
-            // 创建新的每日积分记录
             dailyBalance = new UserCreditBalanceEntity();
             dailyBalance.setUserId(userId);
             dailyBalance.setCreditType(CreditTypeEnum.DAILY);
             dailyBalance.setBalance(dailyCredits);
             dailyBalance.setTotalEarned(dailyCredits);
             dailyBalance.setTotalSpent(BigDecimal.ZERO);
-            dailyBalance.setLastEarnTime(LocalDateTime.now());
             dailyBalance.setVersion(0);
             dailyBalance.setCreateBy(userId);
-            
-            int dailyBalanceResult = userCreditBalanceMapper.insertOrUpdate(dailyBalance);
-            if (dailyBalanceResult <= 0) {
-                log.error("创建用户每日积分余额记录失败 - userId: {}", userId);
-                throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "创建每日积分余额记录失败");
-            }
-            log.info("创建每日积分记录成功 - userId: {}, 积分: {}", userId, dailyCredits);
         } else {
-            // 更新现有的每日积分记录（直接替换，因为每日积分只保留当天的）
-            dailyBalance.setBalance(dailyCredits); // 每日积分覆盖模式
+            dailyBalance.setBalance(dailyCredits); // 每日积分是覆盖模式
             dailyBalance.setTotalEarned(dailyBalance.getTotalEarned().add(dailyCredits));
-            dailyBalance.setLastEarnTime(LocalDateTime.now());
-            dailyBalance.setVersion(dailyBalance.getVersion());
-            dailyBalance.setUpdateBy(userId);
-            
-            int balanceUpdateResult = userCreditBalanceMapper.updateBalanceByUserIdAndCreditType(
-                userId, CreditTypeEnum.DAILY, dailyBalance);
-            if (balanceUpdateResult <= 0) {
-                log.error("更新用户每日积分余额失败 - userId: {}", userId);
-                throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新每日积分余额失败");
-            }
         }
+        dailyBalance.setLastEarnTime(LocalDateTime.now());
         
-        // 5. 记录积分交易记录
+        int result = userCreditBalanceMapper.insertOrUpdate(dailyBalance);
+        if (result <= 0) {
+            log.error("更新或创建用户每日积分余额失败 - userId: {}", userId);
+            throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "更新每日积分余额失败");
+        }
+    }
+    
+    /**
+     * 创建每日积分的交易流水（内部方法）
+     */
+    private void createDailyCreditTransaction(Long userId, BigDecimal amount, BigDecimal before, BigDecimal after) {
         CreditTransactionEntity transaction = new CreditTransactionEntity();
         transaction.setUserId(userId);
         transaction.setTransactionType(CreditTransactionTypeEnum.INCOME_FREE_PLAN_DAILY);
         transaction.setCreditType(CreditTypeEnum.DAILY);
-        transaction.setAmount(dailyCredits);
-        transaction.setBalanceBefore(oldTotalBalance);
-        transaction.setBalanceAfter(newTotalBalance);
-        transaction.setDescription("每日登录赠送积分（根据套餐配置，24小时有效） - " + today);
-        transaction.setExpireTime(LocalDateTime.now().plusDays(1)); // 1天后过期
+        transaction.setAmount(amount);
+        transaction.setBalanceBefore(before);
+        transaction.setBalanceAfter(after);
+        transaction.setDescription("每日登录赠送积分（根据套餐配置，24小时有效） - " + LocalDate.now());
+        transaction.setExpireTime(LocalDateTime.now().plusDays(1));
         transaction.setCreateBy(userId);
         
-        int transactionResult = creditTransactionMapper.insertTransaction(transaction);
-        if (transactionResult <= 0) {
-            log.error("插入积分交易记录失败 - userId: {}", userId);
+        int result = creditTransactionMapper.insertTransaction(transaction);
+        if (result <= 0) {
+            log.error("插入每日积分交易记录失败 - userId: {}", userId);
             throw new BusinessException(ResponseCodeEnum.DATABASE_ERROR, "记录交易失败");
         }
-        
-        // 6. 记录用户每日登录状态
-        try {
-            UserDailyLoginEntity dailyLogin = userDailyLoginMapper.selectByUserIdAndDate(userId, today);
-            if (dailyLogin == null) {
-                // 创建新的每日登录记录
-                dailyLogin = new UserDailyLoginEntity();
-                dailyLogin.setUserId(userId);
-                dailyLogin.setLoginDate(today);
-                dailyLogin.setLoginCount(1);
-                dailyLogin.setFirstLoginTime(LocalDateTime.now());
-                dailyLogin.setDailyCreditsGranted(true);
-                dailyLogin.setDailyCreditsAmount(dailyCredits);
-                dailyLogin.setCreateBy(userId);
-                
-                int insertResult = userDailyLoginMapper.insert(dailyLogin);
-                if (insertResult <= 0) {
-                    log.warn("创建用户每日登录记录失败 - userId: {}", userId);
-                }
-            } else {
-                // 更新现有记录
-                dailyLogin.setLoginCount(dailyLogin.getLoginCount() + 1);
-                dailyLogin.setDailyCreditsGranted(true);
-                dailyLogin.setDailyCreditsAmount(dailyCredits);
-                dailyLogin.setUpdateBy(userId);
-                
-                int dailyLoginUpdateResult = userDailyLoginMapper.update(dailyLogin);
-                if (dailyLoginUpdateResult <= 0) {
-                    log.warn("更新用户每日登录记录失败 - userId: {}", userId);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("处理用户每日登录记录失败 - userId: {}, 错误: {}", userId, e.getMessage());
-            // 不影响积分发放流程
-        }
-
-        log.info("每日积分发放成功 - userId: {}, 发放积分: {}, 新余额: {}", 
-                userId, dailyCredits, newTotalBalance);
-                
-        // 返回最新的积分信息
-        return getUserCredit(userId);
     }
 
     @Override

@@ -59,19 +59,18 @@ public interface UserCreditService {
     UserCreditResponse initFreePlanForUser(Long userId);
 
     /**
-     * 用户登录时检查并发放每日积分
-     * （根据用户当前套餐配置发放对应积分数量，一天只发放一次）
-     * 免费版：300积分/天，基础版：1900积分/天，高级版：5900积分/天
+     * 处理用户每日登录活动
+     * <p>
+     * 此方法会处理两件事：
+     * 1. 记录用户的每日登录（首次或更新次数）。
+     * 2. 检查并根据用户的套餐发放每日积分（如果当天尚未发放）。
      *
      * @param userId 用户ID
-     * @return 积分账户信息
      */
-    UserCreditResponse giveFreePlanDailyBonusOnLogin(Long userId);
+    void handleUserLogin(Long userId);
 
-    
     /**
-     * 发放付费套餐永久积分
-     * （支付成功后调用）
+     * 为用户发放付费套餐的永久积分
      *
      * @param userId 用户ID
      * @param creditAmount 积分数量

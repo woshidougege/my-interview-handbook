@@ -229,7 +229,7 @@ public class AuthController {
                 // 异步发放每日积分，避免影响登录接口性能
                 new Thread(() -> {
                     try {
-                        userCreditService.giveFreePlanDailyBonusOnLogin(userId);
+                        userCreditService.handleUserLogin(userId);
                     } catch (Exception e) {
                         log.warn("发放每日积分失败 - userId: {}, 错误: {}", userId, e.getMessage());
                     }

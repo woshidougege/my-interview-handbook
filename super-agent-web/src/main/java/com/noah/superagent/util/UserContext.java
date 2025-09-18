@@ -1,6 +1,7 @@
 package com.noah.superagent.util;
 
 import com.noah.superagent.model.SSOUserInfo;
+import com.noah.superagent.service.UserCreditService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 用户上下文工具类
@@ -21,10 +23,16 @@ import javax.servlet.http.HttpServletRequest;
 public class UserContext {
 
     private static SSOManager ssoManager;
+    private static UserCreditService userCreditService;
 
     @Autowired
     public void setSsoService(SSOManager ssoManager) {
         UserContext.ssoManager = ssoManager;
+    }
+
+    @Autowired
+    public void setUserCreditService(UserCreditService userCreditService) {
+        UserContext.userCreditService = userCreditService;
     }
 
 
@@ -80,6 +88,9 @@ public class UserContext {
                 if (user != null && request != null) {
                     // 获取到用户信息后缓存到请求属性中，避免重复请求
                     request.setAttribute(USER_ATTRIBUTE_KEY, user);
+                    
+                    // 异步处理用户登录后的活动，例如记录登录和发放每日积分
+                    triggerUserLoginHandlers(user);
                 }
                 return user;
             } catch (Exception e) {
@@ -90,6 +101,37 @@ public class UserContext {
         return null;
     }
 
+    /**
+     * 异步触发用户登录后的相关处理程序
+     * <p>
+     * 使用数据库记录避免重复发放
+     * 
+     * @param user SSO用户信息
+     */
+    private static void triggerUserLoginHandlers(SSOUserInfo user) {
+        if (user == null || user.getUserId() == null || userCreditService == null) {
+            return;
+        }
+        
+        try {
+            // 异步处理，避免阻塞当前请求线程
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Long userId = Long.valueOf(user.getUserId());
+                    log.debug("开始处理用户登录后活动 - userId: {}, userName: {}", userId, user.getUserName());
+                    
+                    userCreditService.handleUserLogin(userId);
+                    
+                    log.debug("用户登录后活动处理完成 - userId: {}", userId);
+                } catch (Exception e) {
+                    log.warn("处理用户登录后活动失败 - userId: {}, 错误: {}", user.getUserId(), e.getMessage());
+                }
+            });
+            
+        } catch (Exception e) {
+            log.warn("触发用户登录后活动处理时发生错误 - userId: {}, 错误: {}", user.getUserId(), e.getMessage());
+        }
+    }
 
     /**
      * 获取当前用户ID，如果未登录则抛出异常
