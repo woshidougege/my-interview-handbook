@@ -1,6 +1,13 @@
 # DB-Scheduler 定时任务配置
 # 每日积分发放任务专用配置文件
 
+# 每日积分补发任务配置
+daily-credit-grant:
+  # CRON表达式: 每天凌晨00:00:00执行
+  # 格式: 秒 分 时 日 月 星期
+  cron: "0 0 0 * * ?"
+  enabled: true
+
 db-scheduler:
   # 启用调度器
   enabled: true

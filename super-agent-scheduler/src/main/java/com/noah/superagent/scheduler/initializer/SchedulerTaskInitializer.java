@@ -4,6 +4,8 @@ import com.github.kagkarlsson.scheduler.Scheduler;
 import com.noah.superagent.scheduler.job.CreditDeductionTaskJob;
 import com.noah.superagent.scheduler.job.CreditExpiryCleanupJob;
 import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
+import com.noah.superagent.scheduler.job.DailyCreditGrantJob;
+import com.noah.superagent.scheduler.job.SubscriptionExpirationJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -35,8 +37,11 @@ public class SchedulerTaskInitializer implements ApplicationRunner {
             scheduler.start();
             log.info("DB-Scheduler调度器启动成功");
             
-            // 每日积分发放任务已禁用，改为用户登录时发放
-            // ensureTaskRunning(DailyCreditBonusJob.getJobTaskName(), "每日积分发放任务");
+            // 检查并启动每日积分补发任务Job
+            ensureTaskRunning(DailyCreditGrantJob.getJobTaskName(), "每日积分补发任务Job");
+            
+            // 检查并启动订阅到期处理任务Job
+            ensureTaskRunning(SubscriptionExpirationJob.getJobTaskName(), "订阅到期处理任务Job");
             
             // 检查并启动积分过期清理任务
             ensureTaskRunning(CreditExpiryCleanupJob.getJobTaskName(), "积分过期清理任务");
