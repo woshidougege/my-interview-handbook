@@ -82,3 +82,10 @@ management:
 registration:
   callback:
     url: http://192.168.6.86:8000/kl-dt-gateway/user/generatePlanAgentAndDocs
+
+# ========== 文档库配置 ==========
+file-repository:
+  base-url: http://192.168.6.86:8000/kl-dt-gateway
+  upload-path: /gateway/twin/FileRepository/stream/put
+  list-object-names-path: /gateway/15523003548256/twin/FileRepository/entity/{entityCode}/service/listObjectNames
+  get-object-url-path: /gateway/15523003548256/twin/FileRepository/entity/{entityCode}/service/getObjectURL

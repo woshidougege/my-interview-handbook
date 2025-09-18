@@ -26,6 +26,10 @@
             <groupId>com.noah</groupId>
             <artifactId>super-agent-dao</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
 
     </dependencies>
 
