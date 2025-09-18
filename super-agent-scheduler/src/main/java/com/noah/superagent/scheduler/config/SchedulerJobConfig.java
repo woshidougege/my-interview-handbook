@@ -31,77 +31,77 @@ public class SchedulerJobConfig {
     // ==================== 定期作业 (RecurringJob) ====================
     
     /**
-     * 注册支付状态同步作业
+     * 注册支付状态同步Task
      */
     @Bean
-    public RecurringTask<Void> paymentStatusSyncJob(PaymentStatusSyncJob paymentStatusSyncJob) {
+    public RecurringTask<Void> paymentStatusSyncTask(PaymentStatusSyncJob paymentStatusSyncJob) {
         return paymentStatusSyncJob.getTask();
     }
     
     /**
-     * 注册定时对话作业
+     * 注册定时对话Task
      */
     @Bean
-    public RecurringTask<Void> scheduledChatJob(ScheduledChatTaskJob scheduledChatTaskJob) {
+    public RecurringTask<Void> scheduledChatTask(ScheduledChatTaskJob scheduledChatTaskJob) {
         return scheduledChatTaskJob.getTask();
     }
     
     /**
-     * 注册每日积分管理作业（定期作业）
+     * 注册每日积分管理Task（定期Task）
      * 包含清理过期积分和补发新积分的完整流程
      */
     @Bean
-    public RecurringTask<Void> dailyCreditsManagementJob(DailyCreditsManagementJob dailyCreditsManagementJob) {
+    public RecurringTask<Void> dailyCreditsManagementTask(DailyCreditsManagementJob dailyCreditsManagementJob) {
         return dailyCreditsManagementJob.getTask();
     }
     
     /**
-     * 注册订阅到期处理作业（定期作业）
+     * 注册订阅到期处理Task（定期Task）
      * 作为兜底机制，主要处理通过OneTimeTask方式
      */
     @Bean
-    public RecurringTask<Void> subscriptionExpirationJob(SubscriptionExpirationJob subscriptionExpirationJob) {
+    public RecurringTask<Void> subscriptionExpirationRecurringTask(SubscriptionExpirationJob subscriptionExpirationJob) {
         return subscriptionExpirationJob.getTask();
     }
     
     // ==================== 一次性作业 (OneTimeJob) ====================
     
     /**
-     * 注册订阅到期处理任务（一次性任务）
+     * 注册订阅到期处理Task（一次性Task）
      * 精确处理单个订阅的到期逻辑
      */
     @Bean
-    public OneTimeTask<SubscriptionExpirationTask.SubscriptionData> subscriptionExpirationTask(
+    public OneTimeTask<SubscriptionExpirationTask.SubscriptionData> subscriptionExpirationOneTimeTask(
             SubscriptionExpirationTask subscriptionExpirationTask) {
         return subscriptionExpirationTask.getTask();
     }
     
     /**
-     * 注册支付超时检查任务（一次性任务）
+     * 注册支付超时检查Task（一次性Task）
      * 为每个订单精确安排超时检查，替代频繁轮询
      */
     @Bean
-    public OneTimeTask<PaymentTimeoutCheckTask.PaymentTimeoutData> paymentTimeoutCheckTask(
+    public OneTimeTask<PaymentTimeoutCheckTask.PaymentTimeoutData> paymentTimeoutCheckOneTimeTask(
             PaymentTimeoutCheckTask paymentTimeoutCheckTask) {
         return paymentTimeoutCheckTask.getTask();
     }
     
     /**
-     * 注册限时积分过期清理任务（一次性延迟任务）
+     * 注册限时积分过期清理Task（一次性延迟Task）
      * 为每个有限期的积分精确安排到期清理
      */
     @Bean
-    public OneTimeTask<CreditExpiryCleanupTask.CreditExpiryData> creditExpiryCleanupTask(
+    public OneTimeTask<CreditExpiryCleanupTask.CreditExpiryData> creditExpiryCleanupOneTimeTask(
             CreditExpiryCleanupTask creditExpiryCleanupTask) {
         return creditExpiryCleanupTask.getTask();
     }
     
     /**
-     * 注册积分扣减任务（一次性立即任务）
+     * 注册积分扣减Task（一次性立即Task）
      * 用于资源上报后立即执行积分扣减
      */
     @Bean
-    public OneTimeTask<CreditDeductionTask.CreditDeductionData> creditDeductionTask(
+    public OneTimeTask<CreditDeductionTask.CreditDeductionData> creditDeductionOneTimeTask(
             CreditDeductionTask creditDeductionTask) {
         return creditDeductionTask.getTask();
     }
