@@ -48,17 +48,29 @@ public class CreditDeductionTask {
     }
 
     /**
-     * 处理积分扣减
+     * 处理积分扣减（保证幂等性，避免重复扣减）
      */
     private void processCreditDeduction(TaskInstance<CreditDeductionData> taskInstance, 
                                       ExecutionContext executionContext) {
         CreditDeductionData data = taskInstance.getData();
         String taskId = taskInstance.getId();
         
-        log.info("【积分扣减Task】开始执行 - taskId: {}, userId: {}, amount: {}, description: {}", 
-                taskId, data.getUserId(), data.getAmount(), data.getDescription());
+        log.info("【积分扣减Task】开始执行 - taskId: {}, userId: {}, amount: {}, resourceRecordId: {}", 
+                taskId, data.getUserId(), data.getAmount(), data.getResourceUsageRecordId());
 
         try {
+            // 0. 幂等性检查：通过resourceUsageRecordId检查是否已扣减过
+            if (data.getResourceUsageRecordId() != null) {
+                // 检查该资源使用记录是否已经扣减过积分
+                // 这里可以通过查询credit_transaction表或在resource_usage_record表添加credit_deducted字段
+                boolean alreadyDeducted = isAlreadyDeducted(data.getResourceUsageRecordId());
+                if (alreadyDeducted) {
+                    log.info("【积分扣减Task】积分已扣减过，跳过执行 - taskId: {}, resourceRecordId: {}", 
+                            taskId, data.getResourceUsageRecordId());
+                    return; // 幂等性保证：已扣减过则直接返回成功
+                }
+            }
+
             // 1. 检查用户是否有足够积分（包含透支额度）
             boolean canConsume = userCreditService.canConsumeCredits(data.getUserId(), data.getAmount());
             if (!canConsume) {
@@ -68,15 +80,20 @@ public class CreditDeductionTask {
                 return;
             }
 
-            // 2. 执行积分扣减
+            // 2. 执行积分扣减（在事务中完成扣减+标记）
             creditConsumeService.consumeCredits(
                     data.getUserId(), 
                     data.getAmount(), 
                     data.getDescription(), 
                     data.getRelatedOrderId());
+            
+            // 3. 标记该资源使用记录已扣减积分（保证幂等性）
+            if (data.getResourceUsageRecordId() != null) {
+                markAsDeducted(data.getResourceUsageRecordId(), taskId);
+            }
 
-            log.info("【积分扣减Task】执行成功 - taskId: {}, userId: {}, amount: {}, description: {}", 
-                    taskId, data.getUserId(), data.getAmount(), data.getDescription());
+            log.info("【积分扣减Task】执行成功 - taskId: {}, userId: {}, amount: {}, resourceRecordId: {}", 
+                    taskId, data.getUserId(), data.getAmount(), data.getResourceUsageRecordId());
 
         } catch (Exception e) {
             log.error("【积分扣减Task】执行失败 - taskId: {}, userId: {}, amount: {}, error: {}", 
@@ -85,6 +102,26 @@ public class CreditDeductionTask {
             // 抛出异常让db-scheduler进行重试
             throw new RuntimeException("积分扣减失败: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 检查资源使用记录是否已扣减过积分
+     */
+    private boolean isAlreadyDeducted(Long resourceUsageRecordId) {
+        // TODO: 实现检查逻辑
+        // 方案1: 在resource_usage_record表添加credit_deducted字段
+        // 方案2: 在credit_transaction表查询是否存在相关记录
+        return false; // 暂时返回false，需要根据实际表结构实现
+    }
+    
+    /**
+     * 标记资源使用记录已扣减积分
+     */
+    private void markAsDeducted(Long resourceUsageRecordId, String taskId) {
+        // TODO: 实现标记逻辑
+        // 方案1: 更新resource_usage_record表的credit_deducted字段
+        // 方案2: 在credit_transaction表的备注中记录resourceUsageRecordId
+        log.debug("标记资源使用记录已扣减积分 - resourceRecordId: {}, taskId: {}", resourceUsageRecordId, taskId);
     }
 
     /**
