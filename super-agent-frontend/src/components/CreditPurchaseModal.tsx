@@ -266,7 +266,19 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
   };
 
   // 关闭弹窗
-  const handleClose = () => {
+  const handleClose = async () => {
+    // 如果有待支付的订单，主动取消
+    if (paymentData && paymentData.orderNo && paymentStatus === 'waiting') {
+      try {
+        await paymentApi.cancelOrder(paymentData.orderNo);
+        console.log('订单已自动取消:', paymentData.orderNo);
+        // 静默取消，不显示提示信息，避免打扰用户体验
+      } catch (error) {
+        console.warn('取消订单失败:', error);
+        // 不阻塞关闭操作，因为用户已经决定要关闭了
+      }
+    }
+    
     resetState();
     onClose();
   };
