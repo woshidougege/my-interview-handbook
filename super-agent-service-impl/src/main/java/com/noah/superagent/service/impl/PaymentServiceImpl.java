@@ -8,6 +8,8 @@ import com.noah.superagent.common.dto.RefundResponse;
 import com.noah.superagent.common.dto.PaymentStatusEvent;
 import com.noah.superagent.common.constants.PaymentStatus;
 import com.noah.superagent.common.config.CreditPurchaseConfig;
+import com.noah.superagent.common.event.PaymentOrderCreatedEvent;
+import com.noah.superagent.common.event.PaymentSuccessEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import com.noah.superagent.dao.entity.PaymentRecordEntity;
 import com.noah.superagent.dao.entity.SubscriptionOrderEntity;
@@ -66,10 +68,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final UserSubscriptionService userSubscriptionService;
     private final WxPayService wxPayService;
     private final CreditPurchaseConfig creditPurchaseConfig;
-    
-    // 使用ApplicationEventPublisher发布支付状态事件，避免循环依赖
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    private final ApplicationEventPublisher eventPublisher;
     
     // 套餐积分配置
     @Value("#{${super-agent.billing.subscription.plan-credits:{}}}")
@@ -150,6 +149,24 @@ public class PaymentServiceImpl implements PaymentService {
             response.setStatus(PaymentStatus.WAITING.getValue());
             response.setExpiredAt(order.getExpiredAt());
             response.setCreatedAt(order.getCreateTime());
+            
+            // 6. 发布订单创建事件，安排30分钟后的超时检查任务
+            try {
+                PaymentOrderCreatedEvent event = new PaymentOrderCreatedEvent(
+                    this,
+                    orderNo,
+                    userId,
+                    amount,
+                    order.getExpiredAt(),
+                    request.getPlanId()
+                );
+                eventPublisher.publishEvent(event);
+                log.info("订单创建事件已发布，已安排超时检查任务 - orderNo: {}, expiredAt: {}", 
+                        orderNo, order.getExpiredAt());
+            } catch (Exception e) {
+                log.error("发布订单创建事件失败 - orderNo: {}, error: {}", orderNo, e.getMessage(), e);
+                // 事件发布失败不影响主流程
+            }
 
             return response;
 
@@ -517,6 +534,23 @@ public class PaymentServiceImpl implements PaymentService {
             
             // 推送支付成功事件到SSE连接
             sendPaymentStatusEvent(orderNo, PaymentStatus.PAID.getValue(), order.getAmount(), paymentMethod, PaymentStatus.PAID.getDescription());
+            
+            // 5. 发布支付成功事件，取消超时检查任务
+            try {
+                PaymentSuccessEvent event = new PaymentSuccessEvent(
+                    this,
+                    orderNo,
+                    order.getUserId(),
+                    order.getAmount(),
+                    order.getPaidAt(),
+                    paymentMethod
+                );
+                eventPublisher.publishEvent(event);
+                log.info("支付成功事件已发布，已取消超时检查任务 - orderNo: {}", orderNo);
+            } catch (Exception e) {
+                log.error("发布支付成功事件失败 - orderNo: {}, error: {}", orderNo, e.getMessage(), e);
+                // 事件发布失败不影响主流程
+            }
             
             return true;
             
@@ -967,6 +1001,52 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (Exception e) {
             log.error("批量状态同步异常", e);
             throw new RuntimeException("批量状态同步失败: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public boolean checkAndProcessPaymentTimeout(String orderNo) {
+        log.info("开始检查订单支付超时状态 - orderNo: {}", orderNo);
+        
+        try {
+            // 1. 查找订单
+            SubscriptionOrderEntity order = findOrderByOrderNo(orderNo);
+            if (order == null) {
+                log.warn("订单不存在，无法检查超时 - orderNo: {}", orderNo);
+                return false;
+            }
+            
+            // 2. 检查是否为最终状态，最终状态无需处理
+            PaymentStatus currentStatus = PaymentStatus.fromValue(order.getStatus());
+            if (currentStatus != null && currentStatus.isFinalStatus()) {
+                log.info("订单已为最终状态，无需处理 - orderNo: {}, status: {}", orderNo, order.getStatus());
+                return false;
+            }
+            
+            // 3. 检查订单是否已过期
+            if (isOrderExpired(order)) {
+                log.info("订单已过期，更新为超时状态 - orderNo: {}", orderNo);
+                updateOrderToExpired(order);
+                return true;
+            }
+            
+            // 4. 订单未过期，主动查询微信状态
+            log.info("订单未过期，主动查询微信支付状态 - orderNo: {}", orderNo);
+            String originalStatus = order.getStatus();
+            
+            SubscriptionOrderEntity updatedOrder = syncOrderStatusFromWechat(order);
+            if (updatedOrder != null && !updatedOrder.getStatus().equals(originalStatus)) {
+                log.info("通过微信查询更新了订单状态 - orderNo: {}, oldStatus: {}, newStatus: {}", 
+                        orderNo, originalStatus, updatedOrder.getStatus());
+                return true;
+            } else {
+                log.info("微信查询后订单状态无变化 - orderNo: {}, status: {}", orderNo, order.getStatus());
+                return false;
+            }
+            
+        } catch (Exception e) {
+            log.error("检查订单支付超时失败 - orderNo: {}, error: {}", orderNo, e.getMessage(), e);
+            throw new RuntimeException("检查订单支付超时失败: " + e.getMessage(), e);
         }
     }
     

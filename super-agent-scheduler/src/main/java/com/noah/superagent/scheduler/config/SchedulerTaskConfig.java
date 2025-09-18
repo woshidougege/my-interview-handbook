@@ -8,6 +8,7 @@ import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
 import com.noah.superagent.scheduler.job.DailyCreditGrantJob;
 import com.noah.superagent.scheduler.job.ScheduledChatTaskJob;
 import com.noah.superagent.scheduler.job.SubscriptionExpirationJob;
+import com.noah.superagent.scheduler.task.PaymentTimeoutCheckTask;
 import com.noah.superagent.scheduler.task.SubscriptionExpirationTask;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -73,5 +74,24 @@ public class SchedulerTaskConfig {
     @Bean
     public RecurringTask<Void> dailyCreditGrantTask(DailyCreditGrantJob dailyCreditGrantJob) {
         return dailyCreditGrantJob.getTask();
+    }
+    
+    /**
+     * 注册订阅到期处理任务Job（定期任务）
+     * 作为兜底机制，主要处理通过OneTimeTask方式
+     */
+    @Bean
+    public RecurringTask<Void> subscriptionExpirationJob(SubscriptionExpirationJob subscriptionExpirationJob) {
+        return subscriptionExpirationJob.getTask();
+    }
+    
+    /**
+     * 注册支付超时检查任务（一次性任务）
+     * 为每个订单精确安排超时检查，替代频繁轮询
+     */
+    @Bean
+    public OneTimeTask<PaymentTimeoutCheckTask.PaymentTimeoutData> paymentTimeoutCheckTask(
+            PaymentTimeoutCheckTask paymentTimeoutCheckTask) {
+        return paymentTimeoutCheckTask.getTask();
     }
 }

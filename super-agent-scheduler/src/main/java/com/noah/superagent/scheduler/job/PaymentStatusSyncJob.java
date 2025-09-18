@@ -11,10 +11,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * 支付状态同步定时任务
+ * 支付状态同步兜底任务Job
  * <p>
- * 每2分钟执行一次，检查处理中的订单状态
- * 防止回调通知丢失导致的状态不同步
+ * 每天凌晨2点执行一次，作为最终兜底机制处理极端异常订单
+ * 主要处理：db-scheduler任务异常、事件机制失败、系统长期宕机等极端情况
+ * 
+ * 注意：
+ * - 90%订单通过微信回调实时处理
+ * - 9%订单通过PaymentTimeoutCheckTask精确处理  
+ * - 1%极端异常通过此Job兜底处理
  *
  * @author Noah
  * @since 1.0.0
@@ -28,8 +33,8 @@ public class PaymentStatusSyncJob {
     // 任务名称
     private static final String TASK_NAME = "payment-status-sync";
     
-    // 每2分钟执行一次
-    private static final String CRON_EXPRESSION = "0 */2 * * * ?";
+    // 每天凌晨2点执行一次，作为兜底机制
+    private static final String CRON_EXPRESSION = "0 0 2 * * ?";
 
     // RecurringTask 实例
     @Getter
@@ -50,11 +55,11 @@ public class PaymentStatusSyncJob {
     }
 
     /**
-     * 执行支付状态同步任务
+     * 执行支付状态同步兜底任务
      */
     private void executeTask(TaskInstance<Void> taskInstance, ExecutionContext executionContext) {
         long startTime = System.currentTimeMillis();
-        log.debug("开始执行支付状态同步任务 - 任务ID: {}", taskInstance.getId());
+        log.info("【支付状态同步兜底任务Job】开始执行 - 任务ID: {}", taskInstance.getId());
         
         try {
             // 执行状态同步
@@ -62,18 +67,18 @@ public class PaymentStatusSyncJob {
             
             long duration = System.currentTimeMillis() - startTime;
             if (syncCount > 0) {
-                log.info("支付状态同步任务执行完成 - 耗时: {}ms, 同步订单数: {}", duration, syncCount);
+                log.info("【支付状态同步兜底任务Job】执行完成 - 耗时: {}ms, 处理异常订单数: {}", duration, syncCount);
             } else {
-                log.debug("支付状态同步任务执行完成 - 耗时: {}ms, 无需同步的订单", duration);
+                log.debug("【支付状态同步兜底任务Job】执行完成 - 耗时: {}ms, 无异常订单需要处理", duration);
             }
             
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.error("支付状态同步任务执行失败 - 耗时: {}ms, 错误: {}", 
+            log.error("【支付状态同步兜底任务Job】执行失败 - 耗时: {}ms, 错误: {}", 
                     duration, e.getMessage(), e);
             
             // 抛出异常让调度器知道任务失败，可以根据配置进行重试
-            throw new RuntimeException("支付状态同步任务执行失败: " + e.getMessage(), e);
+            throw new RuntimeException("支付状态同步兜底任务Job执行失败: " + e.getMessage(), e);
         }
     }
 }
