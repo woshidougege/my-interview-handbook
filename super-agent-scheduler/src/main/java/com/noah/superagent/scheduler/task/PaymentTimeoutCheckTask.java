@@ -5,16 +5,19 @@ import com.github.kagkarlsson.scheduler.task.TaskInstance;
 import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import com.noah.superagent.service.PaymentService;
+import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.io.Serializable;
 
 /**
  * 支付超时检查任务
  * <p>
  * 为每个订单创建精确的超时检查任务，替代频繁的轮询机制
  * 在订单创建时安排30分钟后的超时检查，支付成功后取消任务
- * 
+ * <p>
  * 设计思路：
  * 1. 订单创建 → 安排30分钟后检查任务
  * 2. 支付成功 → 取消检查任务  
@@ -73,13 +76,12 @@ public class PaymentTimeoutCheckTask {
     /**
      * 支付超时数据载荷
      */
-    public static class PaymentTimeoutData {
+    @Data
+    public static class PaymentTimeoutData implements Serializable {
+        // Getters and Setters
         private String orderNo;
         private Long userId;
         private java.math.BigDecimal amount;
-
-        // 无参构造器（序列化需要）
-        public PaymentTimeoutData() {}
 
         public PaymentTimeoutData(String orderNo, Long userId, java.math.BigDecimal amount) {
             this.orderNo = orderNo;
@@ -87,14 +89,5 @@ public class PaymentTimeoutCheckTask {
             this.amount = amount;
         }
 
-        // Getters and Setters
-        public String getOrderNo() { return orderNo; }
-        public void setOrderNo(String orderNo) { this.orderNo = orderNo; }
-
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-
-        public java.math.BigDecimal getAmount() { return amount; }
-        public void setAmount(java.math.BigDecimal amount) { this.amount = amount; }
     }
 }
