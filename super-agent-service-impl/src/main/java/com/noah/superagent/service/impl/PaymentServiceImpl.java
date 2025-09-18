@@ -10,6 +10,7 @@ import com.noah.superagent.common.constants.PaymentStatus;
 import com.noah.superagent.common.config.CreditPurchaseConfig;
 import com.noah.superagent.common.event.PaymentOrderCreatedEvent;
 import com.noah.superagent.common.event.PaymentSuccessEvent;
+import com.noah.superagent.common.event.PaymentCancelledEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import com.noah.superagent.dao.entity.PaymentRecordEntity;
 import com.noah.superagent.dao.entity.SubscriptionOrderEntity;
@@ -335,6 +336,22 @@ public class PaymentServiceImpl implements PaymentService {
             
             // 推送订单取消事件到SSE连接
             sendPaymentStatusEvent(orderNo, PaymentStatus.CANCELLED.getValue(), order.getAmount(), order.getPaymentMethod(), PaymentStatus.CANCELLED.getDescription());
+
+            // 发布订单取消事件，取消对应的超时检查任务
+            try {
+                PaymentCancelledEvent event = new PaymentCancelledEvent(
+                    this,
+                    orderNo,
+                    order.getUserId(),
+                    order.getAmount(),
+                    "用户主动取消"
+                );
+                eventPublisher.publishEvent(event);
+                log.info("订单取消事件已发布，已取消超时检查任务 - orderNo: {}", orderNo);
+            } catch (Exception e) {
+                log.error("发布订单取消事件失败 - orderNo: {}, error: {}", orderNo, e.getMessage(), e);
+                // 事件发布失败不影响主流程
+            }
 
             return true;
 

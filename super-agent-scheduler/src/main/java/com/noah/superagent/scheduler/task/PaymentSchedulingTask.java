@@ -3,6 +3,7 @@ package com.noah.superagent.scheduler.task;
 import com.github.kagkarlsson.scheduler.Scheduler;
 import com.noah.superagent.common.event.PaymentOrderCreatedEvent;
 import com.noah.superagent.common.event.PaymentSuccessEvent;
+import com.noah.superagent.common.event.PaymentCancelledEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -21,7 +22,8 @@ import java.time.ZoneId;
  * 设计思路：
  * 1. 订单创建 → 安排30分钟后超时检查任务
  * 2. 支付成功 → 取消超时检查任务
- * 3. 支付失败 → 可安排重试任务（可选）
+ * 3. 用户取消订单 → 取消超时检查任务
+ * 4. 支付失败 → 可安排重试任务（可选）
  *
  * @author AI Assistant
  * @since 1.0.0
@@ -64,6 +66,25 @@ public class PaymentSchedulingTask {
     @EventListener
     public void handlePaymentSuccess(PaymentSuccessEvent event) {
         log.info("【支付调度】收到支付成功事件 - orderNo: {}", event.getOrderNo());
+
+        try {
+            cancelTimeoutCheckTask(event.getOrderNo());
+            log.info("【支付调度】成功取消超时检查任务 - orderNo: {}", event.getOrderNo());
+
+        } catch (Exception e) {
+            log.error("【支付调度】取消超时检查任务失败 - orderNo: {}, error: {}", 
+                    event.getOrderNo(), e.getMessage(), e);
+            // 取消失败不影响主流程
+        }
+    }
+
+    /**
+     * 监听订单取消事件，取消超时检查任务
+     */
+    @EventListener
+    public void handleOrderCancelled(PaymentCancelledEvent event) {
+        log.info("【支付调度】收到订单取消事件 - orderNo: {}, cancelReason: {}", 
+                event.getOrderNo(), event.getCancelReason());
 
         try {
             cancelTimeoutCheckTask(event.getOrderNo());
