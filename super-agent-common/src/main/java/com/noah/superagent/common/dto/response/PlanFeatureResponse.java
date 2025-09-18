@@ -17,7 +17,7 @@ import lombok.AllArgsConstructor;
 @Schema(
     name = "PlanFeatureResponse",
     title = "套餐功能特性", 
-    description = "套餐功能特性详情，包含功能描述、是否高亮、是否包含等信息"
+    description = "套餐功能特性详情，包含功能描述和是否高亮等信息"
 )
 public class PlanFeatureResponse {
 
@@ -33,18 +33,4 @@ public class PlanFeatureResponse {
     @Schema(description = "是否高亮显示", example = "true")
     private Boolean highlight;
 
-    /**
-     * 是否包含此功能（用于前端显示）
-     */
-    @Schema(description = "是否包含此功能", example = "true")
-    private Boolean included;
-
-    /**
-     * 构造函数 - 仅文本和高亮
-     */
-    public PlanFeatureResponse(String text, Boolean highlight) {
-        this.text = text;
-        this.highlight = highlight;
-        this.included = true;
-    }
 }

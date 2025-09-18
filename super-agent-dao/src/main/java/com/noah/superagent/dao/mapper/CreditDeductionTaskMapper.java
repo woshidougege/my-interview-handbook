@@ -28,8 +28,7 @@ public interface CreditDeductionTaskMapper extends BaseMapper<CreditDeductionTas
     default List<CreditDeductionTaskEntity> selectPendingTasks(int limit) {
         return selectListByQuery(QueryWrapper.create()
                 .select()
-                .where(CREDIT_DEDUCTION_TASK_ENTITY.DELETED.eq(0))
-                .and(CREDIT_DEDUCTION_TASK_ENTITY.STATUS.eq(CreditDeductionTaskStatusEnum.PENDING))
+                .where(CREDIT_DEDUCTION_TASK_ENTITY.STATUS.eq(CreditDeductionTaskStatusEnum.PENDING))
                 .and(CREDIT_DEDUCTION_TASK_ENTITY.SCHEDULED_TIME.le(LocalDateTime.now()))
                 .orderBy(CREDIT_DEDUCTION_TASK_ENTITY.SCHEDULED_TIME.asc(), CREDIT_DEDUCTION_TASK_ENTITY.CREATE_TIME.asc())
                 .limit(limit)
@@ -46,8 +45,7 @@ public interface CreditDeductionTaskMapper extends BaseMapper<CreditDeductionTas
         LocalDateTime timeoutTime = LocalDateTime.now().minusMinutes(timeoutMinutes);
         return selectListByQuery(QueryWrapper.create()
                 .select()
-                .where(CREDIT_DEDUCTION_TASK_ENTITY.DELETED.eq(0))
-                .and(CREDIT_DEDUCTION_TASK_ENTITY.STATUS.eq(CreditDeductionTaskStatusEnum.PROCESSING))
+                .where(CREDIT_DEDUCTION_TASK_ENTITY.STATUS.eq(CreditDeductionTaskStatusEnum.PROCESSING))
                 .and(CREDIT_DEDUCTION_TASK_ENTITY.EXECUTED_TIME.lt(timeoutTime))
                 .orderBy(CREDIT_DEDUCTION_TASK_ENTITY.EXECUTED_TIME.asc())
                 .limit(limit)
@@ -69,7 +67,6 @@ public interface CreditDeductionTaskMapper extends BaseMapper<CreditDeductionTas
                 .select()
                 .where(CREDIT_DEDUCTION_TASK_ENTITY.TASK_ID.eq(taskId))
                 .and(CREDIT_DEDUCTION_TASK_ENTITY.STATUS.eq(oldStatus))
-                .and(CREDIT_DEDUCTION_TASK_ENTITY.DELETED.eq(0))
         );
         
         if (task == null) {
@@ -98,7 +95,6 @@ public interface CreditDeductionTaskMapper extends BaseMapper<CreditDeductionTas
         CreditDeductionTaskEntity task = selectOneByQuery(QueryWrapper.create()
                 .select()
                 .where(CREDIT_DEDUCTION_TASK_ENTITY.TASK_ID.eq(taskId))
-                .and(CREDIT_DEDUCTION_TASK_ENTITY.DELETED.eq(0))
         );
         
         if (task == null) {
@@ -130,7 +126,6 @@ public interface CreditDeductionTaskMapper extends BaseMapper<CreditDeductionTas
         CreditDeductionTaskEntity task = selectOneByQuery(QueryWrapper.create()
                 .select()
                 .where(CREDIT_DEDUCTION_TASK_ENTITY.TASK_ID.eq(taskId))
-                .and(CREDIT_DEDUCTION_TASK_ENTITY.DELETED.eq(0))
         );
         
         if (task == null) {
@@ -166,7 +161,6 @@ public interface CreditDeductionTaskMapper extends BaseMapper<CreditDeductionTas
         List<CreditDeductionTaskEntity> tasks = selectListByQuery(QueryWrapper.create()
                 .select()
                 .where(CREDIT_DEDUCTION_TASK_ENTITY.TASK_ID.in(taskIds))
-                .and(CREDIT_DEDUCTION_TASK_ENTITY.DELETED.eq(0))
         );
         
         int updateCount = 0;

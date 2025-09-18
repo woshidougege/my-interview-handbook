@@ -3,7 +3,6 @@ package com.noah.superagent.config;
 import com.mybatisflex.core.FlexGlobalConfig;
 import com.mybatisflex.core.audit.AuditManager;
 import com.mybatisflex.core.logicdelete.LogicDeleteManager;
-import com.mybatisflex.core.logicdelete.impl.IntegerLogicDeleteProcessor;
 import com.mybatisflex.spring.boot.MyBatisFlexCustomizer;
 import org.springframework.context.annotation.Configuration;
 
@@ -22,8 +21,8 @@ public class MyBatisFlexConfig implements MyBatisFlexCustomizer {
         AuditManager.setAuditEnable(true);
         
         // 配置逻辑删除处理器
-        // 使用Integer类型的逻辑删除处理器：0表示正常，1表示已删除
-        LogicDeleteManager.setProcessor(new IntegerLogicDeleteProcessor());
+        // 使用自定义枚举逻辑删除处理器：按照官方文档推荐的接口实现
+        LogicDeleteManager.setProcessor(new EnumLogicDeleteProcessor());
         
         // 可选：全局配置逻辑删除字段名（如果所有表都使用相同的字段名）
         // globalConfig.setLogicDeleteColumn("deleted");

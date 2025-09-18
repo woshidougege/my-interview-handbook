@@ -72,6 +72,7 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
         
         // 其他属性
         dto.setValidityDays(config.getValidityDays());
+        dto.setDailyRefreshCredits(config.getDailyRefreshCredits());
         dto.setIsRecommended(config.getIsRecommended());
         dto.setSortOrder(config.getSortOrder());
         dto.setIsCurrentPlan(false); // 默认为false，在Controller层设置
@@ -81,6 +82,88 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
         dto.setFeatures(convertFeatures(config.getFeatures()));
         
         return dto;
+    }
+
+    @Override
+    public List<SubscriptionPlanDTO> getEnabledPlansWithStatus(Long currentUserPlanId) {
+        log.info("获取带状态的启用套餐列表 - currentUserPlanId: {}", currentUserPlanId);
+        
+        List<SubscriptionPlanDTO> planDTOs = getEnabledPlans();
+        
+        // 获取用户当前套餐的PlanCode（用于等级判断）
+        PlanCodeEnum currentUserPlanCode = getCurrentUserPlanCode(planDTOs, currentUserPlanId);
+        log.debug("用户当前套餐等级: {}", currentUserPlanCode != null ? currentUserPlanCode.getCode() : "无");
+        
+        // 设置套餐状态逻辑
+        planDTOs.forEach(planDTO -> {
+            // 判断套餐类型
+            boolean isCreditPack = planDTO.getPlanCode() != null && planDTO.getPlanCode().isCreditPack();
+            boolean isFreePlan = planDTO.getPlanCode() != null && planDTO.getPlanCode().isFree();
+            
+            // 设置是否为当前套餐：积分套餐永远显示false，其他套餐按用户当前订阅判断
+            if (isCreditPack) {
+                // 积分套餐永远不是"当前计划"
+                planDTO.setIsCurrentPlan(false);
+            } else {
+                // 其他套餐（包括免费版）按正常逻辑判断
+                planDTO.setIsCurrentPlan(currentUserPlanId != null && currentUserPlanId.equals(planDTO.getId()));
+            }
+            
+            // 设置是否可订阅（加入套餐等级判断）
+            if (planDTO.getIsCurrentPlan()) {
+                // 当前套餐：不可订阅
+                planDTO.setIsSubscribable(false);
+            } else if (isCreditPack) {
+                // 积分套餐：一直可以购买
+                planDTO.setIsSubscribable(true);
+            } else if (isFreePlan) {
+                // 免费版：永远不能订阅（总是置灰）
+                planDTO.setIsSubscribable(false);
+            } else {
+                // 其他付费套餐：根据套餐等级判断是否可以订阅
+                boolean canSubscribe = canUpgradeToTarget(currentUserPlanCode, planDTO.getPlanCode());
+                planDTO.setIsSubscribable(canSubscribe);
+                
+                log.debug("套餐升级判断: {} -> {}, 结果: {}", 
+                    currentUserPlanCode != null ? currentUserPlanCode.getCode() : "无", 
+                    planDTO.getPlanCode() != null ? planDTO.getPlanCode().getCode() : "无", 
+                    canSubscribe);
+            }
+
+            if (planDTO.getPlanCode()==PlanCodeEnum.DEVELOPER_GOD) {
+                        planDTO.setIsSubscribable(true);
+            }
+        });
+        
+        return planDTOs;
+    }
+
+    /**
+     * 获取用户当前套餐的PlanCode
+     */
+    private PlanCodeEnum getCurrentUserPlanCode(List<SubscriptionPlanDTO> planDTOs, Long currentUserPlanId) {
+        if (currentUserPlanId == null) {
+            return null;
+        }
+        
+        return planDTOs.stream()
+                .filter(plan -> currentUserPlanId.equals(plan.getId()))
+                .map(SubscriptionPlanDTO::getPlanCode)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * 判断是否可以从当前套餐升级到目标套餐
+     */
+    private boolean canUpgradeToTarget(PlanCodeEnum currentPlan, PlanCodeEnum targetPlan) {
+        // 如果用户没有当前套餐（比如新用户），则只能订阅付费套餐，不能订阅免费版
+        if (currentPlan == null) {
+            return targetPlan != null && !targetPlan.isFree() && !targetPlan.isCreditPack();
+        }
+        
+        // 使用PlanCodeEnum中的升级逻辑
+        return currentPlan.canUpgradeTo(targetPlan);
     }
 
     /**
@@ -188,7 +271,6 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
                     PlanFeatureDTO feature = new PlanFeatureDTO();
                     feature.setText(config.getText());
                     feature.setHighlight(config.getHighlight());
-                    feature.setIncluded(config.getIncluded());
                     return feature;
                 })
                 .collect(Collectors.toList());

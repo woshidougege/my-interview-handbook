@@ -69,6 +69,11 @@ public class SubscriptionPlanDTO extends BaseDTO {
     private Integer validityDays;
 
     /**
+     * 每日刷新积分数量
+     */
+    private Integer dailyRefreshCredits;
+
+    /**
      * 是否启用 ENABLED-启用 DISABLED-禁用
      */
     private EnabledEnum enabled;
@@ -102,4 +107,9 @@ public class SubscriptionPlanDTO extends BaseDTO {
      * 积分数量（积分套餐专用）
      */
     private Long creditsAmount;
+
+    /**
+     * 是否可订阅（用于前端按钮状态控制）
+     */
+    private Boolean isSubscribable;
 }

@@ -214,6 +214,7 @@ export interface CreditPurchaseConfig {
   availableCredits: string; // 可用积分总数
   dailyRefreshCredits: string; // 每日刷新积分
   limitedCredits: string; // 限时积分
+  planDailyRefreshCredits: number; // 当前套餐每日刷新积分配置数量
   creditPackages: CreditPackageConfig[];
 }
 
@@ -224,7 +225,13 @@ export interface CreditPackageConfig {
   creditsAmount: number;
   price: number;
   isRecommended: boolean;
-  features: string[];
+  description?: string;
+  features: FeatureConfig[];
+}
+
+export interface FeatureConfig {
+  text: string;
+  highlight: boolean;
 }
 
 // ========== 资源使用相关类型 ==========

@@ -1,6 +1,7 @@
 package com.noah.superagent.util;
 
 import com.noah.superagent.model.SSOUserInfo;
+import com.noah.superagent.service.UserCreditService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 用户上下文工具类
@@ -21,11 +23,19 @@ import javax.servlet.http.HttpServletRequest;
 public class UserContext {
 
     private static SSOManager ssoManager;
+    private static UserCreditService userCreditService;
 
     @Autowired
     public void setSsoService(SSOManager ssoManager) {
         UserContext.ssoManager = ssoManager;
     }
+
+    @Autowired
+    public void setUserCreditService(UserCreditService userCreditService) {
+        UserContext.userCreditService = userCreditService;
+    }
+
+
 
     /**
      * 请求属性中用户信息的键名
@@ -63,7 +73,7 @@ public class UserContext {
 
     /**
      * 获取当前登录用户信息
-     * 主动从SSO接口获取用户信息，而不是依赖预设的属性
+     * 主动从SSO接口获取用户信息
      * 
      * @return 当前SSO用户信息，未登录返回null
      */
@@ -78,6 +88,9 @@ public class UserContext {
                 if (user != null && request != null) {
                     // 获取到用户信息后缓存到请求属性中，避免重复请求
                     request.setAttribute(USER_ATTRIBUTE_KEY, user);
+                    
+                    // 异步处理用户登录后的活动，例如记录登录和发放每日积分
+                    triggerUserLoginHandlers(user);
                 }
                 return user;
             } catch (Exception e) {
@@ -89,91 +102,35 @@ public class UserContext {
     }
 
     /**
-     * 获取当前登录用户名
-     *
-     * @return 用户名，未登录返回null
-     */
-    public static String getCurrentUsername() {
-        SSOUserInfo user = getCurrentUser();
-        return user != null ? user.getUserName() : null;
-    }
-
-    /**
-     * 获取当前登录用户手机号
-     *
-     * @return 手机号，未登录返回null
-     */
-    public static String getCurrentUserPhone() {
-        SSOUserInfo user = getCurrentUser();
-        return user != null ? user.getPhonenumber() : null;
-    }
-
-    /**
-     * 获取当前登录用户邮箱
-     *
-     * @return 邮箱，未登录返回null
-     */
-    public static String getCurrentUserEmail() {
-        SSOUserInfo user = getCurrentUser();
-        return user != null ? user.getEmail() : null;
-    }
-
-    /**
-     * 获取当前登录用户真实姓名
-     *
-     * @return 真实姓名，未登录返回null
-     */
-    public static String getCurrentUserRealName() {
-        SSOUserInfo user = getCurrentUser();
-        return user != null ? user.getNickName() : null;
-    }
-
-    /**
-     * 获取当前登录用户组织ID
-     *
-     * @return 组织ID，未登录返回null
-     */
-    public static String getCurrentUserOrgId() {
-        SSOUserInfo user = getCurrentUser();
-        return user != null ? user.getOrgId() : null;
-    }
-
-    /**
-     * 设置当前用户信息到请求属性中
-     * 通常在认证拦截器或过滤器中调用
-     *
+     * 异步触发用户登录后的相关处理程序
+     * <p>
+     * 使用数据库记录避免重复发放
+     * 
      * @param user SSO用户信息
      */
-    public static void setCurrentUser(SSOUserInfo user) {
-        HttpServletRequest request = getCurrentRequest();
-        if (request != null) {
-            request.setAttribute(USER_ATTRIBUTE_KEY, user);
-            log.debug("设置当前用户: userId={}, userName={}", 
-                    user != null ? user.getUserId() : null, 
-                    user != null ? user.getUserName() : null);
-        } else {
-            log.warn("无法设置用户信息：未找到当前HTTP请求");
+    private static void triggerUserLoginHandlers(SSOUserInfo user) {
+        if (user == null || user.getUserId() == null || userCreditService == null) {
+            return;
         }
-    }
-
-    /**
-     * 清除当前用户信息
-     */
-    public static void clearCurrentUser() {
-        HttpServletRequest request = getCurrentRequest();
-        if (request != null) {
-            request.removeAttribute(USER_ATTRIBUTE_KEY);
-            log.debug("清除当前用户信息");
+        
+        try {
+            // 异步处理，避免阻塞当前请求线程
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Long userId = Long.valueOf(user.getUserId());
+                    log.debug("开始处理用户登录后活动 - userId: {}, userName: {}", userId, user.getUserName());
+                    
+                    userCreditService.handleUserLogin(userId);
+                    
+                    log.debug("用户登录后活动处理完成 - userId: {}", userId);
+                } catch (Exception e) {
+                    log.warn("处理用户登录后活动失败 - userId: {}, 错误: {}", user.getUserId(), e.getMessage());
+                }
+            });
+            
+        } catch (Exception e) {
+            log.warn("触发用户登录后活动处理时发生错误 - userId: {}, 错误: {}", user.getUserId(), e.getMessage());
         }
-    }
-
-    /**
-     * 检查是否有用户登录
-     *
-     * @return 是否已登录
-     */
-    public static boolean isUserLoggedIn() {
-        return getCurrentUser() != null;
     }
 
     /**
@@ -188,20 +145,6 @@ public class UserContext {
             throw new IllegalStateException("用户未登录");
         }
         return userId;
-    }
-
-    /**
-     * 获取当前用户信息，如果未登录则抛出异常
-     *
-     * @return SSO用户信息
-     * @throws IllegalStateException 用户未登录时
-     */
-    public static SSOUserInfo requireCurrentUser() {
-        SSOUserInfo user = getCurrentUser();
-        if (user == null) {
-            throw new IllegalStateException("用户未登录");
-        }
-        return user;
     }
 
 }

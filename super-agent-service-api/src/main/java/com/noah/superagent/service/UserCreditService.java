@@ -2,7 +2,6 @@ package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.response.UserCreditResponse;
-import com.noah.superagent.common.dto.response.UserCreditStatusResponse;
 import com.noah.superagent.common.dto.response.CreditTransactionResponse;
 
 import java.math.BigDecimal;
@@ -14,15 +13,6 @@ import java.math.BigDecimal;
  * @since 1.0.0
  */
 public interface UserCreditService {
-
-    /**
-     * 获取用户积分详细状态
-     * （包含总积分、各类型积分、透支额度、账户状态等完整信息）
-     *
-     * @param userId 用户ID
-     * @return 积分详细状态信息
-     */
-    UserCreditStatusResponse getUserCreditStatus(Long userId);
 
     /**
      * 检查用户是否可以消费指定积分（包含透支检查）
@@ -52,29 +42,12 @@ public interface UserCreditService {
     PageResponse<CreditTransactionResponse> getCreditTransactions(Long userId, Integer pageNum, Integer pageSize);
 
     /**
-     * 初始化用户积分账户
-     * （新用户注册时调用）
-     *
-     * @param userId 用户ID
-     * @return 初始化后的积分账户信息
-     */
-    UserCreditResponse initUserCredit(Long userId);
-
-    /**
      * 检查用户是否有积分账户
      *
      * @param userId 用户ID
      * @return 是否存在积分账户
      */
     boolean hasUserCredit(Long userId);
-
-    /**
-     * 获取用户当前可用积分总额
-     *
-     * @param userId 用户ID
-     * @return 可用积分总额
-     */
-    Long getAvailableCredits(Long userId);
 
     /**
      * 给用户分配免费体验套餐并初始化积分账户
@@ -86,18 +59,18 @@ public interface UserCreditService {
     UserCreditResponse initFreePlanForUser(Long userId);
 
     /**
-     * 用户登录时检查并发放每日积分
-     * （用户登录时调用，一天只发放一次）
+     * 处理用户每日登录活动
+     * <p>
+     * 此方法会处理两件事：
+     * 1. 记录用户的每日登录（首次或更新次数）。
+     * 2. 检查并根据用户的套餐发放每日积分（如果当天尚未发放）。
      *
      * @param userId 用户ID
-     * @return 积分账户信息
      */
-    UserCreditResponse giveFreePlanDailyBonusOnLogin(Long userId);
+    void handleUserLogin(Long userId);
 
-    
     /**
-     * 发放付费套餐永久积分
-     * （支付成功后调用）
+     * 为用户发放付费套餐的永久积分
      *
      * @param userId 用户ID
      * @param creditAmount 积分数量
@@ -106,4 +79,5 @@ public interface UserCreditService {
      * @return 积分账户信息
      */
     UserCreditResponse grantPaidPlanCredits(Long userId, Long creditAmount, Long orderId, String planName);
+
 }

@@ -31,6 +31,9 @@ public class CreditPurchaseConfigResponse {
     @Schema(description = "限时积分", example = "0")
     private String limitedCredits;
 
+    @Schema(description = "当前套餐每日刷新积分配置数量", example = "1900")
+    private Integer planDailyRefreshCredits;
+
     @Schema(description = "积分套餐配置列表")
     private List<CreditPackageConfig> creditPackages;
 
@@ -60,6 +63,20 @@ public class CreditPurchaseConfigResponse {
         private Boolean isRecommended;
 
         @Schema(description = "功能特性列表")
-        private List<String> features;
+        private List<FeatureConfig> features;
+    }
+
+    /**
+     * 功能特性配置
+     */
+    @Data
+    @Schema(description = "功能特性配置")
+    public static class FeatureConfig {
+
+        @Schema(description = "功能描述文本", example = "约生成10-14个PPT")
+        private String text;
+
+        @Schema(description = "是否高亮显示", example = "false")
+        private Boolean highlight;
     }
 }

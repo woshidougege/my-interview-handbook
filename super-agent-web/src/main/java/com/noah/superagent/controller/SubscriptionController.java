@@ -214,14 +214,8 @@ public class SubscriptionController {
             log.debug("获取当前用户信息失败，继续返回套餐列表 - 错误: {}", e.getMessage());
         }
         
-        // Service层返回DTO（配置文件中已包含完整价格信息）
-        List<com.noah.superagent.model.SubscriptionPlanDTO> planDTOs = subscriptionPlanService.getEnabledPlans();
-        
-        // 标识当前套餐（价格信息已在Service层计算完成）
-        final Long finalCurrentUserPlanId = currentUserPlanId;
-        planDTOs.forEach(planDTO -> {
-            planDTO.setIsCurrentPlan(finalCurrentUserPlanId != null && finalCurrentUserPlanId.equals(planDTO.getId()));
-        });
+        // Service层返回带有状态标识的DTO列表（业务逻辑在Service层处理）
+        List<com.noah.superagent.model.SubscriptionPlanDTO> planDTOs = subscriptionPlanService.getEnabledPlansWithStatus(currentUserPlanId);
         
         // Web层组装Response
         PlansListResponse response = new PlansListResponse();
@@ -491,6 +485,7 @@ public class SubscriptionController {
             // 获取当前用户订阅信息
             String planName = "免费版";
             String planCode = "free";
+            Integer planDailyRefreshCredits = 300; // 默认免费版每日刷新积分
             
             try {
                 UserSubscriptionDTO subscription = userSubscriptionService.getCurrentActiveSubscription(userId);
@@ -499,6 +494,7 @@ public class SubscriptionController {
                     if (plan != null) {
                         planName = plan.getPlanName();
                         planCode = plan.getPlanCode() != null ? plan.getPlanCode().getCode() : null;
+                        planDailyRefreshCredits = plan.getDailyRefreshCredits();
                     }
                 }
             } catch (Exception e) {
@@ -515,11 +511,6 @@ public class SubscriptionController {
                 if (!hasCreditAccount) {
                     // 用户首次访问，自动初始化积分账户
                     userCreditService.initFreePlanForUser(userId);
-                    try {
-                        userCreditService.giveFreePlanDailyBonusOnLogin(userId);
-                    } catch (Exception dailyBonusError) {
-                        log.warn("发放每日积分失败 - userId: {}", userId);
-                    }
                     hasCreditAccount = true;
                 }
 
@@ -545,6 +536,7 @@ public class SubscriptionController {
             response.setAvailableCredits(availableCredits);
             response.setDailyRefreshCredits(dailyRefreshCredits);
             response.setLimitedCredits(limitedCredits);
+            response.setPlanDailyRefreshCredits(planDailyRefreshCredits);
             
             // 从积分购买配置中获取积分包信息
             List<CreditPurchaseConfigResponse.CreditPackageConfig> creditPackages = 
@@ -557,7 +549,16 @@ public class SubscriptionController {
                         config.setCreditsAmount(pkg.getCreditsAmount());
                         config.setPrice(pkg.getPrice());
                         config.setIsRecommended(pkg.getIsRecommended());
-                        config.setFeatures(pkg.getFeatures());
+                        // 转换功能特性列表
+                        List<CreditPurchaseConfigResponse.FeatureConfig> features = pkg.getFeatures().stream()
+                            .map(feature -> {
+                                CreditPurchaseConfigResponse.FeatureConfig featureConfig = new CreditPurchaseConfigResponse.FeatureConfig();
+                                featureConfig.setText(feature.getText());
+                                featureConfig.setHighlight(feature.getHighlight());
+                                return featureConfig;
+                            })
+                            .collect(java.util.stream.Collectors.toList());
+                        config.setFeatures(features);
                         
                         return config;
                     })

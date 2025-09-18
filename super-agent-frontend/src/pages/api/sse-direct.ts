@@ -41,6 +41,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'Accept': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+        // 传递前端的Cookie到后端（包含satoken）
+        'Cookie': req.headers.cookie || '',
       }
     };
 

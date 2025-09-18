@@ -86,7 +86,8 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
         // 默认选择推荐的套餐
         if (configResponse.data.data.creditPackages.length > 0) {
           const recommended = configResponse.data.data.creditPackages.find(pkg => pkg.isRecommended);
-          setSelectedPackage(recommended ? recommended.id : configResponse.data.data.creditPackages[0].id);
+          const selectedId = recommended ? recommended.id : configResponse.data.data.creditPackages[0].id;
+          setSelectedPackage(selectedId);
         }
         
         // 设置当前积分余额（从积分购买配置接口获取）
@@ -195,8 +196,10 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
   }, [countdownTimer]);
 
   // 创建订单并发起支付
-  const handleCreatePayment = useCallback(async () => {
-    if (!selectedPackage) {
+  const handleCreatePayment = useCallback(async (packageId?: string) => {
+    const targetPackage = packageId || selectedPackage;
+    
+    if (!targetPackage) {
       message.error('请选择积分套餐');
       return;
     }
@@ -208,7 +211,7 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
         planId: 100, // 固定使用购买积分套餐ID
         billingCycle: 'monthly', // 积分包使用月计费
         paymentMethod: 'wechat',
-        creditPackageId: selectedPackage // 传入选择的积分包ID
+        creditPackageId: targetPackage // 传入选择的积分包ID
       });
 
       const result = response.data;
@@ -227,6 +230,13 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
       setLoading(false);
     }
   }, [selectedPackage, startPaymentSSEListener, startCountdown]);
+
+  // 自动创建订单 - 当积分包选择后立即创建订单
+  useEffect(() => {
+    if (selectedPackage && config && !paymentData && !loading && visible) {
+      handleCreatePayment(selectedPackage);
+    }
+  }, [selectedPackage, config, paymentData, loading, visible, handleCreatePayment]);
 
   // 格式化倒计时
   const formatCountdown = (seconds: number) => {
@@ -256,7 +266,19 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
   };
 
   // 关闭弹窗
-  const handleClose = () => {
+  const handleClose = async () => {
+    // 如果有待支付的订单，主动取消
+    if (paymentData && paymentData.orderNo && paymentStatus === 'waiting') {
+      try {
+        await paymentApi.cancelOrder(paymentData.orderNo);
+        console.log('订单已自动取消:', paymentData.orderNo);
+        // 静默取消，不显示提示信息，避免打扰用户体验
+      } catch (error) {
+        console.warn('取消订单失败:', error);
+        // 不阻塞关闭操作，因为用户已经决定要关闭了
+      }
+    }
+    
     resetState();
     onClose();
   };
@@ -310,79 +332,98 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
               </div>
             </div>
 
-            {/* 积分包选择 - 网格布局 */}
-            {!paymentData && config && (
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                  {config.creditPackages.map((pkg) => (
-                    <div
-                      key={pkg.id}
-                      style={{
-                        background: selectedPackage === pkg.id ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
-                        border: selectedPackage === pkg.id ? '2px solid #4a90e2' : '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: '8px',
-                        padding: '16px',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        position: 'relative',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onClick={() => setSelectedPackage(pkg.id)}
-                    >
-                      {pkg.isRecommended && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '-8px',
-                          right: '-8px',
-                          background: '#f5222d',
-                          color: '#fff',
-                          padding: '4px 8px',
-                          borderRadius: '10px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          transform: 'rotate(15deg)'
-                        }}>
-                          推荐
-                        </div>
-                      )}
-                      <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-                        {pkg.name}
-                      </div>
-                      <div style={{ fontSize: '20px', fontWeight: 700, color: '#fff' }}>
-                        ¥ {pkg.price}
-                      </div>
+            {/* 主要内容区域：左右分栏 */}
+            <div style={{ display: 'flex', gap: '30px' }}>
+              {/* 左侧：积分包选择和功能特性 */}
+              <div style={{ flex: 1 }}>
+                {/* 积分包选择 - 始终显示 */}
+                {config && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>
+                      选择积分包
                     </div>
-                  ))}
-                </div>
-
-                {/* 选中积分包信息 */}
-                {selectedPackageInfo && (
-                  <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '14px', color: '#ccc' }}>
-                      {selectedPackageInfo.creditsAmount.toLocaleString()}积分（永久有效）
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                      {config.creditPackages.map((pkg) => (
+                        <div
+                          key={pkg.id}
+                          style={{
+                            background: selectedPackage === pkg.id ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
+                            border: selectedPackage === pkg.id ? '2px solid #4a90e2' : '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            position: 'relative',
+                            transition: 'all 0.3s ease'
+                          }}
+                          onClick={() => {
+                            // 清除当前支付数据，重新创建订单
+                            setPaymentData(null);
+                            setPaymentStatus('waiting');
+                            setSelectedPackage(pkg.id);
+                          }}
+                        >
+                          {pkg.isRecommended && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '-8px',
+                              right: '-8px',
+                              background: '#f5222d',
+                              color: '#fff',
+                              padding: '4px 8px',
+                              borderRadius: '10px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              transform: 'rotate(15deg)'
+                            }}>
+                              推荐
+                            </div>
+                          )}
+                          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
+                            {pkg.name}
+                          </div>
+                          <div style={{ fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
+                            ¥ {pkg.price}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#ccc' }}>
+                            {pkg.creditsAmount.toLocaleString()}积分
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* 主要内容区域 */}
-            <div style={{ display: 'flex', gap: '40px' }}>
-              {/* 左侧：功能特性列表 */}
-              <div style={{ flex: 1 }}>
-                {selectedPackageInfo && !paymentData && (
-                  <div>
-                    {selectedPackageInfo.features && selectedPackageInfo.features.map((feature, index) => (
-                      <div key={index} style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        marginBottom: '8px',
-                        fontSize: '14px'
-                      }}>
-                        <span style={{ marginRight: '8px', color: '#52c41a' }}>✓</span>
-                        <span>{feature}</span>
+                {/* 选中积分包的功能特性 */}
+                {selectedPackageInfo && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>
+                      {selectedPackageInfo.name} 功能特性
+                    </div>
+                    <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '14px', color: '#ccc', marginBottom: '8px' }}>
+                        {selectedPackageInfo.description}
                       </div>
-                    ))}
+                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '12px' }}>
+                        {selectedPackageInfo.creditsAmount.toLocaleString()}积分（永久有效）
+                      </div>
+                      {selectedPackageInfo.features && selectedPackageInfo.features.map((feature, index) => (
+                        <div key={index} style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          marginBottom: '6px',
+                          fontSize: '13px'
+                        }}>
+                          <span style={{ 
+                            marginRight: '8px', 
+                            color: feature.highlight ? '#52c41a' : '#1890ff' 
+                          }}>✓</span>
+                          <span style={{
+                            fontWeight: feature.highlight ? 600 : 400
+                          }}>{feature.text}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -391,55 +432,22 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
                   <div style={{ textAlign: 'center', marginTop: '20px' }}>
                     <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
                     <div style={{ fontSize: '18px', fontWeight: 600, color: '#52c41a' }}>
-                      支付成功！
+                      支付成功！积分已充值
                     </div>
                   </div>
                 )}
 
                 {(paymentStatus === 'expired' || paymentStatus === 'failed' || paymentStatus === 'cancelled') && (
                   <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                    <CloseCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
-                    <div style={{ fontSize: '18px', fontWeight: 600, color: '#ff4d4f' }}>
+                    <CloseCircleOutlined style={{ fontSize: '24px', color: '#ff4d4f', marginBottom: '8px' }} />
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ff4d4f', marginBottom: '8px' }}>
                       {paymentStatus === 'expired' && '支付已过期'}
                       {paymentStatus === 'failed' && '支付失败'}
                       {paymentStatus === 'cancelled' && '支付已取消'}
                     </div>
-                    <Button
-                      type="primary"
-                      style={{ marginTop: '16px' }}
-                      onClick={() => {
-                        resetState();
-                        // 重新选择推荐的套餐
-                        if (config && config.creditPackages.length > 0) {
-                          const recommended = config.creditPackages.find(pkg => pkg.isRecommended);
-                          setSelectedPackage(recommended ? recommended.id : config.creditPackages[0].id);
-                        }
-                      }}
-                    >
-                      重新购买
-                    </Button>
-                  </div>
-                )}
-
-                {/* 购买按钮 */}
-                {!paymentData && selectedPackage && (
-                  <div style={{ marginTop: '20px' }}>
-                    <Button
-                      type="primary"
-                      size="large"
-                      block
-                      onClick={handleCreatePayment}
-                      loading={loading}
-                      style={{
-                        background: '#4a90e2',
-                        borderColor: '#4a90e2',
-                        height: '45px',
-                        fontSize: '16px',
-                        fontWeight: 600
-                      }}
-                    >
-                      立即购买
-                    </Button>
+                    <div style={{ fontSize: '12px', color: '#ccc' }}>
+                      请重新选择积分包或刷新二维码
+                    </div>
                   </div>
                 )}
               </div>
@@ -457,7 +465,35 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
                   )}
                 </div>
 
-                {paymentData?.qrCode && (paymentStatus === 'waiting' || paymentStatus === 'pending') ? (
+                {paymentStatus === 'paid' ? (
+                  <div style={{
+                    width: '168px',
+                    height: '168px',
+                    background: 'rgba(82, 196, 26, 0.1)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '16px',
+                    margin: '0 auto 16px'
+                  }}>
+                    <CheckCircleOutlined style={{ fontSize: '48px', color: '#52c41a' }} />
+                  </div>
+                ) : (paymentStatus === 'expired' || paymentStatus === 'failed' || paymentStatus === 'cancelled') ? (
+                  <div style={{
+                    width: '168px',
+                    height: '168px',
+                    background: 'rgba(255, 77, 79, 0.1)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '16px',
+                    margin: '0 auto 16px'
+                  }}>
+                    <CloseCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f' }} />
+                  </div>
+                ) : paymentData?.qrCode && (paymentStatus === 'waiting' || paymentStatus === 'pending') ? (
                   <div style={{
                     background: '#fff',
                     padding: '16px',
@@ -478,7 +514,11 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
                     marginBottom: '16px',
                     margin: '0 auto 16px'
                   }}>
-                    <WechatOutlined style={{ fontSize: '48px', color: '#07c160' }} />
+                    {loading ? (
+                      <Spin size="large" />
+                    ) : (
+                      <WechatOutlined style={{ fontSize: '48px', color: '#07c160' }} />
+                    )}
                   </div>
                 )}
 
@@ -490,10 +530,30 @@ const CreditPurchaseModal: React.FC<CreditPurchaseModalProps> = ({
               </div>
             </div>
 
+            {/* 注意事项 */}
+            {config && (
+              <div style={{ 
+                textAlign: 'center', 
+                marginTop: '20px', 
+                paddingTop: '15px', 
+                borderTop: '1px solid #444',
+                fontSize: '12px',
+                color: '#ccc',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '6px',
+                padding: '12px'
+              }}>
+                <div style={{ marginBottom: '4px', color: '#999' }}>
+                  <span style={{ color: '#ff7875' }}>注意：</span>
+                  {config.planName}用户每日可获得{config.planDailyRefreshCredits}积分，此购买会在其基础上进行叠加
+                </div>
+              </div>
+            )}
+
             {/* 底部协议 */}
             <div style={{ 
               textAlign: 'center', 
-              marginTop: '30px', 
+              marginTop: '20px', 
               paddingTop: '20px', 
               borderTop: '1px solid #8b8b8b',
               fontSize: '12px',

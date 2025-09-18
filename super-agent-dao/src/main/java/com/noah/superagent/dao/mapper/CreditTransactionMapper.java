@@ -27,7 +27,6 @@ public interface CreditTransactionMapper extends BaseMapper<CreditTransactionEnt
     default Page<CreditTransactionEntity> selectPageByUserId(Page<CreditTransactionEntity> page, Long userId) {
         QueryWrapper query = QueryWrapper.create()
                 .where(CREDIT_TRANSACTION_ENTITY.USER_ID.eq(userId))
-                .and(CREDIT_TRANSACTION_ENTITY.DELETED.eq(0))
                 .orderBy(CREDIT_TRANSACTION_ENTITY.CREATE_TIME.desc());
         
         return paginate(page, query);
@@ -40,7 +39,6 @@ public interface CreditTransactionMapper extends BaseMapper<CreditTransactionEnt
         return selectListByQuery(QueryWrapper.create()
                 .where(CREDIT_TRANSACTION_ENTITY.USER_ID.eq(userId))
                 .and(CREDIT_TRANSACTION_ENTITY.TRANSACTION_TYPE.eq(transactionType))
-                .and(CREDIT_TRANSACTION_ENTITY.DELETED.eq(0))
                 .orderBy(CREDIT_TRANSACTION_ENTITY.CREATE_TIME.desc())
         );
     }
@@ -53,7 +51,6 @@ public interface CreditTransactionMapper extends BaseMapper<CreditTransactionEnt
         return selectListByQuery(QueryWrapper.create()
                 .where(CREDIT_TRANSACTION_ENTITY.USER_ID.eq(userId))
                 .and(CREDIT_TRANSACTION_ENTITY.CREATE_TIME.between(startTime, endTime))
-                .and(CREDIT_TRANSACTION_ENTITY.DELETED.eq(0))
                 .orderBy(CREDIT_TRANSACTION_ENTITY.CREATE_TIME.desc())
         );
     }
@@ -75,7 +72,6 @@ public interface CreditTransactionMapper extends BaseMapper<CreditTransactionEnt
                 .and(CREDIT_TRANSACTION_ENTITY.TRANSACTION_TYPE.eq(transactionType))
                 .and(CREDIT_TRANSACTION_ENTITY.CREATE_TIME.lt(expireThreshold))
                 .and(CREDIT_TRANSACTION_ENTITY.AMOUNT.gt(0)) // 只查询收入记录
-                .and(CREDIT_TRANSACTION_ENTITY.DELETED.eq(0))
                 .orderBy(CREDIT_TRANSACTION_ENTITY.CREATE_TIME.asc())
         );
     }

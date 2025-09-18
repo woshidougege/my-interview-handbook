@@ -23,7 +23,6 @@ public interface UserCreditAccountMapper extends BaseMapper<UserCreditAccountEnt
     default UserCreditAccountEntity selectByUserId(Long userId) {
         return selectOneByQuery(QueryWrapper.create()
                 .where(USER_CREDIT_ACCOUNT_ENTITY.USER_ID.eq(userId))
-                .and(USER_CREDIT_ACCOUNT_ENTITY.DELETED.eq(0))
         );
     }
 
@@ -33,7 +32,6 @@ public interface UserCreditAccountMapper extends BaseMapper<UserCreditAccountEnt
     default UserCreditAccountEntity selectByUserIdWithRelations(Long userId) {
         return selectOneWithRelationsByQuery(QueryWrapper.create()
                 .where(USER_CREDIT_ACCOUNT_ENTITY.USER_ID.eq(userId))
-                .and(USER_CREDIT_ACCOUNT_ENTITY.DELETED.eq(0))
         );
     }
 
@@ -44,7 +42,6 @@ public interface UserCreditAccountMapper extends BaseMapper<UserCreditAccountEnt
         return updateByQuery(updateEntity, QueryWrapper.create()
                 .where(USER_CREDIT_ACCOUNT_ENTITY.USER_ID.eq(userId))
                 .and(USER_CREDIT_ACCOUNT_ENTITY.VERSION.eq(updateEntity.getVersion()))
-                .and(USER_CREDIT_ACCOUNT_ENTITY.DELETED.eq(0))
         );
     }
 

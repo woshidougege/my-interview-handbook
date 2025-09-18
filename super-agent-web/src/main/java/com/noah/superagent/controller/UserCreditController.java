@@ -56,15 +56,6 @@ public class UserCreditController {
                 // 用户首次访问，自动初始化积分账户
                 log.info("用户首次访问，自动初始化积分账户 - userId: {}", userId);
                 userCreditService.initFreePlanForUser(userId);
-                
-                // 立即发放当日积分
-                try {
-                    userCreditService.giveFreePlanDailyBonusOnLogin(userId);
-                    log.info("用户首次登录积分发放成功 - userId: {}", userId);
-                } catch (Exception dailyBonusError) {
-                    log.warn("发放每日积分失败，但不影响账户初始化 - userId: {}, 错误: {}", userId, dailyBonusError.getMessage());
-                }
-                
                 hasCreditAccount = true;
             }
 

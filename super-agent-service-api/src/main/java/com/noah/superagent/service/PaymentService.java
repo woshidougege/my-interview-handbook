@@ -93,6 +93,19 @@ public interface PaymentService {
     int syncPendingOrdersStatus();
     
     /**
+     * 检查并处理单个订单的支付超时
+     * 
+     * 针对特定订单进行超时检查：
+     * 1. 如果订单已支付，返回false（无需处理）
+     * 2. 如果订单未支付且未超时，主动查询微信状态
+     * 3. 如果订单已超时，更新为超时状态
+     *
+     * @param orderNo 订单号
+     * @return 是否更新了订单状态
+     */
+    boolean checkAndProcessPaymentTimeout(String orderNo);
+    
+    /**
      * 事务性更新订单相关的所有表
      * 
      * @param order 订单实体
