@@ -7,6 +7,13 @@ import com.noah.superagent.common.dto.request.RegisterRequest;
 import com.noah.superagent.common.dto.request.ResetPasswordRequest;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.service.UserCreditService;
+import com.norinrd.client.controller.SsoClientController;
+import com.norinrd.gttoken.SaManager;
+import com.norinrd.gttoken.session.SaSessionCustomUtil;
+import com.norinrd.gttoken.stp.SaLoginModel;
+import com.norinrd.gttoken.stp.StpUtil;
+import com.norinrd.gttoken.util.SaResult;
+import com.norinrd.interfaces.loginFlow.ILoginFlow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -45,7 +52,7 @@ import static com.noah.superagent.util.UserContext.getCurrentUserId;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Tag(name = "认证管理", description = "用户认证相关接口（方舟认证系统对接）")
-public class AuthController {
+public class AuthController extends SsoClientController {
 
     private final RestTemplate restTemplate;
 
@@ -168,7 +175,6 @@ public class AuthController {
 
         try {
             String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent","sso","doLogin").toUriString();
-
             // 使用hutool的MapUtil构建请求参数，代码更简洁
             Map<String, String> requestBody = MapUtil.<String, String>builder()
                     .put("username", loginRequest.getUsername())
@@ -194,12 +200,9 @@ public class AuthController {
             if ("200".equals(String.valueOf(result.get("code")))) {
                 Map<String, Object> data = getDataFromResponse(result);
                 String ticket = String.valueOf(data.get("ticket"));
-
-                // 登录成功后，异步发放每日积分
-                handleDailyCreditsOnLogin(ticket);
-
                 Map<String, String> responseData = new HashMap<>();
                 responseData.put("ticket", ticket);
+                handleDailyCreditsOnLogin();
                 return ApiResponse.success("登录成功", responseData);
             } else {
                 return ApiResponse.error(String.valueOf(result.get("msg")));
@@ -212,10 +215,9 @@ public class AuthController {
     /**
      * 处理登录成功后的每日积分发放
      */
-    private void handleDailyCreditsOnLogin(String ticket) {
+    private void handleDailyCreditsOnLogin() {
         try {
-            // 通过ticket获取用户ID
-            Object userIdObj = ILoginFlow.checkTicket(ticket, "/sso/doLoginByTicket");
+            Object userIdObj = super.getUser();
             if (userIdObj != null) {
                 final long userId;
                 if (userIdObj instanceof Number) {
