@@ -36,7 +36,12 @@ public enum PlanCodeEnum implements BaseEnum<String> {
     /**
      * 额外购买积分（10000永久积分，无订阅期限）
      */
-    CREDIT_PACK("credit_pack", "额外购买积分");
+    CREDIT_PACK("credit_pack", "额外购买积分"),
+
+    /**
+     * 开发者神仙版（仅限开发测试使用，拥有近乎无限的权限）
+     */
+    DEVELOPER_GOD("developer_god", "开发者神仙版");
 
     @EnumValue
     @JsonValue

@@ -130,6 +130,59 @@ super-agent:
             highlight: false
           - text: "约分析4-7个表格"
             highlight: false
+            
+      # 开发者神仙版（测试专用）
+      - id: "5"
+        name: "开发者神仙版"
+        code: "DEVELOPER_GOD"
+        description: "仅限开发测试使用，拥有近乎无限的权限"
+        # 价格配置（神仙价格）
+        monthly-original-price: 0.01        # 月价原价
+        yearly-original-price: 0.01         # 年价原价（一分钱包年，神仙价格）
+        monthly-discounted-price: 0.01      # 月价优惠后
+        yearly-discounted-price: 0.01       # 年价优惠后
+        monthly-savings: 0                  # 月价优惠金额
+        yearly-savings: 0                   # 年价优惠金额
+        validity-days: 36500                # 有效期100年（基本等于永久）
+        daily-refresh-credits: 999999       # 每日刷新99万积分（接近无限）
+        sort-order: 0                       # 最高优先级显示
+        is-recommended: true                 # 强烈推荐（测试用）
+        enabled: true
+        features:
+          - text: "🎉 开发者专属福利：一分钱享受神仙待遇"
+            highlight: true
+          - text: "💰 一次性获得10亿测试积分（永久有效）"
+            highlight: true
+          - text: "🔄 每日自动刷新99万新积分"
+            highlight: true
+          - text: "🤖 无限制访问所有AI功能"
+            highlight: true
+          - text: "👑 专属超级数字分身（神仙版）"
+            highlight: true
+          - text: "🎯 优先调用最强AI模型"
+            highlight: true
+          - text: "⚡ 无限制并发请求数量"
+            highlight: true
+          - text: "🚀 超速响应（优先级MAX）"
+            highlight: true
+          - text: "🔧 访问内部调试工具"
+            highlight: true
+          - text: "💻 无限制本机电脑操控"
+            highlight: true
+          - text: "📊 无限制数据分析能力"
+            highlight: true
+          - text: "🎨 无限制图片视频生成"
+            highlight: true
+          - text: "🌐 无限制网站开发功能"
+            highlight: true
+          - text: "📈 无限制PPT制作"
+            highlight: true
+          - text: "🔍 访问所有隐藏功能"
+            highlight: true
+          - text: "⭐ 100年超长有效期"
+            highlight: true
+          - text: "🛡️ 仅限开发测试环境使用"
+            highlight: false
 
   # 积分购买配置（独立于套餐配置）
   credit-purchase:

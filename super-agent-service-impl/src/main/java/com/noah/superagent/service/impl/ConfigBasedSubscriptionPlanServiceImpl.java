@@ -129,6 +129,10 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
                     planDTO.getPlanCode() != null ? planDTO.getPlanCode().getCode() : "无", 
                     canSubscribe);
             }
+
+            if (planDTO.getPlanCode()==PlanCodeEnum.DEVELOPER_GOD) {
+                        planDTO.setIsSubscribable(true);
+            }
         });
         
         return planDTOs;
