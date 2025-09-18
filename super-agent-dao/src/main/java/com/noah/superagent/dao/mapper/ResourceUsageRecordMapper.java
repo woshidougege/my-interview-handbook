@@ -26,7 +26,6 @@ public interface ResourceUsageRecordMapper extends BaseMapper<ResourceUsageRecor
         return selectListByQuery(QueryWrapper.create()
                 .select()
                 .where(RESOURCE_USAGE_RECORD_ENTITY.REQUEST_ID.eq(requestId))
-                .and(RESOURCE_USAGE_RECORD_ENTITY.DELETED.eq(0))
         );
     }
 
@@ -39,7 +38,6 @@ public interface ResourceUsageRecordMapper extends BaseMapper<ResourceUsageRecor
                 .select()
                 .where(RESOURCE_USAGE_RECORD_ENTITY.USER_ID.eq(userId))
                 .and(RESOURCE_USAGE_RECORD_ENTITY.CREATE_TIME.between(startTime, endTime))
-                .and(RESOURCE_USAGE_RECORD_ENTITY.DELETED.eq(0))
                 .orderBy(RESOURCE_USAGE_RECORD_ENTITY.CREATE_TIME.desc())
         );
     }
@@ -51,7 +49,6 @@ public interface ResourceUsageRecordMapper extends BaseMapper<ResourceUsageRecor
         return selectListByQuery(QueryWrapper.create()
                 .select()
                 .where(RESOURCE_USAGE_RECORD_ENTITY.TASK_TYPE.eq(taskType))
-                .and(RESOURCE_USAGE_RECORD_ENTITY.DELETED.eq(0))
                 .orderBy(RESOURCE_USAGE_RECORD_ENTITY.CREATE_TIME.desc())
         );
     }

@@ -27,8 +27,7 @@ public interface UserDailyLoginMapper extends BaseMapper<UserDailyLoginEntity> {
     default UserDailyLoginEntity selectByUserIdAndDate(Long userId, LocalDate loginDate) {
         return selectOneByQuery(QueryWrapper.create()
                 .where(USER_DAILY_LOGIN_ENTITY.USER_ID.eq(userId))
-                .and(USER_DAILY_LOGIN_ENTITY.LOGIN_DATE.eq(loginDate))
-                .and(USER_DAILY_LOGIN_ENTITY.DELETED.eq(0)));
+                .and(USER_DAILY_LOGIN_ENTITY.LOGIN_DATE.eq(loginDate)));
     }
 
     /**

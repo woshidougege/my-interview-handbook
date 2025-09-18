@@ -27,7 +27,6 @@ public interface UserCreditBalanceMapper extends BaseMapper<UserCreditBalanceEnt
         return selectOneByQuery(QueryWrapper.create()
                 .where(USER_CREDIT_BALANCE_ENTITY.USER_ID.eq(userId))
                 .and(USER_CREDIT_BALANCE_ENTITY.CREDIT_TYPE.eq(creditType))
-                .and(USER_CREDIT_BALANCE_ENTITY.DELETED.eq(0))
         );
     }
 
@@ -38,7 +37,6 @@ public interface UserCreditBalanceMapper extends BaseMapper<UserCreditBalanceEnt
     default List<UserCreditBalanceEntity> selectByUserId(Long userId) {
         return selectListByQuery(QueryWrapper.create()
                 .where(USER_CREDIT_BALANCE_ENTITY.USER_ID.eq(userId))
-                .and(USER_CREDIT_BALANCE_ENTITY.DELETED.eq(0))
                 .orderBy(USER_CREDIT_BALANCE_ENTITY.CREDIT_TYPE.asc())
         );
     }
@@ -50,7 +48,6 @@ public interface UserCreditBalanceMapper extends BaseMapper<UserCreditBalanceEnt
         return selectListByQuery(QueryWrapper.create()
                 .where(USER_CREDIT_BALANCE_ENTITY.USER_ID.eq(userId))
                 .and(USER_CREDIT_BALANCE_ENTITY.BALANCE.gt(BigDecimal.ZERO))
-                .and(USER_CREDIT_BALANCE_ENTITY.DELETED.eq(0))
         );
     }
 
@@ -61,7 +58,6 @@ public interface UserCreditBalanceMapper extends BaseMapper<UserCreditBalanceEnt
         return selectListByQuery(QueryWrapper.create()
                 .where(USER_CREDIT_BALANCE_ENTITY.CREDIT_TYPE.eq(creditType))
                 .and(USER_CREDIT_BALANCE_ENTITY.BALANCE.gt(BigDecimal.ZERO))
-                .and(USER_CREDIT_BALANCE_ENTITY.DELETED.eq(0))
         );
     }
 
@@ -71,7 +67,6 @@ public interface UserCreditBalanceMapper extends BaseMapper<UserCreditBalanceEnt
     default List<UserCreditBalanceEntity> selectAllWithBalance() {
         return selectListByQuery(QueryWrapper.create()
                 .where(USER_CREDIT_BALANCE_ENTITY.BALANCE.gt(BigDecimal.ZERO))
-                .and(USER_CREDIT_BALANCE_ENTITY.DELETED.eq(0))
         );
     }
 
@@ -84,7 +79,6 @@ public interface UserCreditBalanceMapper extends BaseMapper<UserCreditBalanceEnt
                 .where(USER_CREDIT_BALANCE_ENTITY.USER_ID.eq(userId))
                 .and(USER_CREDIT_BALANCE_ENTITY.CREDIT_TYPE.eq(creditType))
                 .and(USER_CREDIT_BALANCE_ENTITY.VERSION.eq(updateEntity.getVersion()))
-                .and(USER_CREDIT_BALANCE_ENTITY.DELETED.eq(0))
         );
     }
 
