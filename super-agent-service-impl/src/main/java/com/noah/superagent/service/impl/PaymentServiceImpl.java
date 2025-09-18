@@ -18,6 +18,7 @@ import com.noah.superagent.dao.mapper.UserSubscriptionMapper;
 import com.noah.superagent.service.PaymentService;
 import com.noah.superagent.service.SubscriptionPlanService;
 import com.noah.superagent.service.UserCreditService;
+import com.noah.superagent.service.UserSubscriptionService;
 import com.noah.superagent.model.SubscriptionPlanDTO;
 import com.noah.superagent.common.enums.SubscriptionStatusEnum;
 import com.github.binarywang.wxpay.bean.request.WxPayUnifiedOrderV3Request;
@@ -62,6 +63,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final SubscriptionPlanService subscriptionPlanService;
     private final UserCreditService userCreditService;
     private final UserSubscriptionMapper userSubscriptionMapper;
+    private final UserSubscriptionService userSubscriptionService;
     private final WxPayService wxPayService;
     private final CreditPurchaseConfig creditPurchaseConfig;
     
@@ -503,9 +505,9 @@ public class PaymentServiceImpl implements PaymentService {
                         // 积分发放失败不影响支付成功状态，但需要记录日志用于后续处理
                     }
                     
-                    // 激活用户订阅
+                    // 激活用户订阅（使用智能升级逻辑）
                     try {
-                        activateUserSubscription(order);
+                        activateUserSubscriptionWithUpgradeLogic(order);
                     } catch (Exception e) {
                         log.error("激活用户订阅失败: userId={}, planId={}, orderId={}, error={}", 
                             order.getUserId(), order.getPlanId(), order.getId(), e.getMessage(), e);
@@ -548,7 +550,31 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     /**
-     * 简化的订阅激活逻辑
+     * 使用智能升级逻辑激活用户订阅
+     */
+    private void activateUserSubscriptionWithUpgradeLogic(SubscriptionOrderEntity order) {
+        try {
+            log.info("使用智能升级逻辑激活订阅 - userId: {}, planId: {}, billingCycle: {}", 
+                    order.getUserId(), order.getPlanId(), order.getBillingCycle());
+
+            userSubscriptionService.activateSubscriptionWithUpgradeLogic(
+                    order.getUserId(),
+                    order.getPlanId(),
+                    order.getBillingCycle(),
+                    order.getOrderNo(),
+                    order.getAmount()
+            );
+
+            log.info("智能订阅激活成功 - userId: {}, planId: {}", order.getUserId(), order.getPlanId());
+            
+        } catch (Exception e) {
+            log.error("智能订阅激活失败 - userId: {}, planId: {}", order.getUserId(), order.getPlanId(), e);
+            throw e;
+        }
+    }
+
+    /**
+     * 原有的简化订阅激活逻辑（保留作为备用）
      */
     private void activateUserSubscription(SubscriptionOrderEntity order) {
         try {
@@ -578,7 +604,8 @@ public class PaymentServiceImpl implements PaymentService {
 
             userSubscriptionMapper.insert(subscription);
             
-            // 订阅激活成功
+            log.info("订阅激活成功 - userId: {}, planId: {}, endTime: {}", 
+                    order.getUserId(), order.getPlanId(), endTime);
                 
         } catch (Exception e) {
             log.error("激活订阅失败", e);

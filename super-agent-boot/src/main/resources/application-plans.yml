@@ -17,7 +17,7 @@ super-agent:
         yearly-discounted-price: 0
         monthly-savings: 0
         yearly-savings: 0
-        validity-days: 90
+        validity-days: 0    # 0表示永久有效
         daily-refresh-credits: 300    # 每日刷新积分数量
         sort-order: 1
         is-recommended: false
@@ -42,7 +42,7 @@ super-agent:
         yearly-discounted-price: -1     # 年价优惠后（-1=自动17%优惠）
         monthly-savings: -1             # 月价优惠金额（-1=自动计算）
         yearly-savings: -1              # 年价优惠金额（-1=自动计算）
-        validity-days: 30
+        validity-days: 30   # 月付30天，年付365天（在代码中根据billing-cycle动态计算）
         daily-refresh-credits: 1900     # 每日刷新积分数量
         sort-order: 2
         is-recommended: true
@@ -77,7 +77,7 @@ super-agent:
         yearly-discounted-price: -1     # 年价优惠后（-1=自动17%优惠）
         monthly-savings: -1             # 月价优惠金额（-1=自动计算）
         yearly-savings: -1              # 年价优惠金额（-1=自动计算）
-        validity-days: 30
+        validity-days: 30   # 月付30天，年付365天（在代码中根据billing-cycle动态计算）
         daily-refresh-credits: 5900     # 每日刷新积分数量
         sort-order: 3
         is-recommended: false
