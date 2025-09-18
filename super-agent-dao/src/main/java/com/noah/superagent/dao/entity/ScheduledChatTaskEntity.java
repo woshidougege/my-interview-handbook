@@ -2,7 +2,6 @@ package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Table;
-import com.noah.superagent.common.enums.DeletedEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -80,10 +79,6 @@ public class ScheduledChatTaskEntity extends BaseEntity {
     @Column(value = "task_type")
     private Integer taskType;
 
-    /**
-     * 删除标记: 0-未删除 1-已删除
-     */
-    private DeletedEnum deleted;
     
     /**
      * 任务调度配置（JSON格式存储）

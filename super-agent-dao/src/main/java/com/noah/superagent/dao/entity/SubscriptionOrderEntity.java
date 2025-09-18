@@ -1,7 +1,5 @@
 package com.noah.superagent.dao.entity;
 
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -17,8 +15,6 @@ import java.time.LocalDateTime;
 @Table("t_subscription_order")
 public class SubscriptionOrderEntity extends BaseEntity {
 
-    @Id(keyType = KeyType.Auto)
-    private Long id;
 
     /**
      * 订单号

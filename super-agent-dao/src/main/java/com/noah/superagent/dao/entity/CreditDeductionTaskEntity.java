@@ -1,8 +1,6 @@
 package com.noah.superagent.dao.entity;
 
 import com.mybatisflex.annotation.Column;
-import com.mybatisflex.annotation.Id;
-import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
 import com.noah.superagent.common.enums.CreditDeductionTaskStatusEnum;
 import lombok.Data;
@@ -23,11 +21,6 @@ import java.time.LocalDateTime;
 @Table("t_credit_deduction_task")
 public class CreditDeductionTaskEntity extends BaseEntity {
 
-    /**
-     * 主键ID
-     */
-    @Id(keyType = KeyType.Auto)
-    private Long id;
 
     /**
      * 任务ID（唯一标识）
