@@ -1,6 +1,5 @@
 package com.noah.superagent.config;
 
-import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import com.noah.superagent.common.config.AiProperties;

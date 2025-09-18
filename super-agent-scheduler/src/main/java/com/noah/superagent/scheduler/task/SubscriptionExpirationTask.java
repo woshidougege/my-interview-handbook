@@ -5,6 +5,7 @@ import com.github.kagkarlsson.scheduler.task.TaskInstance;
 import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import com.noah.superagent.service.UserSubscriptionService;
+import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -67,14 +68,13 @@ public class SubscriptionExpirationTask {
     /**
      * 订阅数据载荷
      */
+    @Data
     public static class SubscriptionData {
+        // Getters and Setters
         private Long subscriptionId;
         private Long userId;
         private Long planId;
         private String planName;
-
-        // 无参构造器（序列化需要）
-        public SubscriptionData() {}
 
         public SubscriptionData(Long subscriptionId, Long userId, Long planId, String planName) {
             this.subscriptionId = subscriptionId;
@@ -83,17 +83,5 @@ public class SubscriptionExpirationTask {
             this.planName = planName;
         }
 
-        // Getters and Setters
-        public Long getSubscriptionId() { return subscriptionId; }
-        public void setSubscriptionId(Long subscriptionId) { this.subscriptionId = subscriptionId; }
-        
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-        
-        public Long getPlanId() { return planId; }
-        public void setPlanId(Long planId) { this.planId = planId; }
-        
-        public String getPlanName() { return planName; }
-        public void setPlanName(String planName) { this.planName = planName; }
     }
 }

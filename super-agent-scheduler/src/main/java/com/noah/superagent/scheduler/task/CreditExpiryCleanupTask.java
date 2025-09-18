@@ -5,6 +5,7 @@ import com.github.kagkarlsson.scheduler.task.TaskInstance;
 import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import com.noah.superagent.service.CreditExpiryService;
+import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
  * <p>
  * 一次性延迟任务，为每个有限期的积分精确安排到期清理
  * 适用于有效期大于1天且小于永久的积分类型
- * 
+ * <p>
  * 设计思路：
  * - 用户获得限时积分时，立即安排到期时间的清理任务
  * - 避免频繁轮询检查，提高效率
@@ -78,42 +79,14 @@ public class CreditExpiryCleanupTask {
     /**
      * 限时积分过期清理任务数据
      */
+    @Data
     public static class CreditExpiryData {
+        // Getters and Setters
         private Long userId;
         private String creditType;
         private java.math.BigDecimal amount;
         private java.time.LocalDateTime expiryTime;
         private String description;
-
-        // 默认构造器（JSON反序列化需要）
-        public CreditExpiryData() {}
-
-        public CreditExpiryData(Long userId, String creditType, 
-                              java.math.BigDecimal amount, 
-                              java.time.LocalDateTime expiryTime,
-                              String description) {
-            this.userId = userId;
-            this.creditType = creditType;
-            this.amount = amount;
-            this.expiryTime = expiryTime;
-            this.description = description;
-        }
-
-        // Getters and Setters
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-
-        public String getCreditType() { return creditType; }
-        public void setCreditType(String creditType) { this.creditType = creditType; }
-
-        public java.math.BigDecimal getAmount() { return amount; }
-        public void setAmount(java.math.BigDecimal amount) { this.amount = amount; }
-
-        public java.time.LocalDateTime getExpiryTime() { return expiryTime; }
-        public void setExpiryTime(java.time.LocalDateTime expiryTime) { this.expiryTime = expiryTime; }
-
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
 
         @Override
         public String toString() {

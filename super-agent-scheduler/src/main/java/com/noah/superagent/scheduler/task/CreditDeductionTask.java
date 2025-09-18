@@ -7,6 +7,7 @@ import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import com.noah.superagent.service.CreditConsumeService;
 import com.noah.superagent.service.UserCreditService;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
  * <p>
  * 一次性立即执行任务，用于处理用户资源消耗后的积分扣减
  * 替代原有的定时轮询机制，改为资源上报后立即执行
- * 
+ * <p>
  * 设计思路：
  * - 用户资源上报后立即创建一次性任务进行积分扣减
  * - 避免积分扣减阻塞资源使用的响应速度
@@ -103,7 +104,7 @@ public class CreditDeductionTask {
             throw new RuntimeException("积分扣减失败: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * 检查资源使用记录是否已扣减过积分
      */
@@ -127,48 +128,16 @@ public class CreditDeductionTask {
     /**
      * 积分扣减任务数据
      */
+    @Setter
+    @Getter
     public static class CreditDeductionData {
+        // Getters and Setters
         private Long userId;
         private java.math.BigDecimal amount;
         private String description;
         private Long relatedOrderId;
         private Long resourceUsageRecordId;
         private java.time.LocalDateTime requestTime;
-
-        // 默认构造器（JSON反序列化需要）
-        public CreditDeductionData() {}
-
-        public CreditDeductionData(Long userId, 
-                                 java.math.BigDecimal amount, 
-                                 String description, 
-                                 Long relatedOrderId,
-                                 Long resourceUsageRecordId) {
-            this.userId = userId;
-            this.amount = amount;
-            this.description = description;
-            this.relatedOrderId = relatedOrderId;
-            this.resourceUsageRecordId = resourceUsageRecordId;
-            this.requestTime = java.time.LocalDateTime.now();
-        }
-
-        // Getters and Setters
-        public Long getUserId() { return userId; }
-        public void setUserId(Long userId) { this.userId = userId; }
-
-        public java.math.BigDecimal getAmount() { return amount; }
-        public void setAmount(java.math.BigDecimal amount) { this.amount = amount; }
-
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
-
-        public Long getRelatedOrderId() { return relatedOrderId; }
-        public void setRelatedOrderId(Long relatedOrderId) { this.relatedOrderId = relatedOrderId; }
-
-        public Long getResourceUsageRecordId() { return resourceUsageRecordId; }
-        public void setResourceUsageRecordId(Long resourceUsageRecordId) { this.resourceUsageRecordId = resourceUsageRecordId; }
-
-        public java.time.LocalDateTime getRequestTime() { return requestTime; }
-        public void setRequestTime(java.time.LocalDateTime requestTime) { this.requestTime = requestTime; }
 
         @Override
         public String toString() {
