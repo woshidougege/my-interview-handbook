@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import com.noah.superagent.common.exception.BusinessException;
+import cn.hutool.core.util.IdUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,7 +49,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         
         // 自动生成会话ID（contextId），用于与下游平台通信
         if (!StringUtils.hasText(chatTaskEntity.getContextId())) {
-            chatTaskEntity.setContextId("ctx_" + System.currentTimeMillis() + "_" + System.nanoTime());
+            chatTaskEntity.setContextId("ctx_" + IdUtil.getSnowflakeNextIdStr());
         }
         
         // 保存对话任务
@@ -119,14 +120,10 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         log.info("删除对话任务，ID: {}", id);
         
         ChatTaskEntity existingTask = chatTaskMapper.selectOneById(id);
-        if (existingTask == null) {
-            throw new RuntimeException("对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(existingTask == null, "对话任务不存在: " + id);
         
         int result = chatTaskMapper.deleteById(id);
-        if (result <= 0) {
-            throw new RuntimeException("对话任务删除失败");
-        }
+        BusinessException.throwIf(result <= 0, "对话任务删除失败");
         
         log.info("对话任务删除成功，ID: {}", id);
     }
@@ -137,16 +134,12 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         log.info("收藏对话任务，ID: {}", id);
         
         ChatTaskEntity existingTask = chatTaskMapper.selectOneById(id);
-        if (existingTask == null) {
-            throw new RuntimeException("对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(existingTask == null, "对话任务不存在: " + id);
         
         // 更新收藏状态为已收藏
         existingTask.setIsFavorite(FavoriteEnum.FAVORITE);
         int result = chatTaskMapper.update(existingTask);
-        if (result <= 0) {
-            throw new RuntimeException("对话任务收藏失败");
-        }
+        BusinessException.throwIf(result <= 0, "对话任务收藏失败");
         
         log.info("对话任务收藏成功，ID: {}", id);
     }
@@ -157,16 +150,12 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         log.info("取消收藏对话任务，ID: {}", id);
         
         ChatTaskEntity existingTask = chatTaskMapper.selectOneById(id);
-        if (existingTask == null) {
-            throw new RuntimeException("对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(existingTask == null, "对话任务不存在: " + id);
         
         // 更新收藏状态为未收藏
         existingTask.setIsFavorite(FavoriteEnum.NOT_FAVORITE);
         int result = chatTaskMapper.update(existingTask);
-        if (result <= 0) {
-            throw new RuntimeException("对话任务取消收藏失败");
-        }
+        BusinessException.throwIf(result <= 0, "对话任务取消收藏失败");
         
         log.info("对话任务取消收藏成功，ID: {}", id);
     }

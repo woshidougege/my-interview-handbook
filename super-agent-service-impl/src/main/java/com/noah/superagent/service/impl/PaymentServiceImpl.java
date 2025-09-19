@@ -43,6 +43,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.noah.superagent.common.constants.BusinessConstants;
+import cn.hutool.core.util.IdUtil;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -50,7 +52,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 
 /**
@@ -100,7 +101,7 @@ public class PaymentServiceImpl implements PaymentService {
             String actualPlanName = plan.getPlanName();
             
             // 如果是购买积分套餐(ID=100)，需要特殊处理
-            if (request.getPlanId() == 100L) {
+            if (request.getPlanId().equals(BusinessConstants.Plans.CREDIT_PACKAGE_PLAN_ID)) {
                 if (request.getCreditPackageId() == null || request.getCreditPackageId().isEmpty()) {
                     throw new RuntimeException("购买积分时必须指定积分包ID");
                 }
@@ -418,7 +419,7 @@ public class PaymentServiceImpl implements PaymentService {
      * 生成订单号
      */
     private String generateOrderNo() {
-        return "ORDER_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return BusinessConstants.Order.ORDER_PREFIX + IdUtil.getSnowflakeNextIdStr();
     }
 
     /**
@@ -471,7 +472,7 @@ public class PaymentServiceImpl implements PaymentService {
             );
             if (payment != null) {
                 payment.setStatus("success"); // PaymentRecord表的成功状态
-                payment.setThirdPartyTransactionNo("wx_transaction_" + System.currentTimeMillis());
+                payment.setThirdPartyTransactionNo(BusinessConstants.Order.WX_TRANSACTION_PREFIX + IdUtil.getSnowflakeNextIdStr());
                 paymentRecordMapper.update(payment);
             }
 
@@ -688,8 +689,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
             
             // 5. 生成退款单号
-            String refundNo = "REFUND_" + System.currentTimeMillis() + "_" + 
-                             Integer.toHexString((int)(Math.random() * 0x1000000)).toUpperCase();
+            String refundNo = BusinessConstants.Order.REFUND_PREFIX + IdUtil.getSnowflakeNextIdStr();
             
             // 6. 调用微信退款API
             WxPayRefundV3Request wxRefundRequest = buildWxRefundRequest(order, request, refundNo);
@@ -811,8 +811,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
             
             // 4. 生成退款单号
-            String refundNo = "TEST_REFUND_" + System.currentTimeMillis() + "_" + 
-                             Integer.toHexString((int)(Math.random() * 0x1000000)).toUpperCase();
+            String refundNo = BusinessConstants.Order.TEST_REFUND_PREFIX + IdUtil.getSnowflakeNextIdStr();
             
             // 5. 调用微信退款API（即使订单状态异常也尝试退款）
             WxPayRefundV3Request wxRefundRequest = buildWxRefundRequest(order, request, refundNo);

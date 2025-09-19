@@ -15,6 +15,8 @@ import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import com.noah.superagent.common.exception.BusinessException;
+import com.noah.superagent.common.enums.EnabledEnum;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -46,14 +48,12 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
 
         // 保存定时对话任务
         int result = scheduledChatTaskMapper.insertSelective(entity);
-        if (result <= 0) {
-            throw new RuntimeException("定时对话任务创建失败");
-        }
+        BusinessException.throwIf(result <= 0, "定时对话任务创建失败");
 
         log.info("定时对话任务创建成功，ID: {}", entity.getId());
 
         // 如果任务已启用，发布创建事件触发调度
-        if (entity.getStatus() != null && entity.getStatus() == 1) {
+        if (entity.getStatus() != null && entity.getStatus().equals(EnabledEnum.ENABLED.getCode())) {
             publishTaskCreatedEvent(entity);
         }
 
@@ -65,9 +65,7 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         log.info("查询定时对话任务信息，ID: {}", id);
 
         ScheduledChatTaskEntity entity = scheduledChatTaskMapper.selectOneById(id);
-        if (entity == null) {
-            throw new RuntimeException("定时对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(entity == null, "定时对话任务不存在: " + id);
 
         return convert.fromEntity(entity);
     }
@@ -78,9 +76,7 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         log.info("更新定时对话任务信息，ID: {}", id);
 
         ScheduledChatTaskEntity existingEntity = scheduledChatTaskMapper.selectOneById(id);
-        if (existingEntity == null) {
-            throw new RuntimeException("定时对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(existingEntity == null, "定时对话任务不存在: " + id);
 
         // 设置ID并转换为Entity
         taskDTO.setId(id);
@@ -91,14 +87,12 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         entity.setCreateBy(existingEntity.getCreateBy());
 
         int result = scheduledChatTaskMapper.update(entity);
-        if (result <= 0) {
-            throw new RuntimeException("定时对话任务更新失败");
-        }
+        BusinessException.throwIf(result <= 0, "定时对话任务更新失败");
 
         log.info("定时对话任务更新成功，ID: {}", id);
 
         // 如果任务状态为启用，发布更新事件重新调度
-        if (entity.getStatus() != null && entity.getStatus() == 1) {
+        if (entity.getStatus() != null && entity.getStatus().equals(EnabledEnum.ENABLED.getCode())) {
             publishTaskUpdatedEvent(entity);
         } else {
             // 如果任务被禁用，发布删除事件取消调度
@@ -114,14 +108,10 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         log.info("删除定时对话任务，ID: {}", id);
 
         ScheduledChatTaskEntity entity = scheduledChatTaskMapper.selectOneById(id);
-        if (entity == null) {
-            throw new RuntimeException("定时对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(entity == null, "定时对话任务不存在: " + id);
 
         int result = scheduledChatTaskMapper.deleteById(id);
-        if (result <= 0) {
-            throw new RuntimeException("定时对话任务删除失败");
-        }
+        BusinessException.throwIf(result <= 0, "定时对话任务删除失败");
 
         // 发布删除事件取消调度
         publishTaskDeletedEvent(id);
@@ -175,15 +165,11 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         log.info("启用定时对话任务，ID: {}", id);
         
         ScheduledChatTaskEntity task = scheduledChatTaskMapper.selectOneById(id);
-        if (task == null) {
-            throw new RuntimeException("定时对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(task == null, "定时对话任务不存在: " + id);
         
-        task.setStatus(1); // 启用状态
+        task.setStatus(EnabledEnum.ENABLED.getCode()); // 启用状态
         int result = scheduledChatTaskMapper.update(task);
-        if (result <= 0) {
-            throw new RuntimeException("启用定时对话任务失败");
-        }
+        BusinessException.throwIf(result <= 0, "启用定时对话任务失败");
 
         // 发布启用事件（相当于创建调度）
         publishTaskCreatedEvent(task);
@@ -197,15 +183,11 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         log.info("禁用定时对话任务，ID: {}", id);
         
         ScheduledChatTaskEntity task = scheduledChatTaskMapper.selectOneById(id);
-        if (task == null) {
-            throw new RuntimeException("定时对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(task == null, "定时对话任务不存在: " + id);
         
-        task.setStatus(0); // 禁用状态
+        task.setStatus(EnabledEnum.DISABLED.getCode()); // 禁用状态
         int result = scheduledChatTaskMapper.update(task);
-        if (result <= 0) {
-            throw new RuntimeException("禁用定时对话任务失败");
-        }
+        BusinessException.throwIf(result <= 0, "禁用定时对话任务失败");
 
         // 发布删除事件取消调度
         publishTaskDeletedEvent(id);

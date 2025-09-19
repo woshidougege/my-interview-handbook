@@ -5,6 +5,9 @@ import com.github.kagkarlsson.scheduler.task.TaskInstance;
 import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import com.noah.superagent.common.enums.ChatTaskStatusEnum;
+import cn.hutool.core.util.IdUtil;
+import com.noah.superagent.common.constants.BusinessConstants;
+import com.noah.superagent.common.enums.EnabledEnum;
 import com.noah.superagent.dao.entity.ChatTaskEntity;
 import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
 import com.noah.superagent.dao.entity.ScheduledChatTaskExecutionLogEntity;
@@ -22,7 +25,6 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * 定时聊天任务执行器
@@ -142,7 +144,7 @@ public class ScheduledChatExecutionTask {
     private ChatTaskEntity createNewChatTask(ScheduledChatTaskEntity scheduledTask, ChatTaskData data) {
         ChatTaskEntity chatTask = new ChatTaskEntity();
         chatTask.setWorkspaceId(data.getWorkspaceId());
-        chatTask.setContextId(UUID.randomUUID().toString());
+        chatTask.setContextId("ctx_" + IdUtil.getSnowflakeNextIdStr());
         chatTask.setTitle(data.getTaskName());
         chatTask.setContent("");
         chatTask.setStatus(ChatTaskStatusEnum.IN_PROGRESS);
@@ -192,9 +194,9 @@ public class ScheduledChatExecutionTask {
      * 处理任务调度逻辑
      */
     private void handleTaskScheduling(ScheduledChatTaskEntity scheduledTask, ChatTaskData data) {
-        if (data.getTaskType() == 0) {
+        if (data.getTaskType().equals(BusinessConstants.TaskType.NORMAL)) {
             // 一次性任务：执行后禁用
-            scheduledTask.setStatus(0);
+            scheduledTask.setStatus(EnabledEnum.DISABLED.getCode());
             scheduledTask.setLastExecutionTime(new Date());
             scheduledTask.setNextExecutionTime(null);
             scheduledChatTaskMapper.update(scheduledTask);

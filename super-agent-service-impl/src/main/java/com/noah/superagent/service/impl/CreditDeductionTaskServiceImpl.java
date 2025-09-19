@@ -290,7 +290,7 @@ public class CreditDeductionTaskServiceImpl implements CreditDeductionTaskServic
      * 生成任务ID
      */
     private String generateTaskId(Long userId, Long resourceUsageRecordId) {
-        String timestamp = String.valueOf(System.currentTimeMillis());
+        String timestamp = IdUtil.getSnowflakeNextIdStr();
         String randomStr = IdUtil.fastSimpleUUID().substring(0, 8);
         return String.format("CREDIT_DEDUCT_%s_%s_%s_%s", 
                             userId, resourceUsageRecordId != null ? resourceUsageRecordId : "0", timestamp, randomStr);

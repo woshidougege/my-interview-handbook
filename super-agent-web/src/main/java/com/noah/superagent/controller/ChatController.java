@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import cn.hutool.core.util.IdUtil;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -69,7 +70,7 @@ public class ChatController {
             
             // 构建响应
             ChatMessageResponse response = ChatMessageResponse.builder()
-                    .messageId(UUID.randomUUID().toString())
+                    .messageId(IdUtil.getSnowflakeNextIdStr())
                     .content(aiResponse)
                     .senderType("assistant")
                     .workspaceId(String.valueOf(request.getWorkspaceId()))
@@ -90,7 +91,7 @@ public class ChatController {
                      request.getWorkspaceId(), request.getChatTaskId(), duration, e.getMessage(), e);
             
             ChatMessageResponse errorResponse = ChatMessageResponse.builder()
-                    .messageId(UUID.randomUUID().toString())
+                    .messageId(IdUtil.getSnowflakeNextIdStr())
                     .content("抱歉，AI服务暂时不可用，请稍后再试。")
                     .senderType("system")
                     .workspaceId(String.valueOf(request.getWorkspaceId()))
@@ -124,7 +125,7 @@ public class ChatController {
         SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
         
         // 生成连接ID
-        String connectionId = chatTaskId + "_" + System.currentTimeMillis();
+        String connectionId = chatTaskId + "_" + IdUtil.getSnowflakeNextIdStr();
         
         // 存储连接
         activeConnections.put(connectionId, emitter);
@@ -148,7 +149,7 @@ public class ChatController {
         try {
             // 发送连接确认消息
             SseMessageDto connectMessage = SseMessageDto.builder()
-                    .messageId(UUID.randomUUID().toString())
+                    .messageId(IdUtil.getSnowflakeNextIdStr())
                     .eventType(SseEventType.CONNECTED)
                     .content("连接建立成功")
                     .workspaceId(workspaceId)
@@ -197,7 +198,7 @@ public class ChatController {
         try {
             // 发送AI开始思考消息
             SseMessageDto thinkingMessage = SseMessageDto.builder()
-                    .messageId(UUID.randomUUID().toString())
+                    .messageId(IdUtil.getSnowflakeNextIdStr())
                     .eventType(SseEventType.AI_THINKING)
                     .content("AI正在思考中...")
                     .workspaceId(workspaceId)
@@ -217,7 +218,7 @@ public class ChatController {
                 (chunk) -> {
                     try {
                         SseMessageDto chunkMessage = SseMessageDto.builder()
-                                .messageId(UUID.randomUUID().toString())
+                                .messageId(IdUtil.getSnowflakeNextIdStr())
                                 .eventType(SseEventType.AI_CHUNK)
                                 .content(chunk)
                                 .workspaceId(workspaceId)
@@ -235,7 +236,7 @@ public class ChatController {
                 () -> {
                     try {
                         SseMessageDto completeMessage = SseMessageDto.builder()
-                                .messageId(UUID.randomUUID().toString())
+                                .messageId(IdUtil.getSnowflakeNextIdStr())
                                 .eventType(SseEventType.AI_COMPLETE)
                                 .content("")
                                 .workspaceId(workspaceId)
@@ -254,7 +255,7 @@ public class ChatController {
                 (error) -> {
                     try {
                         SseMessageDto errorMessage = SseMessageDto.builder()
-                                .messageId(UUID.randomUUID().toString())
+                                .messageId(IdUtil.getSnowflakeNextIdStr())
                                 .eventType(SseEventType.ERROR)
                                 .content("AI服务错误")
                                 .errorMessage(error)
@@ -276,7 +277,7 @@ public class ChatController {
             log.error("处理AI流式对话请求失败 - 对话任务: {}", chatTaskId, e);
             try {
                 SseMessageDto errorMessage = SseMessageDto.builder()
-                        .messageId(UUID.randomUUID().toString())
+                        .messageId(IdUtil.getSnowflakeNextIdStr())
                         .eventType(SseEventType.ERROR)
                         .content("处理请求失败")
                         .errorMessage(e.getMessage())
@@ -326,7 +327,7 @@ public class ChatController {
             if (activeConnections.containsKey(connectionId)) {
                 try {
                     SseMessageDto heartbeatMessage = SseMessageDto.builder()
-                            .messageId(UUID.randomUUID().toString())
+                            .messageId(IdUtil.getSnowflakeNextIdStr())
                             .eventType(SseEventType.HEARTBEAT)
                             .content("ping")
                             .sessionId(chatTaskId)
