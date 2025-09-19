@@ -92,8 +92,15 @@ public class UserCreditServiceImpl implements UserCreditService {
     public boolean canConsumeCredits(Long userId, BigDecimal amount) {
         log.debug("检查用户是否可以消费积分 - userId: {}, amount: {}", userId, amount);
         
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+        // 金额为null或负数时拒绝
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
             return false;
+        }
+        
+        // 金额为0时直接允许（无需实际扣费）
+        if (amount.compareTo(BigDecimal.ZERO) == 0) {
+            log.debug("消费金额为0，无需扣费，直接允许 - userId: {}", userId);
+            return true;
         }
         
         UserCreditAccountEntity creditAccount = userCreditAccountMapper.selectByUserId(userId);

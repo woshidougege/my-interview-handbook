@@ -70,21 +70,27 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
             log.info("资源使用量记录成功 - reportId: {}, 消耗积分: {}, taskType: {}", 
                 reportId, record.getBillingAmount(), request.getTaskType());
 
-            // 4. 立即调度积分扣减任务
-            try {
-                String taskId = creditDeductionTaskService.scheduleImmediateCreditDeduction(
-                    request.getUserId(),
-                    record.getBillingAmount(),
-                    String.format("资源使用扣费 - %s", request.getTaskType()),
-                    null,
-                    record.getId()
-                );
-                log.info("积分扣减任务调度成功 - userId: {}, taskId: {}, 扣费积分: {}", 
-                         request.getUserId(), taskId, record.getBillingAmount());
-            } catch (Exception e) {
-                log.error("调度积分扣减任务失败 - userId: {}, 扣费积分: {}, 错误: {}", 
-                          request.getUserId(), record.getBillingAmount(), e.getMessage(), e);
-                // 注意：这里不抛出异常，记录已保存，可以通过清理任务重新处理
+            // 4. 根据计费金额决定是否调度积分扣减任务
+            if (record.getBillingAmount().compareTo(BigDecimal.ZERO) > 0) {
+                // 只有实际产生费用时才调度积分扣减任务
+                try {
+                    String taskId = creditDeductionTaskService.scheduleImmediateCreditDeduction(
+                        request.getUserId(),
+                        record.getBillingAmount(),
+                        String.format("资源使用扣费 - %s", request.getTaskType()),
+                        null,
+                        record.getId()
+                    );
+                    log.info("积分扣减任务调度成功 - userId: {}, taskId: {}, 扣费积分: {}", 
+                             request.getUserId(), taskId, record.getBillingAmount());
+                } catch (Exception e) {
+                    log.error("调度积分扣减任务失败 - userId: {}, 扣费积分: {}, 错误: {}", 
+                              request.getUserId(), record.getBillingAmount(), e.getMessage(), e);
+                    // 注意：这里不抛出异常，记录已保存，可以通过清理任务重新处理
+                }
+            } else {
+                log.info("资源使用无需计费 - userId: {}, 消耗积分: {}, 跳过积分扣减任务", 
+                         request.getUserId(), record.getBillingAmount());
             }
 
             return CompletableFuture.completedFuture(
@@ -277,7 +283,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         
         // 积分计算 - 根据功能类型和模型获取积分消耗
         record.setBillingUnit("TIMES");
-        int functionTimes = usageDetail.getFunctionTimes() != null ? usageDetail.getFunctionTimes() : 1;
+        int functionTimes = usageDetail.getFunctionTimes() != null ? usageDetail.getFunctionTimes() : 0; // 修复：默认为0而不是1
         String modelCode = usageDetail.getModel() != null ? usageDetail.getModel() : null;
         BigDecimal unitCredits = getFunctionCredits(taskType, modelCode);
         
