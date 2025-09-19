@@ -1,5 +1,9 @@
 package com.noah.superagent.service.impl;
 
+import java.util.Optional;
+import java.util.Set;
+import java.util.Map;
+
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.json.JSONUtil;
 import com.noah.superagent.common.config.BillingProperties;
@@ -13,6 +17,7 @@ import com.noah.superagent.service.ResourceUsageService;
 import com.noah.superagent.service.CreditDeductionTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +26,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -104,18 +108,28 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         }
     }
 
-/**
-     * 构建资源使用记录
+    /**
+     * JDK11优化：Function类型任务集合（减少重复switch判断）
+     */
+    private static final Set<TaskTypeEnum> FUNCTION_TASK_TYPES = Set.of(
+        TaskTypeEnum.MEETING_MINUTES, TaskTypeEnum.DOCUMENT_WRITING, TaskTypeEnum.CODING,
+        TaskTypeEnum.TRANSLATION, TaskTypeEnum.MIND_MAP, TaskTypeEnum.DATABASE_ANALYSIS,
+        TaskTypeEnum.EXCEL_ANALYSIS, TaskTypeEnum.BROWSERUSE, TaskTypeEnum.DEEPSEARCH,
+        TaskTypeEnum.SOFTWARE_OPERATION
+    );
+
+    /**
+     * 构建资源使用记录 - JDK11优化版本
      */
     private ResourceUsageRecordEntity buildResourceUsageRecord(ResourceUsageRequest request, String reportId) {
-        ResourceUsageRecordEntity record = new ResourceUsageRecordEntity();
-        ResourceUsageRequest.ResourceUsageDetail usageDetail = request.getUsageDetail();
+        var record = new ResourceUsageRecordEntity();
+        var usageDetail = request.getUsageDetail();
+        var taskType = request.getTaskType();
         
-        // 基础信息
+        // 基础信息设置
         setBaseFields(record, request, reportId);
         
-        // 根据任务类型和资源类型构建记录
-        TaskTypeEnum taskType = request.getTaskType();
+        // 使用JDK11兼容的switch语句 + 现代化Set查找优化
         switch (taskType) {
             case TEXT_GENERATION:
                 buildTextGenerationRecord(record, usageDetail);
@@ -129,167 +143,193 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
             case PPT_GENERATION:
                 buildPptGenerationRecord(record, usageDetail);
                 break;
-            case MEETING_MINUTES:
-            case DOCUMENT_WRITING:
-            case CODING:
-            case TRANSLATION:
-            case MIND_MAP:
-            case DATABASE_ANALYSIS:
-            case EXCEL_ANALYSIS:
-            case BROWSERUSE:
-            case DEEPSEARCH:
-            case SOFTWARE_OPERATION:
-                buildFunctionRecord(record, usageDetail, taskType.getCode());
-                break;
             default:
-                buildDefaultRecord(record, usageDetail);
+                if (FUNCTION_TASK_TYPES.contains(taskType)) {
+                    buildFunctionRecord(record, usageDetail, taskType.getCode());
+                } else {
+                    buildDefaultRecord(record, usageDetail);
+                }
+                break;
         }
         
         return record;
     }
 
+    // JDK11优化：提取常量避免魔数
+    private static final BigDecimal THOUSAND = BigDecimal.valueOf(1000);
+    private static final String DEFAULT_TEXT_MODEL = "DEFAULT_TEXT_MODEL";
+    
     /**
-     * 构建文本生成记录
+     * 构建文本生成记录 - JDK11优化版本
      */
     private void buildTextGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
         record.setResourceType(ResourceTypeEnum.TOKEN);
-        record.setResourceName(usageDetail.getModel() != null ? usageDetail.getModel() : "DEFAULT_TEXT_MODEL");
+        record.setResourceName(Optional.ofNullable(usageDetail.getModel()).orElse(DEFAULT_TEXT_MODEL));
         record.setResourceSubtype("TEXT_GENERATION");
         record.setDescription(usageDetail.getDescription());
         
-        // 使用量数据
-        Map<String, Object> usageData = new HashMap<>();
-        usageData.put("model", usageDetail.getModel() != null ? usageDetail.getModel() : null);
-        usageData.put("inputTokens", usageDetail.getInputTokens());
-        usageData.put("outputTokens", usageDetail.getOutputTokens());
-        usageData.put("totalTokens", (usageDetail.getInputTokens() != null ? usageDetail.getInputTokens() : 0L) + 
-                                    (usageDetail.getOutputTokens() != null ? usageDetail.getOutputTokens() : 0L));
+        // 使用JDK11 Optional优化token计算，明确类型避免类型推断问题
+        Long inputTokens = Optional.ofNullable(usageDetail.getInputTokens()).orElse(0L);
+        Long outputTokens = Optional.ofNullable(usageDetail.getOutputTokens()).orElse(0L);
+        long totalTokens = inputTokens + outputTokens;
+        
+        // 使用JDK11 Map.of()构建不可变数据
+        Map<String, Object> usageData = Map.of(
+            "model", Optional.ofNullable(usageDetail.getModel()).orElse(""),
+            "inputTokens", inputTokens,
+            "outputTokens", outputTokens,
+            "totalTokens", totalTokens
+        );
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 积分计算 - 根据模型名获取配置
+        // 函数式编程优化积分计算
         record.setBillingUnit("TOKEN");
+        String modelCode = Optional.ofNullable(usageDetail.getModel()).orElse("");
         
-        long inputTokens = usageDetail.getInputTokens() != null ? usageDetail.getInputTokens() : 0L;
-        long outputTokens = usageDetail.getOutputTokens() != null ? usageDetail.getOutputTokens() : 0L;
-        
-        // 获取Token积分消耗配置（优先使用模型特定配置，否则使用默认）
-        String modelCode = usageDetail.getModel() != null ? usageDetail.getModel() : null;
-        Double inputTokenPrice = getInputTokenPrice(modelCode);
-        Double outputTokenPrice = getOutputTokenPrice(modelCode);
-        
-        // 按输入输出Token分别计算积分消耗
-        BigDecimal inputCredits = new BigDecimal(inputTokens).multiply(BigDecimal.valueOf(inputTokenPrice)).divide(new BigDecimal("1000"), 2, RoundingMode.HALF_UP);
-        BigDecimal outputCredits = new BigDecimal(outputTokens).multiply(BigDecimal.valueOf(outputTokenPrice)).divide(new BigDecimal("1000"), 2, RoundingMode.HALF_UP);
+        // 函数式计算Token费用
+        BigDecimal inputCredits = calculateTokenCredits(inputTokens, getInputTokenPrice(modelCode));
+        BigDecimal outputCredits = calculateTokenCredits(outputTokens, getOutputTokenPrice(modelCode));
         BigDecimal totalCredits = inputCredits.add(outputCredits);
         
-        record.setUsageAmount(new BigDecimal(inputTokens + outputTokens));
-        record.setUnitPrice(totalCredits.divide(new BigDecimal(inputTokens + outputTokens + 1), 6, RoundingMode.HALF_UP)); // +1 避免除0
+        BigDecimal totalUsageAmount = BigDecimal.valueOf(totalTokens);
+        record.setUsageAmount(totalUsageAmount);
+        record.setUnitPrice(calculateSafeUnitPrice(totalCredits, totalTokens));
         record.setBillingAmount(totalCredits);
+    }
+    
+    /**
+     * 安全计算单价，避免除零异常
+     */
+    private BigDecimal calculateSafeUnitPrice(BigDecimal totalCredits, long totalTokens) {
+        return totalTokens > 0 
+            ? totalCredits.divide(BigDecimal.valueOf(totalTokens), 6, RoundingMode.HALF_UP)
+            : BigDecimal.ZERO;
+    }
+    
+    /**
+     * 计算Token费用的工具方法
+     */
+    private BigDecimal calculateTokenCredits(long tokens, Double price) {
+        return BigDecimal.valueOf(tokens)
+                .multiply(BigDecimal.valueOf(price))
+                .divide(THOUSAND, 2, RoundingMode.HALF_UP);
     }
 
     /**
-     * 构建图片生成记录
+     * 构建图片生成记录 - JDK11优化版本  
      */
     private void buildImageGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
         record.setResourceType(ResourceTypeEnum.IMAGE_COUNT);
-        record.setResourceName(usageDetail.getModel() != null ? usageDetail.getModel() : "DEFAULT_IMAGE_MODEL");
+        record.setResourceName(Optional.ofNullable(usageDetail.getModel()).orElse("DEFAULT_IMAGE_MODEL"));
         record.setResourceSubtype("IMAGE_GENERATION");
         record.setDescription(usageDetail.getDescription());
         
-        // 使用量数据
-        Map<String, Object> usageData = new HashMap<>();
-        usageData.put("model", usageDetail.getModel() != null ? usageDetail.getModel() : null);
-        usageData.put("imageCount", usageDetail.getImageCount());
+        // 使用JDK11优化：简化null处理和Map构建
+        Integer imageCount = Optional.ofNullable(usageDetail.getImageCount()).orElse(0);
+        String modelCode = Optional.ofNullable(usageDetail.getModel()).orElse("");
+        
+        Map<String, Object> usageData = Map.of(
+            "model", modelCode,
+            "imageCount", imageCount
+        );
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 积分计算 - 根据模型获取积分消耗配置
+        // 优雅计算积分
         record.setBillingUnit("COUNT");
-        int imageCount = usageDetail.getImageCount() != null ? usageDetail.getImageCount() : 0;
-        String modelCode = usageDetail.getModel() != null ? usageDetail.getModel() : null;
         BigDecimal unitCredits = BigDecimal.valueOf(getImageGenerationPrice(modelCode));
+        BigDecimal usageAmount = BigDecimal.valueOf(imageCount);
         
-        record.setUsageAmount(new BigDecimal(imageCount));
+        record.setUsageAmount(usageAmount);
         record.setUnitPrice(unitCredits);
-        record.setBillingAmount(new BigDecimal(imageCount).multiply(unitCredits));
+        record.setBillingAmount(usageAmount.multiply(unitCredits));
     }
 
     /**
-     * 构建视频生成记录
+     * 构建视频生成记录 - JDK11优化版本
      */
     private void buildVideoGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
         record.setResourceType(ResourceTypeEnum.VIDEO_DURATION);
-        record.setResourceName(usageDetail.getModel() != null ? usageDetail.getModel() : "DEFAULT_VIDEO_MODEL");
+        record.setResourceName(Optional.ofNullable(usageDetail.getModel()).orElse("DEFAULT_VIDEO_MODEL"));
         record.setResourceSubtype("VIDEO_GENERATION");
         record.setDescription(usageDetail.getDescription());
         
-        // 使用量数据
-        Map<String, Object> usageData = new HashMap<>();
-        usageData.put("model", usageDetail.getModel() != null ? usageDetail.getModel() : null);
-        usageData.put("videoDuration", usageDetail.getVideoDuration());
+        // JDK11优化：简洁的数据处理
+        Integer videoDuration = Optional.ofNullable(usageDetail.getVideoDuration()).orElse(0);
+        String modelCode = Optional.ofNullable(usageDetail.getModel()).orElse("");
+        
+        Map<String, Object> usageData = Map.of(
+            "model", modelCode,
+            "videoDuration", videoDuration
+        );
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 积分计算 - 根据模型获取积分消耗配置
+        // 函数式积分计算
         record.setBillingUnit("SECONDS");
-        int videoDuration = usageDetail.getVideoDuration() != null ? usageDetail.getVideoDuration() : 0;
-        String modelCode = usageDetail.getModel() != null ? usageDetail.getModel() : null;
         BigDecimal unitCredits = BigDecimal.valueOf(getVideoGenerationPrice(modelCode));
+        BigDecimal usageAmount = BigDecimal.valueOf(videoDuration);
         
-        record.setUsageAmount(new BigDecimal(videoDuration));
+        record.setUsageAmount(usageAmount);
         record.setUnitPrice(unitCredits);
-        record.setBillingAmount(new BigDecimal(videoDuration).multiply(unitCredits));
+        record.setBillingAmount(usageAmount.multiply(unitCredits));
     }
 
     /**
-     * 构建PPT生成记录
+     * 构建PPT生成记录 - JDK11优化版本
      */
     private void buildPptGenerationRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail) {
         record.setResourceType(ResourceTypeEnum.PPT_PAGES);
-        record.setResourceName(usageDetail.getModel() != null ? usageDetail.getModel() : "PPT_GENERATION");
+        record.setResourceName(Optional.ofNullable(usageDetail.getModel()).orElse("PPT_GENERATION"));
         record.setResourceSubtype("PPT_PAGES");
         record.setDescription(usageDetail.getDescription());
         
-        // 使用量数据
-        Map<String, Object> usageData = new HashMap<>();
-        usageData.put("model", usageDetail.getModel() != null ? usageDetail.getModel() : null);
-        usageData.put("pptPages", usageDetail.getPptPages());
+        // JDK11优化：清晰的数据处理
+        Integer pptPages = Optional.ofNullable(usageDetail.getPptPages()).orElse(0);
+        String modelCode = Optional.ofNullable(usageDetail.getModel()).orElse("");
+        
+        Map<String, Object> usageData = Map.of(
+            "model", modelCode,
+            "pptPages", pptPages
+        );
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 积分计算 - 根据模型获取积分消耗配置
+        // 简洁的积分计算
         record.setBillingUnit("PAGES");
-        int pptPages = usageDetail.getPptPages() != null ? usageDetail.getPptPages() : 0;
-        String modelCode = usageDetail.getModel() != null ? usageDetail.getModel() : null;
         BigDecimal unitCredits = getFunctionCredits("ppt_generation", modelCode);
+        BigDecimal usageAmount = BigDecimal.valueOf(pptPages);
         
-        record.setUsageAmount(new BigDecimal(pptPages));
+        record.setUsageAmount(usageAmount);
         record.setUnitPrice(unitCredits);
-        record.setBillingAmount(new BigDecimal(pptPages).multiply(unitCredits));
+        record.setBillingAmount(usageAmount.multiply(unitCredits));
     }
 
     /**
-     * 构建功能使用记录
+     * 构建功能使用记录 - JDK11优化版本
      */
     private void buildFunctionRecord(ResourceUsageRecordEntity record, ResourceUsageRequest.ResourceUsageDetail usageDetail, String taskType) {
         record.setResourceType(ResourceTypeEnum.FUNCTION_TIMES);
-        record.setResourceName(usageDetail.getModel() != null ? usageDetail.getModel() : taskType);
+        record.setResourceName(Optional.ofNullable(usageDetail.getModel()).orElse(taskType));
         record.setResourceSubtype("FUNCTION_TIMES");
         record.setDescription(usageDetail.getDescription());
         
-        // 使用量数据
-        Map<String, Object> usageData = new HashMap<>();
-        usageData.put("model", usageDetail.getModel() != null ? usageDetail.getModel() : null);
-        usageData.put("functionTimes", usageDetail.getFunctionTimes());
-        usageData.put("taskType", taskType);
+        // 使用JDK11 Map.of()和Optional构建使用量数据
+        Integer functionTimes = Optional.ofNullable(usageDetail.getFunctionTimes()).orElse(0);
+        String modelCode = Optional.ofNullable(usageDetail.getModel()).orElse("");
+        
+        Map<String, Object> usageData = Map.of(
+            "model", modelCode,
+            "functionTimes", functionTimes,
+            "taskType", taskType
+        );
         record.setUsageData(JSONUtil.toJsonStr(usageData));
         
-        // 积分计算 - 根据功能类型和模型获取积分消耗
+        // 使用JDK11 Optional优化积分计算
         record.setBillingUnit("TIMES");
-        int functionTimes = usageDetail.getFunctionTimes() != null ? usageDetail.getFunctionTimes() : 0; // 修复：默认为0而不是1
-        String modelCode = usageDetail.getModel() != null ? usageDetail.getModel() : null;
         BigDecimal unitCredits = getFunctionCredits(taskType, modelCode);
         
-        record.setUsageAmount(new BigDecimal(functionTimes));
+        BigDecimal usageAmount = BigDecimal.valueOf(functionTimes);
+        record.setUsageAmount(usageAmount);
         record.setUnitPrice(unitCredits);
-        record.setBillingAmount(new BigDecimal(functionTimes).multiply(unitCredits));
+        record.setBillingAmount(usageAmount.multiply(unitCredits));
     }
     
     /**
@@ -368,19 +408,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         
         // 文本生成配置
         if (parent.getTextGeneration() != null || child.getTextGeneration() != null) {
-            BillingProperties.TextGenerationConfig mergedText = new BillingProperties.TextGenerationConfig();
-            if (parent.getTextGeneration() != null) {
-                mergedText.setInputToken(parent.getTextGeneration().getInputToken());
-                mergedText.setOutputToken(parent.getTextGeneration().getOutputToken());
-            }
-            if (child.getTextGeneration() != null) {
-                if (child.getTextGeneration().getInputToken() != null) {
-                    mergedText.setInputToken(child.getTextGeneration().getInputToken());
-                }
-                if (child.getTextGeneration().getOutputToken() != null) {
-                    mergedText.setOutputToken(child.getTextGeneration().getOutputToken());
-                }
-            }
+            BillingProperties.TextGenerationConfig mergedText = getTextGenerationConfig(parent, child);
             merged.setTextGeneration(mergedText);
         }
         
@@ -402,6 +430,23 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         merged.setExcelAnalysis(child.getExcelAnalysis() != null ? child.getExcelAnalysis() : parent.getExcelAnalysis());
         
         return merged;
+    }
+
+    private static @NotNull BillingProperties.TextGenerationConfig getTextGenerationConfig(BillingProperties.ModelConfig parent, BillingProperties.ModelConfig child) {
+        BillingProperties.TextGenerationConfig mergedText = new BillingProperties.TextGenerationConfig();
+        if (parent.getTextGeneration() != null) {
+            mergedText.setInputToken(parent.getTextGeneration().getInputToken());
+            mergedText.setOutputToken(parent.getTextGeneration().getOutputToken());
+        }
+        if (child.getTextGeneration() != null) {
+            if (child.getTextGeneration().getInputToken() != null) {
+                mergedText.setInputToken(child.getTextGeneration().getInputToken());
+            }
+            if (child.getTextGeneration().getOutputToken() != null) {
+                mergedText.setOutputToken(child.getTextGeneration().getOutputToken());
+            }
+        }
+        return mergedText;
     }
 
     /**
