@@ -51,36 +51,36 @@ export const API_ENDPOINTS = {
   },
 
   // ========== 工作空间相关 ==========
-  // 后端: @RequestMapping("/api/v1/workspaces") -> 前端直接用: v1/workspaces/*
+  // 后端: @RequestMapping("/api/v1/workspaces") -> 前端直接用: workspaces/* (后端已有v1)
   WORKSPACE: {
-    BASE: 'v1/workspaces',
-    LIST: 'v1/workspaces',
-    CREATE: 'v1/workspaces', 
-    GET_BY_ID: (id: string) => `v1/workspaces/${id}`,
-    GET_BY_USER: (userId: string) => `v1/workspaces/user/${userId}`,
-    UPDATE: (id: string) => `v1/workspaces/${id}`,
-    DELETE: (id: string) => `v1/workspaces/${id}`,
+    BASE: 'workspaces',
+    LIST: 'workspaces',
+    CREATE: 'workspaces', 
+    GET_BY_ID: (id: string) => `workspaces/${id}`,
+    GET_BY_USER: (userId: string) => `workspaces/user/${userId}`,
+    UPDATE: (id: string) => `workspaces/${id}`,
+    DELETE: (id: string) => `workspaces/${id}`,
   },
 
   // ========== 对话任务相关 ==========
-  // 后端: @RequestMapping("/api/v1/workspaces/{workspaceId}/chat-tasks") -> 前端直接用: v1/workspaces/{workspaceId}/chat-tasks/*
+  // 后端: @RequestMapping("/api/v1/workspaces/{workspaceId}/chat-tasks") -> 前端直接用: workspaces/{workspaceId}/chat-tasks/* (后端已有v1)
   CHAT_TASK: {
-    BASE: (workspaceId: string) => `v1/workspaces/${workspaceId}/chat-tasks`,
-    LIST: (workspaceId: string) => `v1/workspaces/${workspaceId}/chat-tasks`,
-    CREATE: (workspaceId: string) => `v1/workspaces/${workspaceId}/chat-tasks`,
-    GET_BY_ID: (workspaceId: string, taskId: string) => `v1/workspaces/${workspaceId}/chat-tasks/${taskId}`,
-    UPDATE: (workspaceId: string, taskId: string) => `v1/workspaces/${workspaceId}/chat-tasks/${taskId}`,
-    DELETE: (workspaceId: string, taskId: string) => `v1/workspaces/${workspaceId}/chat-tasks/${taskId}`,
-    FAVORITE: (workspaceId: string, taskId: string) => `v1/workspaces/${workspaceId}/chat-tasks/${taskId}/favorite`,
-    UNFAVORITE: (workspaceId: string, taskId: string) => `v1/workspaces/${workspaceId}/chat-tasks/${taskId}/favorite`,
-    GET_FAVORITES: (workspaceId: string) => `v1/workspaces/${workspaceId}/chat-tasks/favorites`,
-    GENERATE_TITLE: (workspaceId: string) => `v1/workspaces/${workspaceId}/chat-tasks/generate-title`,
+    BASE: (workspaceId: string) => `workspaces/${workspaceId}/chat-tasks`,
+    LIST: (workspaceId: string) => `workspaces/${workspaceId}/chat-tasks`,
+    CREATE: (workspaceId: string) => `workspaces/${workspaceId}/chat-tasks`,
+    GET_BY_ID: (workspaceId: string, taskId: string) => `workspaces/${workspaceId}/chat-tasks/${taskId}`,
+    UPDATE: (workspaceId: string, taskId: string) => `workspaces/${workspaceId}/chat-tasks/${taskId}`,
+    DELETE: (workspaceId: string, taskId: string) => `workspaces/${workspaceId}/chat-tasks/${taskId}`,
+    FAVORITE: (workspaceId: string, taskId: string) => `workspaces/${workspaceId}/chat-tasks/${taskId}/favorite`,
+    UNFAVORITE: (workspaceId: string, taskId: string) => `workspaces/${workspaceId}/chat-tasks/${taskId}/favorite`,
+    GET_FAVORITES: (workspaceId: string) => `workspaces/${workspaceId}/chat-tasks/favorites`,
+    GENERATE_TITLE: (workspaceId: string) => `workspaces/${workspaceId}/chat-tasks/generate-title`,
   },
 
   // ========== AI服务相关 ==========
   AI: {
     BASE: 'ai',
-    GENERATE_TITLE: (workspaceId: string) => `v1/workspaces/${workspaceId}/chat-tasks/generate-title`,
+    GENERATE_TITLE: (workspaceId: string) => `workspaces/${workspaceId}/chat-tasks/generate-title`,
   },
 
   // ========== 支付相关 ==========
@@ -169,7 +169,7 @@ export const buildApiUrl = (endpoint: string): string => {
 
 // 工具函数：验证端点是否存在
 export const isValidEndpoint = (endpoint: string): boolean => {
-  return endpoint.startsWith('auth/') || endpoint.startsWith('user-credit/') || endpoint.startsWith('subscription/') || endpoint.startsWith('v1/workspaces/');
+  return endpoint.startsWith('auth/') || endpoint.startsWith('user-credit/') || endpoint.startsWith('subscription/') || endpoint.startsWith('workspaces/');
 };
 
 // 导出所有端点的扁平化列表（用于调试和文档生成）
