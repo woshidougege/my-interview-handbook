@@ -17,7 +17,6 @@ import com.noah.superagent.service.ResourceUsageService;
 import com.noah.superagent.service.CreditDeductionTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -432,7 +431,7 @@ public class ResourceUsageServiceImpl implements ResourceUsageService {
         return merged;
     }
 
-    private static @NotNull BillingProperties.TextGenerationConfig getTextGenerationConfig(BillingProperties.ModelConfig parent, BillingProperties.ModelConfig child) {
+    private static BillingProperties.TextGenerationConfig getTextGenerationConfig(BillingProperties.ModelConfig parent, BillingProperties.ModelConfig child) {
         BillingProperties.TextGenerationConfig mergedText = new BillingProperties.TextGenerationConfig();
         if (parent.getTextGeneration() != null) {
             mergedText.setInputToken(parent.getTextGeneration().getInputToken());

@@ -49,10 +49,11 @@ const nextConfig = {
   
   // API代理配置 - 开发环境
   async rewrites() {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081';
     return process.env.NODE_ENV === 'development' ? [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8081/super-agent/api/v1/:path*',
+        destination: `${backendUrl}/super-agent/api/v1/:path*`,
       },
     ] : [];
   },

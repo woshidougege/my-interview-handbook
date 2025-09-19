@@ -111,11 +111,23 @@ graph TD
 创建 `.env.local` 文件：
 
 ```bash
+# ========== 阿里云百炼AI配置 ==========
+# 阿里云百炼API密钥
+NEXT_PUBLIC_DASHSCOPE_API_KEY=your_dashscope_api_key_here
+
+# 阿里云百炼API地址（可选，有默认值）
+NEXT_PUBLIC_DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# ========== 后端服务配置 ==========
+# 后端服务地址
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8081
+
 # API基础URL
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8081/super-agent
 
+# ========== 应用配置 ==========
 # 是否启用模拟数据
-NEXT_PUBLIC_USE_MOCK_DATA=true
+NEXT_PUBLIC_USE_MOCK_DATA=false
 
 # 应用信息
 NEXT_PUBLIC_APP_TITLE=Super Agent

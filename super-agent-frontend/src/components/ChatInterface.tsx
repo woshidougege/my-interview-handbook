@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Card, 
   Input, 
@@ -8,20 +8,16 @@ import {
   Avatar, 
   Spin, 
   message,
-  Tooltip,
-  Alert
+  Tooltip
 } from 'antd';
 import { 
   SendOutlined, 
   RobotOutlined, 
   UserOutlined,
-  ThunderboltOutlined,
-  WifiOutlined,
-  DisconnectOutlined
+  ThunderboltOutlined
 } from '@ant-design/icons';
-import { aiApi } from '@/services/api';
 import { ChatMessage } from '@/types/chat';
-import sseService, { ConnectionStatus } from '@/services/sseService';
+import aliCloudAiService from '@/services/aliCloudAiService';
 
 const { TextArea } = Input;
 const { Text, Paragraph } = Typography;
@@ -45,9 +41,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [titleGenerating, setTitleGenerating] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
   const [currentStreamMessage, setCurrentStreamMessage] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [aiServiceAvailable, setAiServiceAvailable] = useState(true);
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -61,41 +57,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // 组件卸载时断开SSE连接
+  // 检查AI服务可用性
   useEffect(() => {
-    return () => {
-      sseService.disconnect();
+    const checkAiService = () => {
+      const available = aliCloudAiService.isAvailable();
+      setAiServiceAvailable(available);
+      if (!available) {
+        message.warning('AI服务配置不完整，请检查API密钥设置');
+      }
     };
-  }, []);
-
-  // 处理SSE消息
-  const handleSseMessage = useCallback((msg: { eventType: string; content: string }) => {
-    console.log('收到SSE消息:', msg);
-    // 根据事件类型处理消息
-    switch (msg.eventType) {
-      case 'connected':
-        console.log('SSE连接已建立:', msg.content);
-        break;
-      case 'ai_thinking':
-        console.log('AI正在思考:', msg.content);
-        break;
-      case 'error':
-        message.error(`AI服务错误: ${msg.content}`);
-        setLoading(false);
-        setIsStreaming(false);
-        setCurrentStreamMessage('');
-        break;
-    }
+    
+    checkAiService();
   }, []);
 
   // 处理流式消息片段
-  const handleStreamChunk = useCallback((chunk: string) => {
+  const handleStreamChunk = (chunk: string) => {
     setIsStreaming(true);
     setCurrentStreamMessage(prev => prev + chunk);
-  }, []);
+  };
 
   // 处理流式消息结束
-  const handleStreamEnd = useCallback(() => {
+  const handleStreamEnd = () => {
     setCurrentStreamMessage(prevStreamMessage => {
       if (prevStreamMessage.trim()) {
         const aiMessage: ChatMessage = {
@@ -110,23 +92,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     });
     setIsStreaming(false);
     setLoading(false);
-  }, []);
+  };
 
   // 生成标题
   const generateTitle = async (firstMessage: string) => {
-    if (!onTitleGenerated) return;
+    if (!onTitleGenerated || !aiServiceAvailable) return;
     
     setTitleGenerating(true);
     try {
-      const response = await aiApi.generateChatTitle(workspaceId, {
-        question: firstMessage,
-        async: false
-      });
-      
-      const title = response.data.data.title;
+      const title = await aliCloudAiService.generateTitle(firstMessage);
       onTitleGenerated(title);
       message.success(`标题已生成: ${title}`);
-    } catch {
+    } catch (error) {
+      console.error('标题生成失败:', error);
       message.error('标题生成失败');
     } finally {
       setTitleGenerating(false);
@@ -135,7 +113,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // 发送消息
   const sendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !aiServiceAvailable) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -157,52 +135,38 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setLoading(true);
     setCurrentStreamMessage('');
 
+    // 构建聊天历史，包括当前消息
+    const chatHistory = [...messages, userMessage].map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content
+    }));
+
     try {
-      // 如果SSE连接未建立，先建立连接
-      if (!sseService.isConnected()) {
-        console.log('建立SSE连接...');
-        
-        // 使用有效的sessionId
-        const effectiveSessionId = sessionId || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        await sseService.connect(userId, workspaceId, effectiveSessionId, {
-          onConnectionChange: (status) => {
-            setConnectionStatus(status);
-          },
-          onMessage: (msg) => {
-            handleSseMessage(msg);
-          },
-          onStreamChunk: (chunk) => {
+      // 使用阿里云AI服务进行流式聊天
+      await aliCloudAiService.streamChat(
+        chatHistory,
+        {
+          onChunk: (chunk: string) => {
             handleStreamChunk(chunk);
           },
-          onStreamEnd: () => {
+          onComplete: () => {
             handleStreamEnd();
           },
-          onError: (errorMsg) => {
-            message.error(`连接错误: ${errorMsg}`);
+          onError: (error: string) => {
+            console.error('AI聊天失败:', error);
+            message.error(`AI聊天失败: ${error}`);
+            setLoading(false);
+            setIsStreaming(false);
+            setCurrentStreamMessage('');
           }
-        });
-        
-        // 等待连接建立
-        let retries = 0;
-        while (!sseService.isConnected() && retries < 10) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          retries++;
         }
-        
-        if (!sseService.isConnected()) {
-          message.error('无法建立实时连接，请稍后重试');
-          setLoading(false);
-          return;
-        }
-      }
-      
-      // 通过SSE服务发送消息
-      await sseService.sendMessage(messageContent);
+      );
     } catch (error) {
-      console.error('发送消息失败', error);
+      console.error('发送消息失败:', error);
       message.error('发送消息失败');
       setLoading(false);
+      setIsStreaming(false);
+      setCurrentStreamMessage('');
     }
   };
 
@@ -214,39 +178,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
-  // 获取连接状态显示
-  const getConnectionStatusDisplay = () => {
-    switch (connectionStatus) {
-      case ConnectionStatus.CONNECTED:
-        return { icon: <WifiOutlined style={{ color: '#52c41a' }} />, text: '已连接', color: '#52c41a' };
-      case ConnectionStatus.CONNECTING:
-        return { icon: <Spin size="small" />, text: '连接中...', color: '#1890ff' };
-      case ConnectionStatus.RECONNECTING:
-        return { icon: <Spin size="small" />, text: '重连中...', color: '#faad14' };
-      case ConnectionStatus.ERROR:
-        return { icon: <DisconnectOutlined style={{ color: '#ff4d4f' }} />, text: '连接失败', color: '#ff4d4f' };
-      default:
-        return { icon: <DisconnectOutlined style={{ color: '#d9d9d9' }} />, text: '未连接', color: '#d9d9d9' };
-    }
-  };
-
-  const statusDisplay = getConnectionStatusDisplay();
-
   return (
     <div className={className} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* 连接状态栏 */}
-      {connectionStatus !== ConnectionStatus.CONNECTED && (
-        <Alert
-          message={
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {statusDisplay.icon}
-              <span style={{ color: statusDisplay.color }}>{statusDisplay.text}</span>
-            </div>
-          }
-          type={connectionStatus === ConnectionStatus.ERROR ? 'error' : 'warning'}
-          showIcon={false}
-          style={{ margin: '8px 16px', borderRadius: '6px' }}
-        />
+      {/* AI服务状态提示 */}
+      {!aiServiceAvailable && (
+        <div style={{ 
+          padding: '8px 16px', 
+          background: '#fff1f0', 
+          border: '1px solid #ffccc7',
+          borderRadius: '6px',
+          margin: '8px 16px',
+          color: '#cf1322'
+        }}>
+          ⚠️ AI服务配置不完整，请设置环境变量 NEXT_PUBLIC_DASHSCOPE_API_KEY
+        </div>
       )}
 
       {/* 消息区域 */}
@@ -404,7 +349,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               resize: 'none',
               paddingRight: '120px'
             }}
-            disabled={loading || titleGenerating || connectionStatus !== ConnectionStatus.CONNECTED}
+            disabled={loading || titleGenerating || !aiServiceAvailable}
           />
           
           <div style={{
@@ -430,7 +375,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               icon={<SendOutlined />}
               onClick={sendMessage}
               loading={loading}
-              disabled={!inputValue.trim() || titleGenerating || connectionStatus !== ConnectionStatus.CONNECTED}
+              disabled={!inputValue.trim() || titleGenerating || !aiServiceAvailable}
               size="small"
             >
               发送
