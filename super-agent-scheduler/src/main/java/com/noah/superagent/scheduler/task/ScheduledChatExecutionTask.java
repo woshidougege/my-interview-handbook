@@ -157,11 +157,41 @@ public class ScheduledChatExecutionTask {
     }
 
     /**
-     * 执行定时任务（不再调用AI，仅记录任务执行）
+     * 执行定时任务
+     * 
+     * TODO: 【重要】集成AI智能体模块
+     * 当前实现只是简单记录任务执行，需要替换为调用智能体子模块：
+     * 
+     * 1. 引入 AgentService 依赖
+     * 2. 根据任务类型选择对应的智能体（文本生成/数据分析/代码生成等）
+     * 3. 构建 AgentContext 上下文（用户信息、工作空间、历史对话）
+     * 4. 调用智能体执行任务：agentService.executeTask(agentType, context, prompt)
+     * 5. 处理智能体响应（支持流式输出、结构化数据、文件生成）
+     * 6. 支持异步执行和结果回调
+     * 7. 添加超时控制、重试机制、错误处理
+     * 8. 记录智能体执行日志和性能指标
+     * 
+     * 预期调用方式：
+     * ```java
+     * AgentContext context = AgentContext.builder()
+     *     .userId(scheduledTask.getCreateBy())
+     *     .workspaceId(scheduledTask.getWorkspaceId())
+     *     .taskId(scheduledTask.getId())
+     *     .prompt(scheduledTask.getPrompt())
+     *     .build();
+     * 
+     * AgentResponse response = agentService.executeTask(
+     *     AgentType.fromTaskType(scheduledTask.getTaskType()),
+     *     context
+     * );
+     * 
+     * return response.getContent();
+     * ```
      */
     private String executeScheduledTask(ScheduledChatTaskEntity scheduledTask) {
         try {
-            // 记录任务执行信息
+            // TODO: 替换为智能体调用
+            // 当前为临时实现，仅记录任务执行信息
             String executionMessage = String.format("定时任务已执行 - 任务ID: %d, 提示词: %s, 执行时间: %s", 
                     scheduledTask.getId(), 
                     scheduledTask.getPrompt(),
