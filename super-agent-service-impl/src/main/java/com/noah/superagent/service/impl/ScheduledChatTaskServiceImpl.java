@@ -1,6 +1,9 @@
 package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
+import com.noah.superagent.common.event.ScheduledChatTaskCreatedEvent;
+import com.noah.superagent.common.event.ScheduledChatTaskDeletedEvent;
+import com.noah.superagent.common.event.ScheduledChatTaskUpdatedEvent;
 import com.noah.superagent.convert.ScheduledChatTaskPersistenceConvert;
 import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
 import com.noah.superagent.dao.mapper.ScheduledChatTaskMapper;
@@ -11,10 +14,11 @@ import com.noah.superagent.service.ScheduledChatTaskService;
 import lombok.RequiredArgsConstructor;
 import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,6 +36,7 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
 
     private final ScheduledChatTaskMapper scheduledChatTaskMapper;
     private final ScheduledChatTaskPersistenceConvert convert;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -41,38 +46,6 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         ScheduledChatTaskEntity entity = convert.toEntity(taskDTO);
         entity.setDeleted(DeletedEnum.NOT_DELETED);
 
-        // 如果任务已启用且未设置下次执行时间，则计算并设置首次的下次执行时间
-        if (entity.getStatus() != null && entity.getStatus() == 1 && entity.getNextExecutionTime() == null) {
-            try {
-                // 使用反射方式调用Cron表达式解析，避免直接依赖db-scheduler包
-                Class<?> schedulesClass = Class.forName("com.github.kagkarlsson.scheduler.task.schedule.Schedules");
-                Object cronSchedule = schedulesClass.getMethod("cron", String.class)
-                    .invoke(null, entity.getCronExpression());
-                
-                Class<?> cronScheduleClass = cronSchedule.getClass();
-                
-                // 获取当前时间
-                Instant now = Instant.now();
-                
-                // 创建ExecutionComplete模拟对象
-                Class<?> executionCompleteClass = Class.forName("com.github.kagkarlsson.scheduler.task.ExecutionComplete");
-                Object executionComplete = executionCompleteClass.getMethod("simulatedSuccess", Instant.class)
-                    .invoke(null, now);
-                
-                // 计算下次执行时间
-                Instant nextExecutionTime = (Instant) cronScheduleClass.getMethod("getNextExecutionTime", executionCompleteClass)
-                    .invoke(cronSchedule, executionComplete);
-                
-                entity.setNextExecutionTime(Date.from(nextExecutionTime));
-                
-                log.info("设置定时任务首次执行时间，任务名称: {}, 下次执行时间: {}", entity.getTaskName(), nextExecutionTime);
-            } catch (Exception e) {
-                log.warn("计算定时任务下次执行时间失败，任务名称: {}, 错误: {}", entity.getTaskName(), e.getMessage());
-                // 如果计算失败，设置为1小时后执行
-                entity.setNextExecutionTime(new Date(System.currentTimeMillis() + 60 * 60 * 1000L));
-            }
-        }
-
         // 保存定时对话任务
         int result = scheduledChatTaskMapper.insertSelective(entity);
         if (result <= 0) {
@@ -80,6 +53,12 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         }
 
         log.info("定时对话任务创建成功，ID: {}", entity.getId());
+
+        // 如果任务已启用，发布创建事件触发调度
+        if (entity.getStatus() != null && entity.getStatus() == 1) {
+            publishTaskCreatedEvent(entity);
+        }
+
         return convert.fromEntity(entity);
     }
 
@@ -119,6 +98,15 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         }
 
         log.info("定时对话任务更新成功，ID: {}", id);
+
+        // 如果任务状态为启用，发布更新事件重新调度
+        if (entity.getStatus() != null && entity.getStatus() == 1) {
+            publishTaskUpdatedEvent(entity);
+        } else {
+            // 如果任务被禁用，发布删除事件取消调度
+            publishTaskDeletedEvent(id);
+        }
+
         return convert.fromEntity(entity);
     }
 
@@ -138,6 +126,9 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         if (result <= 0) {
             throw new RuntimeException("定时对话任务删除失败");
         }
+
+        // 发布删除事件取消调度
+        publishTaskDeletedEvent(id);
 
         log.info("定时对话任务删除成功，ID: {}", id);
     }
@@ -183,6 +174,7 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void enableScheduledChatTask(Long id) {
         log.info("启用定时对话任务，ID: {}", id);
         
@@ -192,45 +184,19 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         }
         
         task.setStatus(1); // 启用状态
-        
-        // 计算下次执行时间
-        try {
-            Class<?> schedulesClass = Class.forName("com.github.kagkarlsson.scheduler.task.schedule.Schedules");
-            Object cronSchedule = schedulesClass.getMethod("cron", String.class)
-                .invoke(null, task.getCronExpression());
-            
-            Class<?> cronScheduleClass = cronSchedule.getClass();
-            
-            // 获取当前时间
-            Instant now = Instant.now();
-            
-            // 创建ExecutionComplete模拟对象
-            Class<?> executionCompleteClass = Class.forName("com.github.kagkarlsson.scheduler.task.ExecutionComplete");
-            Object executionComplete = executionCompleteClass.getMethod("simulatedSuccess", Instant.class)
-                .invoke(null, now);
-            
-            // 计算下次执行时间
-            Instant nextExecutionTime = (Instant) cronScheduleClass.getMethod("getNextExecutionTime", executionCompleteClass)
-                .invoke(cronSchedule, executionComplete);
-            
-            task.setNextExecutionTime(Date.from(nextExecutionTime));
-            
-            log.info("设置定时任务下次执行时间，任务ID: {}, 下次执行时间: {}", id, nextExecutionTime);
-        } catch (Exception e) {
-            log.warn("计算定时任务下次执行时间失败，任务ID: {}, 错误: {}", id, e.getMessage());
-            // 如果计算失败，设置为1小时后执行
-            task.setNextExecutionTime(new Date(System.currentTimeMillis() + 60 * 60 * 1000L));
-        }
-        
         int result = scheduledChatTaskMapper.update(task);
         if (result <= 0) {
             throw new RuntimeException("启用定时对话任务失败");
         }
+
+        // 发布启用事件（相当于创建调度）
+        publishTaskCreatedEvent(task);
         
         log.info("定时对话任务启用成功，ID: {}", id);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void disableScheduledChatTask(Long id) {
         log.info("禁用定时对话任务，ID: {}", id);
         
@@ -244,7 +210,104 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         if (result <= 0) {
             throw new RuntimeException("禁用定时对话任务失败");
         }
+
+        // 发布删除事件取消调度
+        publishTaskDeletedEvent(id);
         
         log.info("定时对话任务禁用成功，ID: {}", id);
+    }
+
+    /**
+     * 发布任务创建事件
+     */
+    private void publishTaskCreatedEvent(ScheduledChatTaskEntity entity) {
+        if (!StringUtils.hasText(entity.getCronExpression())) {
+            log.warn("定时任务缺少CRON表达式，跳过调度 - taskId: {}", entity.getId());
+            return;
+        }
+
+        try {
+            // 计算首次执行时间
+            Instant firstExecutionTime = calculateFirstExecutionTime(entity);
+
+            ScheduledChatTaskCreatedEvent event = new ScheduledChatTaskCreatedEvent(
+                this,
+                entity.getId(),
+                entity.getUserId(),
+                entity.getWorkspaceId(),
+                entity.getTaskName(),
+                entity.getPrompt(),
+                entity.getTaskType(),
+                firstExecutionTime,
+                entity.getCronExpression()
+            );
+
+            eventPublisher.publishEvent(event);
+            log.info("发布定时聊天任务创建事件 - taskId: {}", entity.getId());
+
+        } catch (Exception e) {
+            log.error("发布定时聊天任务创建事件失败 - taskId: {}, error: {}", entity.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 发布任务更新事件
+     */
+    private void publishTaskUpdatedEvent(ScheduledChatTaskEntity entity) {
+        if (!StringUtils.hasText(entity.getCronExpression())) {
+            log.warn("定时任务缺少CRON表达式，跳过调度 - taskId: {}", entity.getId());
+            return;
+        }
+
+        try {
+            // 计算下次执行时间
+            Instant nextExecutionTime = calculateFirstExecutionTime(entity);
+
+            ScheduledChatTaskUpdatedEvent event = new ScheduledChatTaskUpdatedEvent(
+                this,
+                entity.getId(),
+                entity.getUserId(),
+                entity.getWorkspaceId(),
+                entity.getTaskName(),
+                entity.getPrompt(),
+                entity.getTaskType(),
+                nextExecutionTime,
+                entity.getCronExpression()
+            );
+
+            eventPublisher.publishEvent(event);
+            log.info("发布定时聊天任务更新事件 - taskId: {}", entity.getId());
+
+        } catch (Exception e) {
+            log.error("发布定时聊天任务更新事件失败 - taskId: {}, error: {}", entity.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 发布任务删除事件
+     */
+    private void publishTaskDeletedEvent(Long taskId) {
+        try {
+            ScheduledChatTaskDeletedEvent event = new ScheduledChatTaskDeletedEvent(this, taskId);
+            eventPublisher.publishEvent(event);
+            log.info("发布定时聊天任务删除事件 - taskId: {}", taskId);
+
+        } catch (Exception e) {
+            log.error("发布定时聊天任务删除事件失败 - taskId: {}, error: {}", taskId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 计算首次执行时间
+     * 这里使用简单的逻辑，调度模块会根据CRON表达式精确计算
+     */
+    private Instant calculateFirstExecutionTime(ScheduledChatTaskEntity entity) {
+        // 对于一次性任务，使用下次执行时间
+        if (entity.getTaskType() == 0 && entity.getNextExecutionTime() != null) {
+            return entity.getNextExecutionTime().toInstant();
+        }
+
+        // 对于重复任务或没有指定时间的，默认1分钟后执行（让调度器精确计算）
+        return Instant.now().plusSeconds(60);
     }
 }

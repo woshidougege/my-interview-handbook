@@ -4,11 +4,12 @@ import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import com.noah.superagent.scheduler.job.PaymentStatusSyncJob;
 import com.noah.superagent.scheduler.job.DailyCreditsManagementJob;
-import com.noah.superagent.scheduler.job.ScheduledChatTaskJob;
 import com.noah.superagent.scheduler.job.SubscriptionExpirationJob;
 import com.noah.superagent.scheduler.task.CreditDeductionTask;
 import com.noah.superagent.scheduler.task.CreditExpiryCleanupTask;
 import com.noah.superagent.scheduler.task.PaymentTimeoutCheckTask;
+import com.noah.superagent.scheduler.task.ScheduledChatExecutionTask;
+import com.noah.superagent.scheduler.task.ScheduledChatTaskSchedulingTask;
 import com.noah.superagent.scheduler.task.SubscriptionExpirationTask;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
  * 调度作业配置
  * <p>
  * 将各种作业(Job)注册为Spring Bean，让db-scheduler能够自动发现和管理
- * 
+ * <p>
  * 架构说明：
  * - Job = 作业（业务概念，定义要做什么工作）
  * - Task = 任务（Job的具体执行实例）
@@ -39,11 +40,26 @@ public class SchedulerJobConfig {
     }
     
     /**
-     * 注册定时对话Task
+     * 注册定时聊天执行Task（一次性Task）
+     * 每个定时聊天任务会创建独立的执行实例，精确在指定时间执行
      */
     @Bean
-    public RecurringTask<Void> scheduledChatTask(ScheduledChatTaskJob scheduledChatTaskJob) {
-        return scheduledChatTaskJob.getTask();
+    public OneTimeTask<ScheduledChatExecutionTask.ChatTaskData> scheduledChatExecutionTask(
+            ScheduledChatExecutionTask scheduledChatExecutionTask) {
+        return scheduledChatExecutionTask.getTask();
+    }
+
+    /**
+     * 配置定时聊天任务的循环依赖关系
+     * 解决ScheduledChatExecutionTask和ScheduledChatTaskSchedulingTask之间的循环依赖
+     */
+    @Bean
+    public ScheduledChatTaskSchedulingTask scheduledChatTaskSchedulingTask(
+            ScheduledChatExecutionTask scheduledChatExecutionTask,
+            ScheduledChatTaskSchedulingTask schedulingTask) {
+        // 设置循环依赖
+        scheduledChatExecutionTask.setSchedulingTask(schedulingTask);
+        return schedulingTask;
     }
     
     /**
