@@ -458,6 +458,11 @@ export const chatTaskApi = {
   } = {}): Promise<AxiosResponse<ApiResponse<any>>> => {
     return api.get(API_ENDPOINTS.CHAT_TASK.GET_FAVORITES(workspaceId), { params });
   },
+  
+  // 生成对话标题
+  generateChatTitle: (workspaceId: string, data: ChatTitleGenerateRequest): ApiPromise<ChatTitleGenerateResponse> => {
+    return api.post(API_ENDPOINTS.CHAT_TASK.GENERATE_TITLE(workspaceId), data);
+  },
 };
 
 

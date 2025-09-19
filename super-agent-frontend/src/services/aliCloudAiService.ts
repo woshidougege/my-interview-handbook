@@ -14,7 +14,7 @@ import { AI_CONFIG, validateAiConfig } from '@/config/aiConfig';
  */
 export interface StreamCallbacks {
   onChunk?: (chunk: string) => void;
-  onComplete?: () => void;
+  onComplete?: (finalMessage: string) => void;
   onError?: (error: string) => void;
 }
 
@@ -152,15 +152,18 @@ class AliCloudAiService {
         stream: true,
       });
 
+      let fullMessage = '';
+      
       for await (const chunk of stream) {
         const content = chunk.choices[0]?.delta?.content || '';
         if (content) {
+          fullMessage += content;
           callbacks.onChunk?.(content);
         }
         
         // 检查是否完成
         if (chunk.choices[0]?.finish_reason === 'stop') {
-          callbacks.onComplete?.();
+          callbacks.onComplete?.(fullMessage);
           break;
         }
       }

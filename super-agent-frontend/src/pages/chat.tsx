@@ -13,8 +13,7 @@ import {
   message,
   Modal,
   Tooltip,
-  Empty,
-  Badge
+  Empty
 } from 'antd';
 import { 
   SendOutlined, 
@@ -23,14 +22,12 @@ import {
   StarFilled,
   EditOutlined,
   DeleteOutlined,
-  MessageOutlined,
-  WifiOutlined,
-  DisconnectOutlined
+  MessageOutlined
 } from '@ant-design/icons';
 import AppLayout from '@/components/Layout/AppLayout';
-import { aiApi, chatTaskApi, workspaceApi, userApi } from '@/services/api';
+import { chatTaskApi, workspaceApi, userApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
-import sseService, { ConnectionStatus } from '@/services/sseService';
+import aliCloudAiService from '@/services/aliCloudAiService';
 
 const { Sider, Content } = Layout;
 const { TextArea } = Input;
@@ -48,12 +45,8 @@ const ChatPage: React.FC = () => {
   const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string; description?: string } | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [generatingTitleForSession, setGeneratingTitleForSession] = useState<string | null>(null);
-  
-  // SSE相关状态
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(ConnectionStatus.DISCONNECTED);
-  const [currentStreamMessage, setCurrentStreamMessage] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [userId] = useState(() => `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [currentStreamMessage, setCurrentStreamMessage] = useState<string>('');
   
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -81,96 +74,6 @@ const ChatPage: React.FC = () => {
     }
   }, [currentWorkspace?.id]);
 
-  // SSE连接处理函数
-  const establishSseConnection = async (sessionId: string, workspaceId: string) => {
-    // SSE连接状态回调
-    const handleConnectionStatusChange = (status: ConnectionStatus) => {
-      setConnectionStatus(status);
-      
-      if (status === ConnectionStatus.CONNECTED) {
-        console.log('实时连接已建立');
-      } else if (status === ConnectionStatus.DISCONNECTED) {
-        console.log('实时连接已断开');
-      } else if (status === ConnectionStatus.ERROR) {
-        console.error('实时连接错误');
-      }
-    };
-
-    // SSE消息处理回调
-    const handleSseMessage = (sseMessage: { eventType: string; content: string }) => {
-      console.log('收到SSE消息:', sseMessage);
-      
-      // 根据事件类型处理消息
-      switch (sseMessage.eventType) {
-        case 'connected':
-          console.log('SSE连接已建立:', sseMessage.content);
-          break;
-        case 'ai_thinking':
-          console.log('AI正在思考:', sseMessage.content);
-          break;
-        case 'error':
-          message.error(`AI服务错误: ${sseMessage.content}`);
-          setLoading(false);
-          setIsStreaming(false);
-          setCurrentStreamMessage('');
-          break;
-      }
-    };
-
-    // 流式消息块处理
-    const handleStreamChunk = (chunk: string) => {
-      setIsStreaming(true);
-      setCurrentStreamMessage(prev => prev + chunk);
-    };
-
-    // 流式消息结束处理
-    const handleStreamEnd = () => {
-      setCurrentStreamMessage(prevStreamMessage => {
-        if (prevStreamMessage.trim()) {
-          const aiMessage: ChatMessage = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: prevStreamMessage,
-            timestamp: new Date().toISOString()
-          };
-          setMessages(prev => [...prev, aiMessage]);
-        }
-        return ''; // 清空流式消息
-      });
-      
-      setIsStreaming(false);
-      setLoading(false);
-    };
-
-    // 错误处理
-    const handleError = (error: string) => {
-      console.error('SSE错误:', error);
-      message.error(`连接错误: ${error}`);
-      setLoading(false);
-      setIsStreaming(false);
-    };
-
-    // 建立SSE连接
-    await sseService.connect(
-      userId, 
-      workspaceId, 
-      sessionId,
-      {
-        onConnectionChange: handleConnectionStatusChange,
-        onMessage: handleSseMessage,
-        onStreamChunk: handleStreamChunk,
-        onStreamEnd: handleStreamEnd,
-        onError: handleError
-      }
-    );
-  };
-
-  // 组件卸载时断开SSE连接
-  useEffect(() => {
-    return () => {
-      sseService.disconnect();
-    };
-  }, []);
 
   // 页面加载时尝试获取现有工作空间和会话列表
   useEffect(() => {
@@ -297,7 +200,7 @@ const ChatPage: React.FC = () => {
       setGeneratingTitleForSession(sessionId);
       
       // 生成标题
-      const titleResponse = await aiApi.generateChatTitle(workspaceId, {
+      const titleResponse = await chatTaskApi.generateChatTitle(workspaceId, {
         question: question,
         async: false
       });
@@ -367,28 +270,44 @@ const ChatPage: React.FC = () => {
       const newMessages = [...messages, userMessage];
       setMessages(newMessages);
       
-      // 如果SSE连接未建立，先建立连接
-      if (!sseService.isConnected()) {
-        console.log('建立SSE连接...');
-        await establishSseConnection(session.id, session.workspaceId || currentWorkspace?.id || '');
-        
-        // 等待连接建立
-        let retries = 0;
-        while (!sseService.isConnected() && retries < 10) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          retries++;
+      // 准备聊天历史
+      const chatHistory = newMessages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      }));
+
+      // 直接调用阿里云AI服务
+      await aliCloudAiService.streamChat(
+        chatHistory,
+        {
+          onChunk: (chunk: string) => {
+            setIsStreaming(true);
+            setCurrentStreamMessage(prev => prev + chunk);
+          },
+          onComplete: (finalMessage: string) => {
+            // 创建AI回复消息
+            if (finalMessage.trim()) {
+              const aiMessage: ChatMessage = {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: finalMessage,
+                timestamp: new Date().toISOString()
+              };
+              setMessages(prev => [...prev, aiMessage]);
+            }
+            setCurrentStreamMessage('');
+            setIsStreaming(false);
+            setLoading(false);
+          },
+          onError: (error: string) => {
+            console.error('AI服务错误:', error);
+            message.error(`AI服务错误: ${error}`);
+            setLoading(false);
+            setIsStreaming(false);
+            setCurrentStreamMessage('');
+          }
         }
-        
-        if (!sseService.isConnected()) {
-          message.error('无法建立实时连接，请稍后重试');
-          setLoading(false);
-          setIsStreaming(false);
-          return;
-        }
-      }
-      
-      // 通过SSE服务发送消息到AI服务
-      await sseService.sendMessage(questionText);
+      );
       
     } catch (err) {
       console.error('发送消息失败:', err);
@@ -695,26 +614,6 @@ const ChatPage: React.FC = () => {
                     {currentSession.title}
                   </Title>
                   
-                  {/* 实时连接状态 */}
-                  <Badge 
-                    status={
-                      connectionStatus === ConnectionStatus.CONNECTED ? 'success' :
-                      connectionStatus === ConnectionStatus.CONNECTING ? 'processing' :
-                      connectionStatus === ConnectionStatus.ERROR ? 'error' : 'default'
-                    }
-                    text={
-                      <span style={{ fontSize: '12px', color: '#666' }}>
-                        {connectionStatus === ConnectionStatus.CONNECTED && <WifiOutlined />}
-                        {connectionStatus === ConnectionStatus.DISCONNECTED && <DisconnectOutlined />}
-                        {connectionStatus === ConnectionStatus.ERROR && <DisconnectOutlined />}
-                        {connectionStatus === ConnectionStatus.CONNECTING && <WifiOutlined />}
-                        {' '}
-                        {connectionStatus === ConnectionStatus.CONNECTED ? '已连接' :
-                         connectionStatus === ConnectionStatus.CONNECTING ? '连接中' :
-                         connectionStatus === ConnectionStatus.ERROR ? '连接错误' : '未连接'}
-                      </span>
-                    }
-                  />
                 </div>
 
                 {/* 消息列表 */}
@@ -952,11 +851,7 @@ const ChatPage: React.FC = () => {
                           value={inputValue}
                           onChange={(e) => setInputValue(e.target.value)}
                           onKeyPress={handleKeyPress}
-                          placeholder={
-                            connectionStatus === ConnectionStatus.CONNECTED 
-                              ? "输入您的问题，开始与AI助手对话..." 
-                              : "等待实时连接..."
-                          }
+                          placeholder="输入您的问题，开始与AI助手对话..."
                           autoSize={{ minRows: 3, maxRows: 8 }}
                           style={{ 
                             border: 'none',
