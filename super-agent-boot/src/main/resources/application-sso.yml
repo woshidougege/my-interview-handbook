@@ -42,7 +42,8 @@ sa-token:
       "/sso/doLoginByTicket",
       # 静态资源
       "/chat.html",
-      "/static/**"
+      "/static/**",
+      "/api/v1/resource-usage/report"
     ]
     isHttp: true
   # Token超时配置（控制您系统中satoken的有效期）
