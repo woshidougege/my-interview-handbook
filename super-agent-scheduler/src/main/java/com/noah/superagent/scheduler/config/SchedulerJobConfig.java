@@ -9,7 +9,6 @@ import com.noah.superagent.scheduler.task.CreditDeductionTask;
 import com.noah.superagent.scheduler.task.CreditExpiryCleanupTask;
 import com.noah.superagent.scheduler.task.PaymentTimeoutCheckTask;
 import com.noah.superagent.scheduler.task.ScheduledChatExecutionTask;
-import com.noah.superagent.scheduler.task.ScheduledChatTaskSchedulingTask;
 import com.noah.superagent.scheduler.task.SubscriptionExpirationTask;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,23 +42,10 @@ public class SchedulerJobConfig {
      * 注册定时聊天执行Task（一次性Task）
      * 每个定时聊天任务会创建独立的执行实例，精确在指定时间执行
      */
-    @Bean
-    public OneTimeTask<ScheduledChatExecutionTask.ChatTaskData> scheduledChatExecutionTask(
-            ScheduledChatExecutionTask scheduledChatExecutionTask) {
-        return scheduledChatExecutionTask.getTask();
-    }
-
-    /**
-     * 配置定时聊天任务的循环依赖关系
-     * 解决ScheduledChatExecutionTask和ScheduledChatTaskSchedulingTask之间的循环依赖
-     */
-    @Bean
-    public ScheduledChatTaskSchedulingTask scheduledChatTaskSchedulingTask(
-            ScheduledChatExecutionTask scheduledChatExecutionTask,
-            ScheduledChatTaskSchedulingTask schedulingTask) {
-        // 设置循环依赖
-        scheduledChatExecutionTask.setSchedulingTask(schedulingTask);
-        return schedulingTask;
+    @Bean("chatExecutionOneTimeTask")
+    public OneTimeTask<ScheduledChatExecutionTask.ChatTaskData> chatExecutionOneTimeTask(
+            ScheduledChatExecutionTask executionTask) {
+        return executionTask.getTask();
     }
     
     /**

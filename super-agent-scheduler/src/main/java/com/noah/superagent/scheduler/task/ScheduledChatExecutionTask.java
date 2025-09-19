@@ -15,8 +15,8 @@ import com.noah.superagent.dao.mapper.ScheduledChatTaskMapper;
 import com.noah.superagent.service.AiService;
 import lombok.Data;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -44,14 +44,7 @@ public class ScheduledChatExecutionTask {
     private final ScheduledChatTaskExecutionLogMapper executionLogMapper;
     private final ChatTaskMapper chatTaskMapper;
     private final AiService aiService;
-
-    /**
-     * -- SETTER --
-     *  设置调度任务（解决循环依赖）
-     */
-    // 循环依赖解决：延迟注入调度器
-    @Setter
-    private ScheduledChatTaskSchedulingTask schedulingTask;
+    private final ScheduledChatTaskSchedulingTask schedulingTask;
 
     @Getter
     private final OneTimeTask<ChatTaskData> task;
@@ -59,11 +52,13 @@ public class ScheduledChatExecutionTask {
     public ScheduledChatExecutionTask(ScheduledChatTaskMapper scheduledChatTaskMapper,
                                     ScheduledChatTaskExecutionLogMapper executionLogMapper,
                                     ChatTaskMapper chatTaskMapper,
-                                    AiService aiService) {
+                                    AiService aiService,
+                                    @Lazy ScheduledChatTaskSchedulingTask schedulingTask) {
         this.scheduledChatTaskMapper = scheduledChatTaskMapper;
         this.executionLogMapper = executionLogMapper;
         this.chatTaskMapper = chatTaskMapper;
         this.aiService = aiService;
+        this.schedulingTask = schedulingTask;
 
         // 创建一次性任务，用于执行定时聊天
         this.task = Tasks.oneTime(TASK_NAME, ChatTaskData.class)
@@ -223,11 +218,10 @@ public class ScheduledChatExecutionTask {
         scheduledChatTaskMapper.update(scheduledTask);
 
         // 安排重复任务的下次执行
-        if (schedulingTask != null && data.getCronExpression() != null) {
+        if (StringUtils.hasText(data.getCronExpression())) {
             schedulingTask.scheduleNextExecution(scheduledTask.getId(), data.getCronExpression());
         } else {
-            log.warn("【定时聊天】无法安排重复任务下次执行 - taskId: {}, schedulingTask: {}, cronExpression: {}", 
-                    scheduledTask.getId(), schedulingTask != null, data.getCronExpression());
+            log.warn("【定时聊天】无法安排重复任务下次执行，缺少CRON表达式 - taskId: {}", scheduledTask.getId());
         }
     }
 
