@@ -14,6 +14,12 @@ interface RefundModalProps {
   onSuccess: () => void;
 }
 
+interface TestRefundModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
 const RefundModal: React.FC<RefundModalProps> = ({ visible, order, onClose, onSuccess }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -109,6 +115,110 @@ const RefundModal: React.FC<RefundModalProps> = ({ visible, order, onClose, onSu
   );
 };
 
+const TestRefundModal: React.FC<TestRefundModalProps> = ({ visible, onClose, onSuccess }) => {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+
+  const handleTestRefund = async (values: { orderNo: string; refundAmount: number; refundReason: string }) => {
+    setLoading(true);
+    try {
+      await paymentApi.applyRefund({
+        orderNo: values.orderNo,
+        refundAmount: values.refundAmount,
+        refundReason: `[测试退款] ${values.refundReason}`,
+      });
+      
+      message.success('测试退款申请提交成功！');
+      form.resetFields();
+      onClose();
+      onSuccess();
+    } catch (error: any) {
+      message.error(error.message || '测试退款申请失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="测试退款功能"
+      visible={visible}
+      onCancel={onClose}
+      footer={null}
+      width={500}
+    >
+      <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded">
+        <p className="text-orange-800 text-sm">
+          <strong>注意：</strong>此功能仅用于测试异常状态订单的退款，不受订单状态限制。
+          请确保输入的订单号是有效的。
+        </p>
+      </div>
+      
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleTestRefund}
+        initialValues={{
+          refundAmount: 0.01,
+          refundReason: '测试退款',
+        }}
+      >
+        <Form.Item
+          label="订单号"
+          name="orderNo"
+          rules={[
+            { required: true, message: '请输入订单号' },
+            { min: 10, message: '订单号长度不能少于10位' },
+          ]}
+        >
+          <Input
+            placeholder="请输入要退款的订单号"
+            maxLength={50}
+          />
+        </Form.Item>
+        
+        <Form.Item
+          label="退款金额"
+          name="refundAmount"
+          rules={[
+            { required: true, message: '请输入退款金额' },
+            { type: 'number', min: 0.01, message: '退款金额必须大于0.01' },
+          ]}
+        >
+          <Input
+            type="number"
+            step="0.01"
+            prefix="¥"
+            placeholder="请输入退款金额"
+          />
+        </Form.Item>
+        
+        <Form.Item
+          label="退款原因"
+          name="refundReason"
+          rules={[{ required: true, message: '请输入退款原因' }]}
+        >
+          <Input.TextArea
+            rows={3}
+            placeholder="请详细说明退款原因"
+            maxLength={200}
+            showCount
+          />
+        </Form.Item>
+        
+        <Form.Item className="mb-0 text-right">
+          <Space>
+            <Button onClick={onClose}>取消</Button>
+            <Button type="primary" htmlType="submit" loading={loading} danger>
+              提交测试退款
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+};
+
 const getStatusColor = (status: PaymentStatusType): string => {
   switch (status) {
     case 'waiting':
@@ -164,6 +274,7 @@ const Orders: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sseListeners, setSseListeners] = useState<Map<string, PaymentSSEListener>>(new Map());
+  const [testRefundModalVisible, setTestRefundModalVisible] = useState(false);
 
   // 获取当前用户信息
   const fetchCurrentUser = useCallback(async () => {
@@ -394,6 +505,30 @@ const Orders: React.FC = () => {
   return (
     <Layout>
       <div className="p-6">
+        {/* 测试退款功能区域 */}
+        <Card title="测试退款功能" className="shadow-sm mb-6">
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
+            <p className="text-yellow-800 text-sm mb-2">
+              <strong>功能说明：</strong>此功能用于测试异常状态订单的退款，不受订单状态限制。
+            </p>
+            <p className="text-yellow-700 text-xs">
+              适用于支付状态异常、无法通过正常流程退款的订单。
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-gray-600">
+              输入订单号进行强制退款测试：
+            </div>
+            <Button 
+              type="primary" 
+              onClick={() => setTestRefundModalVisible(true)}
+              className="bg-orange-500 hover:bg-orange-600 border-orange-500"
+            >
+              开始测试退款
+            </Button>
+          </div>
+        </Card>
+
         <Card title="我的订单" className="shadow-sm">
           <div className="mb-4 flex justify-between items-center">
             <div className="text-gray-600">
@@ -427,6 +562,15 @@ const Orders: React.FC = () => {
             setSelectedOrder(null);
           }}
           onSuccess={handleRefundSuccess}
+        />
+
+        <TestRefundModal
+          visible={testRefundModalVisible}
+          onClose={() => setTestRefundModalVisible(false)}
+          onSuccess={() => {
+            fetchOrders(); // 刷新订单列表
+            message.success('测试退款完成，订单列表已刷新');
+          }}
         />
       </div>
     </Layout>
