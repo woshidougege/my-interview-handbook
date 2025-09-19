@@ -94,14 +94,6 @@ public class AsyncConfig {
         return createExecutor(asyncProperties.getScheduler(), "任务调度异步线程池");
     }
 
-    /**
-     * AI服务专用线程池
-     * 用于处理AI相关的异步任务，如标题生成、对话等
-     */
-    @Bean("ai-service-executor")
-    public Executor aiServiceExecutor() {
-        return createExecutor(asyncProperties.getAiService(), "AI服务线程池");
-    }
 
     /**
      * 资源上报异步线程池
