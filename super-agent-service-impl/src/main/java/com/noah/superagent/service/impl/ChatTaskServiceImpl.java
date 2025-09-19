@@ -1,7 +1,6 @@
 package com.noah.superagent.service.impl;
 
 import com.mybatisflex.core.paginate.Page;
-import com.noah.superagent.common.enums.DeletedEnum;
 import com.noah.superagent.common.enums.FavoriteEnum;
 import com.noah.superagent.convert.ChatTaskPersistenceConvert;
 import com.noah.superagent.dao.entity.ChatTaskEntity;
@@ -16,12 +15,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import com.noah.superagent.common.exception.BusinessException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 对话任务服务实现
@@ -54,9 +53,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         
         // 保存对话任务
         int result = chatTaskMapper.insertSelective(chatTaskEntity);
-        if (result <= 0) {
-            throw new RuntimeException("对话任务创建失败");
-        }
+        BusinessException.throwIf(result <= 0, "对话任务创建失败");
         
         log.info("对话任务创建成功，ID: {}, ContextId: {}", chatTaskEntity.getId(), chatTaskEntity.getContextId());
         // Entity -> DTO
@@ -68,9 +65,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         log.info("查询对话任务信息，ID: {}", id);
         
         ChatTaskEntity chatTaskEntity = chatTaskMapper.selectOneById(id);
-        if (chatTaskEntity == null) {
-            throw new RuntimeException("对话任务不存在: " + id);
-        }
+        BusinessException.throwIf(chatTaskEntity == null, "对话任务不存在: " + id);
         
         // Entity -> DTO
         return chatTaskPersistenceConvert.fromEntity(chatTaskEntity);
@@ -104,17 +99,13 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         
         // 查询对话任务是否存在
         ChatTaskEntity existingTask = chatTaskMapper.selectOneById(chatTaskDO.getId());
-        if (existingTask == null) {
-            throw new RuntimeException("对话任务不存在: " + chatTaskDO.getId());
-        }
+        BusinessException.throwIf(existingTask == null, "对话任务不存在: " + chatTaskDO.getId());
         
         // DTO -> Entity
         ChatTaskEntity updateTask = chatTaskPersistenceConvert.toEntity(chatTaskDO);
         // 执行更新（忽略空值字段）
         int result = chatTaskMapper.update(updateTask);
-        if (result <= 0) {
-            throw new RuntimeException("对话任务更新失败");
-        }
+        BusinessException.throwIf(result <= 0, "对话任务更新失败");
         
         // 查询更新后的数据
         ChatTaskEntity updatedTask = chatTaskMapper.selectOneById(chatTaskDO.getId());
@@ -132,9 +123,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
             throw new RuntimeException("对话任务不存在: " + id);
         }
         
-        // 逻辑删除
-        existingTask.setDeleted(DeletedEnum.DELETED);
-        int result = chatTaskMapper.update(existingTask);
+        int result = chatTaskMapper.deleteById(id);
         if (result <= 0) {
             throw new RuntimeException("对话任务删除失败");
         }

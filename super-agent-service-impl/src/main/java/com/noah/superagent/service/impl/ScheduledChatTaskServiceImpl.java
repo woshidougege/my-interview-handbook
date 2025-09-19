@@ -8,7 +8,6 @@ import com.noah.superagent.convert.ScheduledChatTaskPersistenceConvert;
 import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
 import com.noah.superagent.dao.mapper.ScheduledChatTaskMapper;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.enums.DeletedEnum;
 import com.noah.superagent.model.ScheduledChatTaskDTO;
 import com.noah.superagent.service.ScheduledChatTaskService;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +43,6 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
         log.info("开始创建定时对话任务，任务名称: {}", taskDTO.getTaskName());
 
         ScheduledChatTaskEntity entity = convert.toEntity(taskDTO);
-        entity.setDeleted(DeletedEnum.NOT_DELETED);
 
         // 保存定时对话任务
         int result = scheduledChatTaskMapper.insertSelective(entity);
@@ -120,9 +118,7 @@ public class ScheduledChatTaskServiceImpl implements ScheduledChatTaskService {
             throw new RuntimeException("定时对话任务不存在: " + id);
         }
 
-        // 逻辑删除
-        entity.setDeleted(DeletedEnum.DELETED);
-        int result = scheduledChatTaskMapper.update(entity);
+        int result = scheduledChatTaskMapper.deleteById(id);
         if (result <= 0) {
             throw new RuntimeException("定时对话任务删除失败");
         }

@@ -5,7 +5,6 @@ import com.github.kagkarlsson.scheduler.task.TaskInstance;
 import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
 import com.noah.superagent.common.enums.ChatTaskStatusEnum;
-import com.noah.superagent.common.enums.DeletedEnum;
 import com.noah.superagent.dao.entity.ChatTaskEntity;
 import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
 import com.noah.superagent.dao.entity.ScheduledChatTaskExecutionLogEntity;
@@ -147,7 +146,6 @@ public class ScheduledChatExecutionTask {
         chatTask.setTitle(data.getTaskName());
         chatTask.setContent("");
         chatTask.setStatus(ChatTaskStatusEnum.IN_PROGRESS);
-        chatTask.setDeleted(DeletedEnum.NOT_DELETED);
         chatTask.setCreateBy(data.getUserId());
         chatTask.setUpdateBy(data.getUserId());
         chatTaskMapper.insert(chatTask);
