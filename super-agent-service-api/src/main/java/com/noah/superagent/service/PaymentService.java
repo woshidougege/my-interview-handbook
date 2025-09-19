@@ -74,6 +74,16 @@ public interface PaymentService {
     RefundResponse queryRefundStatus(String orderNo);
     
     /**
+     * 测试退款（跳过状态检查）
+     * 
+     * 仅用于测试目的，跳过订单状态检查，可对任意状态的订单进行退款
+     *
+     * @param request 退款请求
+     * @return 退款响应
+     */
+    RefundResponse testRefund(RefundRequest request);
+    
+    /**
      * 处理微信退款回调
      *
      * @param callbackData 回调数据

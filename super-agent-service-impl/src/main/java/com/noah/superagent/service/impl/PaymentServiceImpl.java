@@ -789,6 +789,89 @@ public class PaymentServiceImpl implements PaymentService {
     
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public RefundResponse testRefund(RefundRequest request) {
+        try {
+            log.warn("测试退款接口被调用: orderNo={}, refundAmount={}, refundReason={}", 
+                    request.getOrderNo(), request.getRefundAmount(), request.getRefundReason());
+                    
+            // 1. 查询订单
+            SubscriptionOrderEntity order = findOrderByOrderNo(request.getOrderNo());
+            if (order == null) {
+                throw new RuntimeException("订单不存在: " + request.getOrderNo());
+            }
+            
+            // 2. 同步微信支付状态（但不检查状态）
+            order = syncOrderStatusFromWechat(order);
+            
+            log.warn("测试退款: 跳过状态检查，当前订单状态: {}", order.getStatus());
+            
+            // 3. 检查退款金额
+            if (request.getRefundAmount().compareTo(order.getAmount()) > 0) {
+                throw new RuntimeException("退款金额不能超过订单金额");
+            }
+            
+            // 4. 生成退款单号
+            String refundNo = "TEST_REFUND_" + System.currentTimeMillis() + "_" + 
+                             Integer.toHexString((int)(Math.random() * 0x1000000)).toUpperCase();
+            
+            // 5. 调用微信退款API（即使订单状态异常也尝试退款）
+            WxPayRefundV3Request wxRefundRequest = buildWxRefundRequest(order, request, refundNo);
+            WxPayRefundV3Result wxRefundResult = wxPayService.refundV3(wxRefundRequest);
+            
+            // 6. 更新订单状态
+            order.setStatus(PaymentStatus.REFUND_PROCESSING.getValue());
+            subscriptionOrderMapper.update(order);
+            
+            log.warn("测试退款成功: orderNo={}, refundNo={}, wxRefundId={}", 
+                    order.getOrderNo(), refundNo, wxRefundResult.getRefundId());
+            
+            // 7. 发布退款状态事件
+            sendPaymentStatusEvent(order.getOrderNo(), PaymentStatus.REFUND_PROCESSING.getValue(), 
+                                 request.getRefundAmount(), "wechat", "测试退款处理中");
+            
+            // 8. 构建响应
+            RefundResponse response = new RefundResponse();
+            response.setOrderNo(order.getOrderNo());
+            response.setRefundNo(refundNo);
+            response.setRefundId(wxRefundResult.getRefundId());
+            response.setRefundStatus(PaymentStatus.REFUND_PROCESSING.getValue());
+            response.setRefundAmount(request.getRefundAmount());
+            response.setTotalAmount(order.getAmount());
+            response.setRefundReason(request.getRefundReason());
+            response.setRefundTime(LocalDateTime.now());
+            response.setMessage("测试退款申请提交成功");
+            return response;
+                    
+        } catch (WxPayException e) {
+            log.error("测试退款-微信退款API调用失败: orderNo={}, error={}", request.getOrderNo(), e.getMessage(), e);
+            
+            // 根据错误信息提供友好的提示
+            String errorMessage = e.getMessage();
+            String friendlyMessage;
+            
+            if (errorMessage.contains("基本账户余额不足")) {
+                friendlyMessage = "商户账户余额不足，请联系客服充值后重试";
+            } else if (errorMessage.contains("订单不存在")) {
+                friendlyMessage = "订单信息异常，请稍后重试";
+            } else if (errorMessage.contains("订单状态不正确")) {
+                friendlyMessage = "订单状态异常，但这是测试退款，可能正常";
+            } else if (errorMessage.contains("退款金额超限")) {
+                friendlyMessage = "退款金额超过限制，请检查退款金额";
+            } else if (errorMessage.contains("重复退款")) {
+                friendlyMessage = "该订单已申请退款，请勿重复操作";
+            } else {
+                friendlyMessage = "测试退款失败，请稍后重试或联系客服";
+            }
+            
+            throw new RuntimeException(friendlyMessage + "（错误代码：" + errorMessage + "）");
+        } catch (Exception e) {
+            log.error("测试退款异常: orderNo={}", request.getOrderNo(), e);
+            throw new RuntimeException("测试退款系统异常，请稍后重试或联系客服");
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean handleWechatRefundCallback(String callbackData, SignatureHeader header) {
         try {
             if (callbackData == null || callbackData.trim().isEmpty()) {

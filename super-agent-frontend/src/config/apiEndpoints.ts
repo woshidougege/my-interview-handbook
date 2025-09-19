@@ -146,6 +146,7 @@ export const API_ENDPOINTS = {
     PAYMENT_CANCEL: (orderNo: string) => `payment/cancel/${orderNo}`,
     PAYMENT_ORDERS: (userId: number) => `payment/orders/${userId}`,
     PAYMENT_REFUND: 'payment/refund',
+    PAYMENT_TEST_REFUND: 'payment/test-refund',
     PAYMENT_REFUND_STATUS: (orderNo: string) => `payment/refund/status/${orderNo}`,
     CREDIT_RECHARGE: 'credit/recharge',
   },

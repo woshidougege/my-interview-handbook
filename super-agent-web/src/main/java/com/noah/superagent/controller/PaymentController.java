@@ -238,6 +238,24 @@ public class PaymentController {
         }
     }
     
+    @Operation(summary = "测试退款（跳过状态检查）", 
+               description = "仅用于测试的退款接口，跳过订单状态检查，可对任意状态的订单进行退款")
+    @PostMapping("/test-refund")
+    public ApiResponse<RefundResponse> testRefund(@RequestBody @Valid RefundRequest request) {
+        try {
+            // 在退款原因前添加测试标识
+            if (request.getRefundReason() == null || !request.getRefundReason().startsWith("[测试退款]")) {
+                request.setRefundReason("[测试退款] " + (request.getRefundReason() != null ? request.getRefundReason() : "测试退款"));
+            }
+            
+            RefundResponse response = paymentService.testRefund(request);
+            return ApiResponse.success("测试退款申请提交成功", response);
+        } catch (Exception e) {
+            log.error("测试退款失败: orderNo={}, error={}", request.getOrderNo(), e.getMessage(), e);
+            return ApiResponse.error("测试退款失败: " + e.getMessage());
+        }
+    }
+    
     @Operation(summary = "微信退款回调", description = "微信支付V3退款异步通知回调")
     @PostMapping("/wechat/refund/notify")
     public String wechatRefundNotify(@RequestBody String notifyData, HttpServletRequest request) {

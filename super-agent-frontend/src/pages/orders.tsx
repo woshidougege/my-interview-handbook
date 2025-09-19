@@ -122,10 +122,10 @@ const TestRefundModal: React.FC<TestRefundModalProps> = ({ visible, onClose, onS
   const handleTestRefund = async (values: { orderNo: string; refundAmount: number; refundReason: string }) => {
     setLoading(true);
     try {
-      await paymentApi.applyRefund({
+      await paymentApi.testRefund({
         orderNo: values.orderNo,
         refundAmount: values.refundAmount,
-        refundReason: `[测试退款] ${values.refundReason}`,
+        refundReason: values.refundReason, // 后端会自动添加[测试退款]前缀
       });
       
       message.success('测试退款申请提交成功！');

@@ -312,6 +312,14 @@ export const paymentApi = {
     return api.post(API_ENDPOINTS.LEGACY.PAYMENT_REFUND, refundData);
   },
   
+  testRefund: (refundData: {
+    orderNo: string;
+    refundAmount: number;
+    refundReason?: string;
+  }): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post(API_ENDPOINTS.LEGACY.PAYMENT_TEST_REFUND, refundData);
+  },
+  
   queryRefundStatus: (orderNo: string): Promise<AxiosResponse<ApiResponse<any>>> => {
     return api.get(API_ENDPOINTS.LEGACY.PAYMENT_REFUND_STATUS(orderNo));
   },
