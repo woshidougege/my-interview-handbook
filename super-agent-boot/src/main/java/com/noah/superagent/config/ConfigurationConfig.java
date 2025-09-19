@@ -2,7 +2,6 @@ package com.noah.superagent.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-import com.noah.superagent.common.config.AiProperties;
 import com.noah.superagent.common.config.BillingProperties;
 import com.noah.superagent.common.config.AsyncProperties;
 import com.noah.superagent.common.config.PlansConfig;
@@ -18,7 +17,6 @@ import com.noah.superagent.common.config.PlansConfig;
 @EnableConfigurationProperties({
     OpenApiDocProperties.class,
     WxPayProperties.class,
-    AiProperties.class,
     BillingProperties.class,
     AsyncProperties.class,
     PlansConfig.class
