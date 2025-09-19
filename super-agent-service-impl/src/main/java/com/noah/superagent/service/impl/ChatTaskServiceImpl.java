@@ -219,4 +219,24 @@ public class ChatTaskServiceImpl implements ChatTaskService {
         
         return chatTaskToScheduledTaskMap;
     }
+    
+    @Override
+    public String generateChatTitle(String question) {
+        // TODO: 实现基于算法的标题生成功能
+        // 可以基于关键词提取、文本摘要等算法来生成标题
+        // 暂时返回简单的默认标题
+        log.info("接收标题生成请求，问题长度: {}", question != null ? question.length() : 0);
+        
+        if (!StringUtils.hasText(question)) {
+            return "新对话";
+        }
+        
+        // TODO: 后续可以实现更智能的标题生成算法，如：
+        // 1. 关键词提取算法
+        // 2. 基于规则的文本摘要
+        // 3. TF-IDF算法提取关键特征
+        // 4. 问句类型识别（如何、什么、为什么等）
+        
+        return "关于 " + (question.length() > 10 ? question.substring(0, 10) + "..." : question);
+    }
 }

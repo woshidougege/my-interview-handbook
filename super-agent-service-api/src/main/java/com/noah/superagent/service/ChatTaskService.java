@@ -99,4 +99,12 @@ public interface ChatTaskService {
      * @return 对话任务ID到定时任务ID的映射
      */
     Map<Long, Long> getChatTaskScheduledStatus(List<Long> chatTaskIds);
+    
+    /**
+     * 基于算法生成对话标题
+     * 
+     * @param question 用户问题
+     * @return 生成的标题
+     */
+    String generateChatTitle(String question);
 }

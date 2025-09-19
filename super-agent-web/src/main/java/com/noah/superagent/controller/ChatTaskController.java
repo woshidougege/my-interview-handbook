@@ -10,7 +10,6 @@ import com.noah.superagent.common.dto.response.ChatTitleGenerateResponse;
 import com.noah.superagent.convert.ChatTaskWebConvert;
 import com.noah.superagent.model.ChatTaskDTO;
 import com.noah.superagent.service.ChatTaskService;
-import com.noah.superagent.service.AiService;
 import com.noah.superagent.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,8 +39,6 @@ import java.util.stream.Collectors;
 public class ChatTaskController {
 
     private final ChatTaskService chatTaskService;
-    
-    private final AiService aiService;
     
     private final ChatTaskWebConvert chatTaskWebConvert;
 
@@ -201,8 +198,8 @@ public class ChatTaskController {
             @Valid @RequestBody ChatTitleGenerateRequest request) {
         log.info("接收生成对话标题请求: {}", request.getQuestion());
         
-        // 调用AI服务生成标题
-        String generatedTitle = aiService.getAiResponse(request.getQuestion(), null, null);
+        // TODO: 调用ChatTaskService生成标题
+        String generatedTitle = chatTaskService.generateChatTitle(request.getQuestion());
         
         ChatTitleGenerateResponse response = new ChatTitleGenerateResponse();
         response.setTitle(generatedTitle);

@@ -50,7 +50,6 @@ spring:
       - classpath:application-plans.yml       # 套餐配置
       - classpath:application-scheduler.yml   # 任务调度配置
       - classpath:application-sso.yml         # 单点登录配置
-      - classpath:application-ai.yml          # AI服务配置
 
 # 应用信息配置
 info:

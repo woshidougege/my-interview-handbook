@@ -14,7 +14,6 @@ import com.noah.superagent.dao.entity.ScheduledChatTaskExecutionLogEntity;
 import com.noah.superagent.dao.mapper.ChatTaskMapper;
 import com.noah.superagent.dao.mapper.ScheduledChatTaskExecutionLogMapper;
 import com.noah.superagent.dao.mapper.ScheduledChatTaskMapper;
-import com.noah.superagent.service.AiService;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +43,6 @@ public class ScheduledChatExecutionTask {
     private final ScheduledChatTaskMapper scheduledChatTaskMapper;
     private final ScheduledChatTaskExecutionLogMapper executionLogMapper;
     private final ChatTaskMapper chatTaskMapper;
-    private final AiService aiService;
     private final ScheduledChatTaskSchedulingTask schedulingTask;
 
     @Getter
@@ -53,12 +51,10 @@ public class ScheduledChatExecutionTask {
     public ScheduledChatExecutionTask(ScheduledChatTaskMapper scheduledChatTaskMapper,
                                     ScheduledChatTaskExecutionLogMapper executionLogMapper,
                                     ChatTaskMapper chatTaskMapper,
-                                    AiService aiService,
                                     @Lazy ScheduledChatTaskSchedulingTask schedulingTask) {
         this.scheduledChatTaskMapper = scheduledChatTaskMapper;
         this.executionLogMapper = executionLogMapper;
         this.chatTaskMapper = chatTaskMapper;
-        this.aiService = aiService;
         this.schedulingTask = schedulingTask;
 
         // 创建一次性任务，用于执行定时聊天
@@ -92,8 +88,8 @@ public class ScheduledChatExecutionTask {
             ChatTaskEntity chatTask = findOrCreateChatTask(scheduledTask, data);
             executionLog.setChatTaskId(chatTask.getId());
 
-            // 执行AI对话
-            String response = executeAiConversation(scheduledTask);
+            // 执行定时任务
+            String response = executeScheduledTask(scheduledTask);
 
             // 更新对话任务
             updateChatTaskWithResponse(chatTask, response);
@@ -161,18 +157,23 @@ public class ScheduledChatExecutionTask {
     }
 
     /**
-     * 执行AI对话
+     * 执行定时任务（不再调用AI，仅记录任务执行）
      */
-    private String executeAiConversation(ScheduledChatTaskEntity scheduledTask) {
+    private String executeScheduledTask(ScheduledChatTaskEntity scheduledTask) {
         try {
-            return aiService.getAiResponse(
+            // 记录任务执行信息
+            String executionMessage = String.format("定时任务已执行 - 任务ID: %d, 提示词: %s, 执行时间: %s", 
+                    scheduledTask.getId(), 
                     scheduledTask.getPrompt(),
-                    String.valueOf(scheduledTask.getWorkspaceId()),
-                    String.valueOf(scheduledTask.getId())
-            );
+                    java.time.LocalDateTime.now().toString());
+            
+            log.info("【定时聊天】任务执行完成 - taskId: {}, prompt: {}", 
+                    scheduledTask.getId(), scheduledTask.getPrompt());
+            
+            return executionMessage;
         } catch (Exception e) {
-            log.error("【定时聊天】AI对话执行失败 - taskId: {}", scheduledTask.getId(), e);
-            throw new RuntimeException("AI对话执行失败: " + e.getMessage(), e);
+            log.error("【定时聊天】任务执行失败 - taskId: {}", scheduledTask.getId(), e);
+            throw new RuntimeException("定时任务执行失败: " + e.getMessage(), e);
         }
     }
 
