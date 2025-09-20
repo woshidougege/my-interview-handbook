@@ -14,8 +14,16 @@ export const API_CONFIG = {
   // API版本
   VERSION: 'v1',
   
-  // 请求超时时间
-  TIMEOUT: 10000,
+  // 请求超时时间（增加到5分钟以适应流式响应）
+  TIMEOUT: 300000,
+  
+  // A2A平台配置
+  A2A_PLATFORM: {
+    // 默认能力中心编码
+    DEFAULT_ABILITY_CODE: '18961714392032',
+    // 默认实体编码
+    DEFAULT_ENTITY_CODE: 'ENTITY_test_pp_dispatch',
+  },
   
   // 默认请求头
   DEFAULT_HEADERS: {
@@ -48,6 +56,10 @@ export const API_ENDPOINTS = {
     CURRENT: 'auth/user/current',
     // 获取加密公钥
     GET_PUBLIC_KEY: 'auth/public-key',
+    // 获取当前用户积分信息
+    CREDIT_INFO: 'credit/details',
+    // 获取积分交易记录
+    CREDIT_TRANSACTIONS: 'credit/transactions',
   },
 
   // ========== 工作空间相关 ==========
@@ -114,7 +126,6 @@ export const API_ENDPOINTS = {
     DETAILS: 'credit/details',
     TRANSACTIONS: 'credit/transactions',
   },
-
 
 
   // ========== 资源使用相关 ==========

@@ -345,7 +345,7 @@ public class AuthController extends SsoClientController {
     private UserCreditService userCreditService;
 
     /**
-     * 用户注册接口
+     * 用户注册接口z
      */
     @PostMapping("/register")
     @Operation(

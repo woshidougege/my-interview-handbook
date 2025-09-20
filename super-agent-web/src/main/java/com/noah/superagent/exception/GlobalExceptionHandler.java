@@ -10,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
@@ -24,6 +25,16 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * 处理异步请求超时异常
+     */
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    @ResponseStatus(HttpStatus.REQUEST_TIMEOUT)
+    public void handleAsyncRequestTimeoutException(AsyncRequestTimeoutException e) {
+        log.warn("异步请求超时: {}", e.getMessage());
+        // 对于流式响应，不需要返回特定的响应体
+    }
 
     /**
      * 处理业务异常
@@ -81,7 +92,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理运行时异常（排除业务异常）
+     * 处理运行时异常（排除业务异常和超时异常）
      */
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -89,6 +100,12 @@ public class GlobalExceptionHandler {
         // 业务异常已在上面处理，这里排除
         if (e instanceof BusinessException) {
             return handleBusinessException((BusinessException) e);
+        }
+        
+        // 异步请求超时异常也排除
+        if (e instanceof AsyncRequestTimeoutException) {
+            handleAsyncRequestTimeoutException((AsyncRequestTimeoutException) e);
+            return null;
         }
         
         log.error("运行时异常: {}", e.getMessage(), e);
