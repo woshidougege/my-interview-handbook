@@ -83,7 +83,7 @@ class SseService {
   private getBaseUrl(): string {
     if (process.env.NODE_ENV === 'development') {
       // 开发环境：使用环境变量（已包含完整的context-path）
-      return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081/super-agent';
+      return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent';
     }
     // 生产环境：使用当前域名和context-path
     const protocol = window.location.protocol;

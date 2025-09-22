@@ -119,16 +119,10 @@ NEXT_PUBLIC_DASHSCOPE_API_KEY=your_dashscope_api_key_here
 NEXT_PUBLIC_DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
 # ========== 后端服务配置 ==========
-# 后端服务地址
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8081
-
-# API基础URL
+# API基础URL（包含完整的后端地址和context-path）
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8081/super-agent
 
 # ========== 应用配置 ==========
-# 是否启用模拟数据
-NEXT_PUBLIC_USE_MOCK_DATA=false
-
 # 应用信息
 NEXT_PUBLIC_APP_TITLE=Super Agent
 NEXT_PUBLIC_APP_VERSION=1.0.0

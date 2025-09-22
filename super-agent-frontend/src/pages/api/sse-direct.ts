@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.write('data: {"message": "SSE连接建立成功", "orderNo": "' + orderNo + '", "time": "' + new Date().toISOString() + '"}\n\n');
 
   try {
-    const backendUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081'}/super-agent/api/v1/payment/status/listen/${orderNo}`;
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent'}/api/v1/payment/status/listen/${orderNo}`;
 
     const http = await import('http');
     const url = await import('url');

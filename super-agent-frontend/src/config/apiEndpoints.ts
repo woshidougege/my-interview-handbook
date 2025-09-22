@@ -162,9 +162,9 @@ export const API_ENDPOINTS = {
   // ========== SSO单点登录相关 ==========
   // 这些接口由SSO SDK直接提供，需要包含完整的后端地址
   SSO: {
-    DO_LOGIN_BY_TICKET: (ticket: string) => `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081'}/super-agent/sso/doLoginByTicket?ticket=${ticket}`,
-    GET_USER: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081'}/super-agent/sso/getuser`,
-    GET_MENU: `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081'}/super-agent/sso/getmenu`,
+    DO_LOGIN_BY_TICKET: (ticket: string) => `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent'}/sso/doLoginByTicket?ticket=${ticket}`,
+    GET_USER: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent'}/sso/getuser`,
+    GET_MENU: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent'}/sso/getmenu`,
   },
 } as const;
 
