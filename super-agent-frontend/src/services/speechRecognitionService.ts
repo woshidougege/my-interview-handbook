@@ -121,6 +121,17 @@ export class SpeechRecognitionService {
           this.ws = null;
           this.emit('connectionClose', event.reason);
 
+          // 检查关闭原因，如果是服务初始化失败，不要重连
+          const reason = event.reason || '';
+          if (reason.includes('启动识别服务失败') || 
+              reason.includes('语音识别会话失效') ||
+              reason.includes('服务异常')) {
+            console.warn('WebSocket closed due to service failure, stopping reconnection:', reason);
+            this.maxReconnectAttempts = 0; // 禁用重连
+            this.reconnectAttempts = 999; // 确保不再重连
+            return;
+          }
+
           // 如果是异常关闭，尝试重连
           if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.scheduleReconnect();
@@ -207,7 +218,20 @@ export class SpeechRecognitionService {
 
         case 'error':
           // 错误消息
-          this.emit('error', message.message || '语音识别服务错误');
+          const errorMsg = message.message || '语音识别服务错误';
+          console.error('Speech recognition error:', errorMsg);
+          
+          // 如果是服务初始化失败的错误，停止重连
+          if (errorMsg.includes('启动识别服务失败') || 
+              errorMsg.includes('语音识别服务不可用') ||
+              errorMsg.includes('API Key') ||
+              errorMsg.includes('初始化失败')) {
+            console.warn('Speech recognition service initialization failed, stopping reconnection attempts');
+            this.maxReconnectAttempts = 0; // 禁用重连
+            this.reconnectAttempts = 999; // 确保不再重连
+          }
+          
+          this.emit('error', errorMsg);
           break;
 
         case 'started':
@@ -231,6 +255,15 @@ export class SpeechRecognitionService {
       console.error('Message parsing error:', error, data);
       this.emit('error', '消息解析失败');
     }
+  }
+
+  /**
+   * 重置重连状态（用于手动重新启用语音识别）
+   */
+  resetReconnection() {
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5; // 重置为默认值
+    console.log('Speech recognition reconnection has been reset and re-enabled');
   }
 
   /**

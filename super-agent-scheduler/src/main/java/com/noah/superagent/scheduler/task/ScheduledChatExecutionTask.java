@@ -31,7 +31,7 @@ import java.util.Optional;
  * 使用 db-scheduler 的 OneTimeTask 实现精确的定时聊天任务执行
  * 每个定时聊天任务会创建一个独立的执行实例，精确在指定时间执行
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

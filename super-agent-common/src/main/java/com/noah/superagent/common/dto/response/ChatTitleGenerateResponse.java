@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 /**
  * 对话标题生成响应
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

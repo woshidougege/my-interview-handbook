@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 用户积分控制器
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

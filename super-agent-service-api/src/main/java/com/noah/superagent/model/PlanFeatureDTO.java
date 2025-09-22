@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 /**
  * 订阅套餐功能特性DTO
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

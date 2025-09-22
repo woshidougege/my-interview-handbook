@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * 订阅套餐DTO
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

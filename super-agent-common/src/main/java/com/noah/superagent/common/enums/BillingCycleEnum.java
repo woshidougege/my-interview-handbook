@@ -6,7 +6,7 @@ import lombok.Getter;
 /**
  * 计费周期枚举
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter

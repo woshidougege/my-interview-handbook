@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * AI服务实现类
  * 基于阿里云百炼DashScope SDK提供AI功能
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

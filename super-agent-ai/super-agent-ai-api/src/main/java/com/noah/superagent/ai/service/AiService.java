@@ -7,7 +7,7 @@ import java.util.function.Consumer;
  * AI服务接口
  * 提供各种AI相关功能
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface AiService {

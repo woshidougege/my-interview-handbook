@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
  * 
  * 注意：这是一个兜底机制，主要的订阅到期处理通过事件驱动的OneTimeTask完成
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

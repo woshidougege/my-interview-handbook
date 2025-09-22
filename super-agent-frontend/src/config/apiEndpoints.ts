@@ -2,7 +2,7 @@
  * API端点配置
  * 统一管理所有后端API路径，避免硬编码
  * 
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 

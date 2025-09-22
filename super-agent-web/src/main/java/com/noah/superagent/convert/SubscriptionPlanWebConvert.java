@@ -11,7 +11,7 @@ import java.util.List;
  * 订阅套餐Web层转换器
  * 负责 DTO <-> Response 转换
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper(componentModel = "spring")

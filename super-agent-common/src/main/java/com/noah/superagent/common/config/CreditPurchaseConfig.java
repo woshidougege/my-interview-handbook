@@ -11,7 +11,7 @@ import java.util.List;
  * 积分购买配置类
  * 从配置文件读取积分购买相关配置
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

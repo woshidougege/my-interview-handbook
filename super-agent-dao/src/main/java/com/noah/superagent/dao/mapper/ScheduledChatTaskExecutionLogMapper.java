@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * 定时对话任务执行日志Mapper接口
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper

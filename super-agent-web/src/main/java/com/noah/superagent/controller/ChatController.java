@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * AI聊天控制器
  * 提供流式聊天功能
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Tag(name = "AI聊天", description = "AI聊天相关接口")

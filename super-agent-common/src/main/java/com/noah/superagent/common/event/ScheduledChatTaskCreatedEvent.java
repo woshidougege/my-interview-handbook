@@ -10,7 +10,7 @@ import java.time.Instant;
  * <p>
  * 当用户创建定时聊天任务时发布此事件，用于动态创建调度任务
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter

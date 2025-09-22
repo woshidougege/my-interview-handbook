@@ -2,7 +2,7 @@
  * API辅助工具
  * 提供API调用的工具函数和常用操作
  * 
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 

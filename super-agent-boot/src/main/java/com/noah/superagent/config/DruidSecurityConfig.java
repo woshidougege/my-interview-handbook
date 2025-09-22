@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * Druid 安全配置类
  * 专门处理 PostgreSQL 数据库的 WallFilter 配置问题
  * 
- * @author Super Agent Team
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

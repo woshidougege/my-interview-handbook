@@ -15,7 +15,7 @@ import java.util.Map;
  * 语音服务控制器
  * 提供语音识别基础配置接口
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Tag(name = "语音服务", description = "语音识别配置接口")

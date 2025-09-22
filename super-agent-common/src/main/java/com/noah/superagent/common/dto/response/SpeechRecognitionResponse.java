@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * 语音识别响应
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

@@ -7,7 +7,7 @@ import java.util.function.Consumer;
  * 语音识别服务接口
  * 基于阿里云百炼Paraformer实时语音识别
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface SpeechRecognitionService {

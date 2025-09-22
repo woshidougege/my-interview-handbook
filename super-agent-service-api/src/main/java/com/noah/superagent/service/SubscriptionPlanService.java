@@ -8,7 +8,7 @@ import java.util.List;
  * 订阅套餐服务接口
  * 对应数据库表：t_subscription_plan
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface SubscriptionPlanService {

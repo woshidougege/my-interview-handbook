@@ -8,7 +8,7 @@ import org.mapstruct.Mapper;
  * 用户订阅持久化层转换器
  * 负责 DTO <-> Entity 转换
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper(componentModel = "spring")

@@ -44,7 +44,7 @@ import static com.noah.superagent.util.UserContext.getCurrentUserId;
 /**
  * 认证相关控制器 - 方舟认证系统对接
  *
- * @author 任相鹏  
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

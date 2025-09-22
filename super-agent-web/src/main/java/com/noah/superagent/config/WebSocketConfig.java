@@ -8,7 +8,7 @@ import org.springframework.web.socket.server.standard.ServerEndpointExporter;
  * WebSocket配置类
  * 启用Spring Boot官方的WebSocket注解支持
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Configuration

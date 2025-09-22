@@ -15,7 +15,7 @@ import static com.noah.superagent.dao.entity.table.UserDailyLoginEntityTableDef.
 /**
  * 用户每日登录记录Mapper接口
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper

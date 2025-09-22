@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 语音识别WebSocket服务端
  * 使用Spring Boot官方推荐的@ServerEndpoint注解方式
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -84,17 +84,29 @@ public class SpeechRecognitionWebSocketServer {
             }
             
             // 启动语音识别会话
+            log.info("准备启动语音识别会话: {}", sessionId);
             boolean started = speechRecognitionService.startRecognitionSession(sessionId, result -> {
                 sendRecognitionResult(session, result);
             });
             
             if (!started) {
-                log.error("启动语音识别会话失败: sessionId={}, userId={}", sessionId, userId);
-                sendMessage(session, Map.of(
-                    "type", "error",
-                    "message", "启动识别服务失败"
-                ));
-                session.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "启动识别服务失败"));
+                log.error("启动语音识别会话失败: sessionId={}, userId={}, 准备关闭WebSocket连接", sessionId, userId);
+                try {
+                    sendMessage(session, Map.of(
+                        "type", "error",
+                        "message", "启动识别服务失败，连接将关闭"
+                    ));
+                    Thread.sleep(100); // 确保消息发送完成
+                } catch (Exception ex) {
+                    log.error("发送错误消息失败: {}", sessionId, ex);
+                }
+                
+                try {
+                    session.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "启动识别服务失败"));
+                    log.info("WebSocket连接已关闭: {}", sessionId);
+                } catch (IOException ex) {
+                    log.error("关闭WebSocket连接失败: {}", sessionId, ex);
+                }
                 return;
             }
             
@@ -164,7 +176,11 @@ public class SpeechRecognitionWebSocketServer {
     @OnMessage
     public void onBinaryMessage(Session session, ByteBuffer message) {
         String sessionId = session.getId();
-        byte[] audioData = message.array();
+        
+        // 安全地从ByteBuffer中提取字节数据
+        // 避免直接调用array()方法，因为DirectByteBuffer不支持此操作
+        byte[] audioData = new byte[message.remaining()];
+        message.get(audioData);
         
         log.debug("接收到音频数据: {} bytes, 会话: {}", audioData.length, sessionId);
         
@@ -173,18 +189,30 @@ public class SpeechRecognitionWebSocketServer {
             boolean sent = speechRecognitionService.sendAudioData(sessionId, audioData);
             
             if (!sent) {
-                log.warn("发送音频数据失败: {}", sessionId);
-                sendMessage(session, Map.of(
-                    "type", "warning",
-                    "message", "音频数据处理失败"
-                ));
+                log.error("发送音频数据失败，语音识别会话不存在: {}, 准备关闭WebSocket连接", sessionId);
+                try {
+                    sendMessage(session, Map.of(
+                        "type", "error",
+                        "message", "语音识别会话已失效，连接将关闭"
+                    ));
+                    Thread.sleep(50); // 确保消息发送完成
+                    session.close(new CloseReason(CloseReason.CloseCodes.UNEXPECTED_CONDITION, "语音识别会话失效"));
+                    log.info("因语音识别会话失效关闭WebSocket连接: {}", sessionId);
+                } catch (Exception closeEx) {
+                    log.error("关闭WebSocket连接失败: {}", sessionId, closeEx);
+                }
+                return; // 重要：避免继续处理
             }
         } catch (Exception e) {
-            log.error("处理音频数据失败: 会话: {}", sessionId, e);
-            sendMessage(session, Map.of(
-                "type", "error",
-                "message", "音频处理异常"
-            ));
+            log.error("处理音频数据异常: 会话={}", sessionId, e);
+            try {
+                sendMessage(session, Map.of(
+                    "type", "error", 
+                    "message", "音频处理异常: " + e.getMessage()
+                ));
+            } catch (Exception msgEx) {
+                log.error("发送错误消息失败: {}", sessionId, msgEx);
+            }
         }
     }
 

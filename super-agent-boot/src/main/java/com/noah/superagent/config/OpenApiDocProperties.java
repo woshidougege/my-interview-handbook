@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * OpenAPI文档配置属性
  * 
- * @author Super Agent Team
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Component

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * SpringDoc OpenAPI 3 配置
  * 
- * @author Super Agent Team
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Configuration

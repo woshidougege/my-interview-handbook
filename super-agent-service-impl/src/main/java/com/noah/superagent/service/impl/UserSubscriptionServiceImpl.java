@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * 用户订阅服务实现类
  * 支持升级时延长下级套餐的智能订阅管理
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

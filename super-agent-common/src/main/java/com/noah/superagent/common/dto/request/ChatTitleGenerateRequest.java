@@ -10,7 +10,7 @@ import javax.validation.constraints.Size;
 /**
  * 对话标题生成请求
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

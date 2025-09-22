@@ -25,7 +25,7 @@ import java.util.function.Consumer;
  * 语音识别服务实现类
  * 基于阿里云百炼Paraformer实时语音识别
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -44,15 +44,20 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
     public void init() {
         AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
         
+        String apiKey = dashscopeConfig.getApiKey();
+        log.info("读取到的API Key值: {}", apiKey != null ? "sk-****" + apiKey.substring(Math.max(0, apiKey.length() - 6)) : "null");
+        
         // 检查API Key配置
-        if (!StringUtils.hasText(dashscopeConfig.getApiKey())) {
+        if (!StringUtils.hasText(apiKey)) {
             log.warn("阿里云百炼API Key未配置，语音识别服务将无法正常工作");
             return;
         }
 
         // 初始化DashScope
         try {
-            System.setProperty("dashscope.api.key", dashscopeConfig.getApiKey());
+            System.setProperty("dashscope.api.key", apiKey);
+            log.info("设置系统属性 dashscope.api.key 成功");
+            log.info("验证系统属性值: {}", System.getProperty("dashscope.api.key") != null ? "已设置" : "未设置");
             log.info("语音识别服务初始化完成 - 模型: {}", 
                     dashscopeConfig.getSpeechRecognition().getModel());
         } catch (Exception e) {
@@ -67,6 +72,20 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         try {
             AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
             AiProperties.SpeechRecognitionConfig speechConfig = dashscopeConfig.getSpeechRecognition();
+            
+            // 确保API key已设置（检查@PostConstruct是否被调用）
+            String apiKey = dashscopeConfig.getApiKey();
+            log.info("当前API key值: {}", apiKey != null ? "sk-****" + apiKey.substring(Math.max(0, apiKey.length() - 6)) : "null");
+            log.info("当前系统属性 dashscope.api.key: {}", System.getProperty("dashscope.api.key") != null ? "已设置" : "未设置");
+            
+            if (!StringUtils.hasText(apiKey)) {
+                log.error("API key为空，无法启动语音识别会话: {}", sessionId);
+                return false;
+            }
+            
+            // 强制设置系统属性（防止@PostConstruct未被调用或系统属性被清除）
+            System.setProperty("dashscope.api.key", apiKey);
+            log.info("已设置系统属性 dashscope.api.key，值: {}", System.getProperty("dashscope.api.key") != null ? "设置成功" : "设置失败");
             
             // 构建识别参数（根据官方文档）
             RecognitionParam param = RecognitionParam.builder()

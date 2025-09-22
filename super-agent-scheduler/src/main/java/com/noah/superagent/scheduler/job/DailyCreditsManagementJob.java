@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
  * - 一个事务完成整个每日积分管理流程
  * - 执行时间可通过配置文件灵活调整
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

@@ -1,7 +1,7 @@
 /**
  * API相关的TypeScript类型定义
  * 
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 

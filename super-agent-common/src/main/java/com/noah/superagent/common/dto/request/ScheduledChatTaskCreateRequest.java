@@ -11,7 +11,7 @@ import java.io.Serializable;
 /**
  * 定时对话任务创建请求DTO
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data
