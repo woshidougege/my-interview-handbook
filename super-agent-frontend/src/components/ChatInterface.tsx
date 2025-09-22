@@ -14,7 +14,9 @@ import {
   SendOutlined, 
   RobotOutlined, 
   UserOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  AudioOutlined,
+  AudioMutedOutlined
 } from '@ant-design/icons';
 import { ChatMessage } from '@/types/chat';
 import aliCloudAiService from '@/services/aliCloudAiService';
@@ -45,8 +47,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [isStreaming, setIsStreaming] = useState(false);
   const [aiServiceAvailable, setAiServiceAvailable] = useState(true);
   
+  // 语音输入相关状态
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceConnectionStatus, setVoiceConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const speechServiceRef = useRef<any>(null); // TODO: 添加正确的类型定义
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   // 滚动到底部
   useEffect(() => {
@@ -68,6 +76,64 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
     
     checkAiService();
+  }, []);
+
+  // 初始化语音识别服务
+  useEffect(() => {
+    const initSpeechService = async () => {
+      try {
+        const { SpeechRecognitionService } = await import('@/services/speechRecognitionService');
+        speechServiceRef.current = new SpeechRecognitionService();
+
+        // 设置事件监听
+        speechServiceRef.current.on('connectionOpen', () => {
+          setVoiceConnectionStatus('connected');
+        });
+
+        speechServiceRef.current.on('connectionClose', () => {
+          setVoiceConnectionStatus('disconnected');
+          setIsRecording(false);
+        });
+
+        speechServiceRef.current.on('connectionError', (error: string) => {
+          setVoiceConnectionStatus('error');
+          setIsRecording(false);
+          message.error(`语音识别连接失败: ${error}`);
+        });
+
+        speechServiceRef.current.on('recognition', (result: any) => {
+          if (result.text) {
+            if (result.isFinal) {
+              // 最终结果，追加到输入框
+              setInputValue(prev => prev + result.text + ' ');
+            } else {
+              // 临时结果，显示预览（可选实现）
+              console.log('临时识别结果:', result.text);
+            }
+          }
+        });
+
+        speechServiceRef.current.on('error', (error: string) => {
+          message.error(`语音识别错误: ${error}`);
+          setIsRecording(false);
+        });
+
+      } catch (error) {
+        console.error('语音识别服务初始化失败:', error);
+      }
+    };
+
+    initSpeechService();
+
+    return () => {
+      // 清理资源
+      if (speechServiceRef.current) {
+        speechServiceRef.current.disconnect();
+      }
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
+    };
   }, []);
 
   // 处理流式消息片段
@@ -175,6 +241,82 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  // 切换语音录音状态
+  const toggleVoiceRecording = async () => {
+    if (isRecording) {
+      stopVoiceRecording();
+    } else {
+      await startVoiceRecording();
+    }
+  };
+
+  // 开始语音录音
+  const startVoiceRecording = async () => {
+    try {
+      setVoiceConnectionStatus('connecting');
+      
+      // 连接WebSocket
+      await speechServiceRef.current?.connect();
+      
+      // 请求麦克风权限并开始录音
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const arrayBuffer = reader.result as ArrayBuffer;
+            speechServiceRef.current?.sendAudioData(arrayBuffer);
+          };
+          reader.readAsArrayBuffer(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.start(100); // 每100ms发送一次数据
+      setIsRecording(true);
+
+      // 启动语音识别会话
+      speechServiceRef.current?.start();
+
+      message.success('开始语音输入');
+    } catch (error: any) {
+      console.error('启动语音录音失败:', error);
+      message.error(`无法启动语音输入: ${error.message}`);
+      setVoiceConnectionStatus('error');
+    }
+  };
+
+  // 停止语音录音
+  const stopVoiceRecording = () => {
+    try {
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+        const tracks = mediaRecorderRef.current.stream.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+
+      speechServiceRef.current?.stop();
+      setIsRecording(false);
+      
+      message.info('语音输入已结束');
+    } catch (error) {
+      console.error('停止语音录音失败:', error);
+      message.error('停止语音输入失败');
     }
   };
 
@@ -337,49 +479,75 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         borderTop: '1px solid #e8e8e8',
         background: '#fff'
       }}>
-        <div style={{ position: 'relative' }}>
-          <TextArea
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="输入您的问题，Super Agent 将为您提供智能解答..."
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            style={{ 
-              resize: 'none',
-              paddingRight: '120px'
-            }}
-            disabled={loading || titleGenerating || !aiServiceAvailable}
-          />
-          
-          <div style={{
-            position: 'absolute',
-            right: '8px',
-            bottom: '8px',
-            display: 'flex',
-            gap: '8px'
-          }}>
-            {titleGenerating && (
-              <Tooltip title="正在生成标题">
-                <Button
-                  type="text"
-                  icon={<ThunderboltOutlined />}
-                  loading={titleGenerating}
-                  size="small"
-                />
-              </Tooltip>
-            )}
-            
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+          {/* 语音输入按钮 */}
+          <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
             <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={sendMessage}
-              loading={loading}
-              disabled={!inputValue.trim() || titleGenerating || !aiServiceAvailable}
-              size="small"
-            >
-              发送
-            </Button>
+              type={isRecording ? "primary" : "default"}
+              icon={isRecording ? <AudioMutedOutlined /> : <AudioOutlined />}
+              onClick={toggleVoiceRecording}
+              disabled={loading || titleGenerating || !aiServiceAvailable || voiceConnectionStatus === 'connecting'}
+              style={{
+                height: '32px',
+                width: '32px',
+                minWidth: '32px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: isRecording ? '#ff4d4f' : undefined,
+                borderColor: isRecording ? '#ff4d4f' : undefined,
+                color: isRecording ? '#fff' : undefined
+              }}
+              loading={voiceConnectionStatus === 'connecting'}
+            />
+          </Tooltip>
+
+          {/* 输入框容器 */}
+          <div style={{ position: 'relative', flex: 1 }}>
+            <TextArea
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="输入您的问题，Super Agent 将为您提供智能解答..."
+              autoSize={{ minRows: 1, maxRows: 4 }}
+              style={{ 
+                resize: 'none',
+                paddingRight: '120px'
+              }}
+              disabled={loading || titleGenerating || !aiServiceAvailable || isRecording}
+            />
+          
+            <div style={{
+              position: 'absolute',
+              right: '8px',
+              bottom: '8px',
+              display: 'flex',
+              gap: '8px'
+            }}>
+              {titleGenerating && (
+                <Tooltip title="正在生成标题">
+                  <Button
+                    type="text"
+                    icon={<ThunderboltOutlined />}
+                    loading={titleGenerating}
+                    size="small"
+                  />
+                </Tooltip>
+              )}
+              
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={sendMessage}
+                loading={loading}
+                disabled={!inputValue.trim() || titleGenerating || !aiServiceAvailable || isRecording}
+                size="small"
+              >
+                发送
+              </Button>
+            </div>
           </div>
         </div>
         
@@ -389,7 +557,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           color: '#999',
           textAlign: 'center'
         }}>
-          按 Enter 发送，Shift + Enter 换行
+          {isRecording ? (
+            <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}>
+              🎤 正在录音中，再次点击麦克风结束录音
+            </span>
+          ) : (
+            '按 Enter 发送，Shift + Enter 换行，点击 🎤 语音输入'
+          )}
         </div>
       </div>
     </div>
