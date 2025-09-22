@@ -91,6 +91,14 @@ export const API_ENDPOINTS = {
     GENERATE_TITLE: (workspaceId: string) => `workspaces/${workspaceId}/chat-tasks/generate-title`,
   },
 
+  // ========== 聊天相关 ==========
+  // 后端: @PostMapping("/api/v1/chat/stream") -> 前端直接用: chat/* (后端已有v1)
+  CHAT: {
+    BASE: 'chat',
+    STREAM: 'chat/stream',
+    GENERATE_TITLE: 'chat/generate-title',
+  },
+
   // ========== 支付相关 ==========
   // 后端: @RequestMapping("/api/v1/payment") -> 前端直接用: payment/*
   PAYMENT: {

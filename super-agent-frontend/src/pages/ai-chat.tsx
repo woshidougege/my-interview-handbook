@@ -11,59 +11,102 @@ import {
   Space, 
   Spin, 
   message,
-  Modal,
-  Tooltip,
-  Empty
+  Empty,
+  Tooltip
 } from 'antd';
 import { 
   SendOutlined, 
   PlusOutlined, 
-  StarOutlined, 
-  StarFilled,
-  EditOutlined,
-  DeleteOutlined,
   MessageOutlined,
+  ApiOutlined,
   AudioOutlined,
-  AudioMutedOutlined,
-  ApiOutlined
+  AudioMutedOutlined
 } from '@ant-design/icons';
 import AppLayout from '@/components/Layout/AppLayout';
 import { chatTaskApi, workspaceApi, userApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
+import { API_ENDPOINTS, buildApiUrl } from '@/config/apiEndpoints';
 
 const { Sider, Content } = Layout;
 const { TextArea } = Input;
 const { Title, Text, Paragraph } = Typography;
 
 const AiChatPage: React.FC = () => {
+  // 基础状态
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [sessions, setSessions] = useState<ChatTask[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [titleGenerating, setTitleGenerating] = useState(false);
-  const [editingSession, setEditingSession] = useState<ChatTask | null>(null);
   const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string; description?: string } | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
-  const [generatingTitleForSession, setGeneratingTitleForSession] = useState<string | null>(null);
+  
+  // 流式聊天状态
   const [isStreaming, setIsStreaming] = useState(false);
-  const [currentStreamMessage, setCurrentStreamMessage] = useState<string>('');
+  const [streamingMessage, setStreamingMessage] = useState('');
   
-  // 添加用于取消请求的引用
-  const cancelRequestRef = useRef<(() => void) | null>(null);
-  
-  // 语音输入相关状态
+  // 语音输入状态
   const [isRecording, setIsRecording] = useState(false);
   const [voiceConnectionStatus, setVoiceConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   
+  // 流式内容状态  
+  const streamContentRef = useRef('');
+  const streamTimestampRef = useRef<string>(''); // 保存流式消息的时间戳
+  
+  // 其他引用
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const speechServiceRef = useRef<any>(null); // TODO: 添加正确的类型定义
+  const speechServiceRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
+  // 滚动到底部
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // 清理流式状态
+  const clearTypewriterState = () => {
+    streamContentRef.current = '';
+    streamTimestampRef.current = '';
+    setStreamingMessage('');
+  };
+
+  // 添加新的流式内容（HTTP流式版本）
+  const addStreamContent = (newContent: string) => {
+    streamContentRef.current += newContent;
+    // HTTP streaming版本：使用第一次接收数据的时间作为消息时间戳
+    if (!streamTimestampRef.current) {
+      streamTimestampRef.current = new Date().toISOString();
+    }
+    setStreamingMessage(streamContentRef.current);
+    scrollToBottom();
+  };
+
+  // 完成流式显示（HTTP流式版本）
+  const finishStreaming = () => {
+    const fullContent = streamContentRef.current;
+    
+    if (fullContent.trim()) {
+      // HTTP流式版本：直接使用流开始时的时间戳
+      const messageTimestamp = streamTimestampRef.current || new Date().toISOString();
+      
+      // 保存完整消息到历史
+      const aiMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: fullContent,
+        timestamp: messageTimestamp
+      };
+      
+      console.log('💾 HTTP流式消息保存完成，内容长度:', fullContent.length, '时间戳:', messageTimestamp);
+      setMessages(prev => [...prev, aiMessage]);
+    }
+    
+    // 清理状态
+    clearTypewriterState();
+    setIsStreaming(false);
+    setLoading(false);
   };
 
   // 加载会话列表
@@ -85,134 +128,42 @@ const AiChatPage: React.FC = () => {
     }
   }, [currentWorkspace?.id]);
 
-
-  // 页面加载时尝试获取现有工作空间和会话列表
-  useEffect(() => {
-    loadExistingWorkspace();
-    
-    // 组件卸载时的清理函数
-    return () => {
-      // 取消正在进行的请求
-      if (cancelRequestRef.current) {
-        cancelRequestRef.current();
-      }
-    };
-  }, []);
-
-  // 当工作空间准备好后加载会话列表
-  useEffect(() => {
-    if (currentWorkspace?.id) {
-      loadSessions();
-    }
-  }, [currentWorkspace, loadSessions]);
-
-  // 滚动到消息底部
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, currentStreamMessage]);
-
-  // 初始化语音识别服务
-  useEffect(() => {
-    const initSpeechService = async () => {
-      try {
-        const { SpeechRecognitionService } = await import('@/services/speechRecognitionService');
-        speechServiceRef.current = new SpeechRecognitionService();
-
-        // 设置事件监听
-        speechServiceRef.current.on('connectionOpen', () => {
-          setVoiceConnectionStatus('connected');
-        });
-
-        speechServiceRef.current.on('connectionClose', () => {
-          setVoiceConnectionStatus('disconnected');
-          setIsRecording(false);
-        });
-
-        speechServiceRef.current.on('connectionError', (error: string) => {
-          setVoiceConnectionStatus('error');
-          setIsRecording(false);
-          message.error(`语音识别连接失败: ${error}`);
-        });
-
-        speechServiceRef.current.on('recognition', (result: any) => {
-          if (result.text) {
-            if (result.isFinal) {
-              // 最终结果，追加到输入框
-              setInputValue(prev => prev + result.text + ' ');
-            } else {
-              // 临时结果，显示预览（可选实现）
-              console.log('临时识别结果:', result.text);
-            }
-          }
-        });
-
-        speechServiceRef.current.on('error', (error: string) => {
-          message.error(`语音识别错误: ${error}`);
-          setIsRecording(false);
-        });
-
-      } catch (error) {
-        console.error('语音识别服务初始化失败:', error);
-      }
-    };
-
-    initSpeechService();
-
-    return () => {
-      // 清理资源
-      if (speechServiceRef.current) {
-        speechServiceRef.current.disconnect();
-      }
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, []);
-
-  // 加载现有工作空间（如果有的话）
+  // 加载现有工作空间
   const loadExistingWorkspace = async () => {
     setWorkspaceLoading(true);
     try {
-      // 尝试获取现有工作空间
       const response = await workspaceApi.getWorkspaces();
       
       if (response.data.data && response.data.data.length > 0) {
-        // 使用第一个工作空间
         setCurrentWorkspace(response.data.data[0]);
       } else {
-        // 没有工作空间，但不在这里创建，等用户提问时再创建
         setCurrentWorkspace(null);
       }
     } catch (error) {
       console.error('获取工作空间失败:', error);
-      // 不显示错误消息，因为可能是第一次使用
       setCurrentWorkspace(null);
     } finally {
       setWorkspaceLoading(false);
     }
   };
 
-  // 确保工作空间存在（在用户提问时调用）
+  // 确保工作空间存在
   const ensureWorkspace = async () => {
     if (currentWorkspace?.id) {
       return currentWorkspace;
     }
 
     try {
-      // 先尝试获取现有工作空间
       const response = await workspaceApi.getWorkspaces();
       
       if (response.data.data && response.data.data.length > 0) {
-        // 使用第一个工作空间
         const workspace = response.data.data[0];
         setCurrentWorkspace(workspace);
         return workspace;
       } else {
-        // 获取当前用户信息
         const userResponse = await userApi.getCurrentUser();
         const currentUser = userResponse.data.data;
         
-        // 创建新的工作空间
         const createResponse = await workspaceApi.createWorkspace({
           userId: currentUser.userId,
           name: '我的工作空间',
@@ -229,11 +180,9 @@ const AiChatPage: React.FC = () => {
     }
   };
 
-
   // 创建新会话
   const createNewSession = async (firstQuestion: string, workspace: { id: string; name: string; description?: string }) => {
     try {
-      // 先用默认标题创建会话任务，立即显示
       const defaultTitle = `新对话 - ${new Date().toLocaleTimeString()}`;
       const sessionResponse = await chatTaskApi.createChatTask(workspace.id, {
         workspaceId: workspace.id,
@@ -242,11 +191,8 @@ const AiChatPage: React.FC = () => {
       });
       
       const newSession = sessionResponse.data.data;
-      
-      // 立即更新UI显示新会话
       setSessions(prev => [newSession, ...prev]);
       
-      // 设置当前会话
       const chatSession: ChatSession = {
         id: newSession.id,
         title: newSession.title,
@@ -254,13 +200,12 @@ const AiChatPage: React.FC = () => {
         workspaceId: newSession.workspaceId,
         createdAt: newSession.createdAt,
         updatedAt: newSession.updatedAt,
-        contextId: newSession.contextId // 添加contextId字段
+        contextId: newSession.contextId
       };
       
       setCurrentSession(chatSession);
-      setMessages([]);
       
-      // 异步生成真实标题并更新
+      // 异步生成标题
       generateAndUpdateTitle(workspace.id, newSession.id, firstQuestion);
       
       return chatSession;
@@ -271,13 +216,9 @@ const AiChatPage: React.FC = () => {
     }
   };
 
-  // 异步生成并更新标题
+  // 生成并更新标题
   const generateAndUpdateTitle = async (workspaceId: string, sessionId: string, question: string) => {
     try {
-      setTitleGenerating(true);
-      setGeneratingTitleForSession(sessionId);
-      
-      // 生成标题
       const titleResponse = await chatTaskApi.generateChatTitle(workspaceId, {
         question: question,
         async: false
@@ -285,17 +226,14 @@ const AiChatPage: React.FC = () => {
       
       const generatedTitle = titleResponse.data.data.title;
       
-      // 更新会话标题
       await chatTaskApi.updateChatTask(workspaceId, sessionId, {
         title: generatedTitle
       });
       
-      // 更新UI中的标题
       setSessions(prev => prev.map(s => 
         s.id === sessionId ? { ...s, title: generatedTitle } : s
       ));
       
-      // 如果是当前会话，也更新当前会话的标题
       setCurrentSession(prev => 
         prev && prev.id === sessionId 
           ? { ...prev, title: generatedTitle }
@@ -304,20 +242,153 @@ const AiChatPage: React.FC = () => {
       
     } catch (err) {
       console.error('生成标题失败:', err);
-      // 标题生成失败不影响正常对话，只是用默认标题
+    }
+  };
+
+  // 流式聊天核心逻辑
+  const startStreamChat = async (chatMessages: ChatMessage[]) => {
+    setLoading(true);
+    setIsStreaming(true);
+    clearTypewriterState();
+
+    try {
+      const chatHistory = chatMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      console.log('🚀 开始流式聊天，消息历史:', chatHistory);
+
+      const requestUrl = buildApiUrl(API_ENDPOINTS.CHAT.STREAM);
+      console.log('🌐 请求URL:', requestUrl);
+
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/plain',
+          'Cache-Control': 'no-cache',
+        },
+        body: JSON.stringify({
+          messages: chatHistory,
+          workspaceId: currentWorkspace?.id || 'ai-chat'
+        }),
+        // 重要：确保支持流式响应
+        mode: 'cors',
+        credentials: 'same-origin',
+      });
+
+      console.log('📡 响应状态:', response.status, response.statusText);
+      console.log('📋 响应头:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ HTTP错误响应:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      console.log('🔄 开始处理流式响应...');
+      await handleStreamResponse(response);
+
+    } catch (error) {
+      console.error('流式聊天失败:', error);
+      setLoading(false);
+      setIsStreaming(false);
+      clearTypewriterState();
+      throw error;
+    }
+  };
+
+  // 处理HTTP流式响应（更简单高效）
+  const handleStreamResponse = async (response: Response) => {
+    console.log('🔍 检查响应体:', response.body ? '存在' : '不存在');
+    
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    if (!reader) {
+      console.error('❌ 无法获取响应流读取器');
+      throw new Error('无法获取响应流');
+    }
+    
+    console.log('✅ 成功获取流读取器，开始读取数据...');
+
+    let buffer = '';
+    let hasStarted = false;
+    let chunkCount = 0;
+
+    try {
+      while (true) {
+        console.log(`🔄 正在读取第${chunkCount + 1}个数据块...`);
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          console.log('🏁 HTTP流式响应完成，总共接收', chunkCount, '个数据块');
+          finishStreaming();
+          break;
+        }
+        
+        chunkCount++;
+        console.log(`📦 接收到第${chunkCount}个数据块，大小:`, value?.length || 0, '字节');
+        
+        // 🚀 直接处理文本流，无需复杂的SSE解析
+        const chunk = decoder.decode(value, { stream: true });
+        console.log('🔤 解码后的文本块:', chunk.length > 100 ? chunk.substring(0, 100) + '...' : chunk);
+        buffer += chunk;
+        
+        // 按行分割处理
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 保留最后可能不完整的行
+        
+        console.log('📄 分割出', lines.length, '行数据，剩余缓冲:', buffer.length, '字符');
+        
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+          
+          console.log('📝 处理行数据:', trimmedLine);
+          
+          // 检查结束标记
+          if (trimmedLine === '[DONE]') {
+            console.log('🎯 收到完成信号');
+            finishStreaming();
+            return;
+          }
+          
+          // 检查错误消息
+          if (trimmedLine.startsWith('ERROR:')) {
+            console.error('后端返回错误:', trimmedLine);
+            // 可以选择显示错误信息或者停止流式处理
+            continue;
+          }
+          
+          // 🔥 直接处理文本内容，无JSON解析开销
+          if (!hasStarted) {
+            hasStarted = true;
+            setLoading(false); // 第一个数据到达时停止loading
+            console.log('🚀 开始接收HTTP流式数据');
+          }
+          
+          console.log('📝 实时添加内容:', trimmedLine.length > 50 ? trimmedLine.substring(0, 50) + '...' : trimmedLine);
+          addStreamContent(trimmedLine);
+        }
+      }
+    } catch (streamError) {
+      console.error('❌ 流处理出错:', streamError);
+      throw streamError;
     } finally {
-      setTitleGenerating(false);
-      setGeneratingTitleForSession(null);
+      console.log('🔚 释放流读取器');
+      reader.releaseLock();
     }
   };
 
   // 发送消息
   const sendMessage = async () => {
-    if (!inputValue.trim() || loading) return;
-    
+    if (!inputValue.trim() || loading || isStreaming) {
+      return;
+    }
 
     try {
-      // 创建用户消息
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'user',
@@ -325,125 +396,20 @@ const AiChatPage: React.FC = () => {
         timestamp: new Date().toISOString()
       };
 
-      // 更新消息列表
-      const newMessages = [...messages, userMessage];
-      setMessages(newMessages);
+      setMessages(prev => [...prev, userMessage]);
       setInputValue('');
       
-      // 滚动到底部
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-
-      // 确保有会话
-      let currentSessionId = currentSession?.id;
-      
       if (!currentSession) {
-        // 创建新会话
         const workspace = await ensureWorkspace();
-        const newSession = await createNewSession(userMessage.content, workspace);
-        currentSessionId = newSession.id;
+        await createNewSession(userMessage.content, workspace);
       }
       
-      // 开始加载状态
-      setLoading(true);
-      setIsStreaming(true);
-      setCurrentStreamMessage('');
-
-      // 构建聊天历史（包括新消息）
-      const chatHistory = newMessages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
-
-      // 调用后端流式聊天接口
-      const response = await fetch('/api/chat/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: chatHistory,
-          workspaceId: currentWorkspace?.id || 'ai-chat'
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('网络请求失败');
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            // 流式结束，创建AI消息
-            setCurrentStreamMessage(prevStreamMessage => {
-              if (prevStreamMessage.trim()) {
-                const aiMessage: ChatMessage = {
-                  id: Date.now().toString(),
-                  role: 'assistant',
-                  content: prevStreamMessage,
-                  timestamp: new Date().toISOString()
-                };
-                setMessages(prev => [...prev, aiMessage]);
-              }
-              return ''; // 清空流式消息
-            });
-            
-            setIsStreaming(false);
-            setLoading(false);
-            break;
-          }
-          
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n').filter(line => line.trim());
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                // 流式结束，处理结果
-                setCurrentStreamMessage(prevStreamMessage => {
-                  if (prevStreamMessage.trim()) {
-                    const aiMessage: ChatMessage = {
-                      id: Date.now().toString(),
-                      role: 'assistant',
-                      content: prevStreamMessage,
-                      timestamp: new Date().toISOString()
-                    };
-                    setMessages(prev => [...prev, aiMessage]);
-                  }
-                  return '';
-                });
-                setIsStreaming(false);
-                setLoading(false);
-                break;
-              }
-              try {
-                const jsonData = JSON.parse(data);
-                if (jsonData.content) {
-                  setCurrentStreamMessage(prev => prev + jsonData.content);
-                }
-              } catch (e) {
-                console.warn('解析流式数据失败:', e);
-              }
-            }
-          }
-        }
-      }
-      // 如果是新对话，自动生成标题
-      if (!currentSession && userMessage.content.trim()) {
-        await generateAndUpdateTitle(currentWorkspace?.id || '', currentSessionId || '', userMessage.content);
-      }
+      await startStreamChat([...messages, userMessage]);
 
     } catch (error) {
       console.error('发送消息失败:', error);
       message.error('发送消息失败');
       
-      // 错误处理
       const errorMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'assistant',
@@ -454,10 +420,9 @@ const AiChatPage: React.FC = () => {
       
       setLoading(false);
       setIsStreaming(false);
-      setCurrentStreamMessage('');
+      clearTypewriterState();
     }
   };
-
 
   // 处理回车发送
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -548,98 +513,96 @@ const AiChatPage: React.FC = () => {
     const chatSession: ChatSession = {
       id: session.id,
       title: session.title,
-      messages: [], // 实际应用中应该加载历史消息
+      messages: [],
       workspaceId: session.workspaceId || currentWorkspace?.id || '',
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
-      contextId: session.contextId // 添加contextId字段
+      contextId: session.contextId
     };
     
     setCurrentSession(chatSession);
-    setMessages([]); // 实际应用中应该加载历史消息
+    setMessages([]);
+    clearTypewriterState();
   };
 
-  // 收藏/取消收藏会话
-  const toggleFavorite = async (session: ChatTask, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentWorkspace?.id) return;
+  // 初始化
+  useEffect(() => {
+    loadExistingWorkspace();
+  }, []);
 
-    try {
-      if (session.favorite) {
-        await chatTaskApi.unfavoriteChatTask(currentWorkspace.id, session.id);
-      } else {
-        await chatTaskApi.favoriteChatTask(currentWorkspace.id, session.id);
-      }
-      
-      setSessions(prev => prev.map(s => 
-        s.id === session.id ? { ...s, favorite: !s.favorite } : s
-      ));
-      
-      message.success(session.favorite ? '已取消收藏' : '已收藏');
-    } catch (error) {
-      console.error('操作失败:', error);
-      message.error('操作失败');
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      loadSessions();
     }
-  };
+  }, [currentWorkspace, loadSessions]);
 
-  // 删除会话
-  const deleteSession = async (session: ChatTask, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!currentWorkspace?.id) return;
-    
-    Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除会话"${session.title}"吗？`,
-      onOk: async () => {
-        try {
-          await chatTaskApi.deleteChatTask(currentWorkspace.id, session.id);
-          setSessions(prev => prev.filter(s => s.id !== session.id));
-          
-          if (currentSession?.id === session.id) {
-            setCurrentSession(null);
-            setMessages([]);
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, streamingMessage]);
+
+  // 初始化语音识别服务
+  useEffect(() => {
+    const initSpeechService = async () => {
+      try {
+        const { SpeechRecognitionService } = await import('@/services/speechRecognitionService');
+        speechServiceRef.current = new SpeechRecognitionService();
+
+        // 设置事件监听
+        speechServiceRef.current.on('connectionOpen', () => {
+          setVoiceConnectionStatus('connected');
+        });
+
+        speechServiceRef.current.on('connectionClose', () => {
+          setVoiceConnectionStatus('disconnected');
+          setIsRecording(false);
+        });
+
+        speechServiceRef.current.on('connectionError', (error: string) => {
+          setVoiceConnectionStatus('error');
+          setIsRecording(false);
+          message.error(`语音识别连接失败: ${error}`);
+        });
+
+        speechServiceRef.current.on('recognition', (result: any) => {
+          if (result.text) {
+            if (result.isFinal) {
+              // 最终结果，追加到输入框
+              setInputValue(prev => prev + result.text + ' ');
+            } else {
+              // 临时结果，显示预览
+              console.log('临时识别结果:', result.text);
+            }
           }
-          
-          message.success('会话已删除');
-        } catch (error) {
-          console.error('删除失败:', error);
-          message.error('删除失败');
-        }
+        });
+
+        speechServiceRef.current.on('error', (error: string) => {
+          message.error(`语音识别错误: ${error}`);
+          setIsRecording(false);
+        });
+
+      } catch (error) {
+        console.error('语音识别服务初始化失败:', error);
       }
-    });
-  };
+    };
 
-  // 编辑会话标题
-  const editSessionTitle = (session: ChatTask, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingSession(session);
-  };
+    initSpeechService();
 
-  // 保存编辑的标题
-  const saveSessionTitle = async (newTitle: string) => {
-    if (!editingSession || !newTitle.trim() || !currentWorkspace?.id) return;
-    
-    try {
-      await chatTaskApi.updateChatTask(currentWorkspace.id, editingSession.id, {
-        title: newTitle.trim()
-      });
-      
-      setSessions(prev => prev.map(s => 
-        s.id === editingSession.id ? { ...s, title: newTitle.trim() } : s
-      ));
-      
-      if (currentSession?.id === editingSession.id) {
-        setCurrentSession(prev => prev ? { ...prev, title: newTitle.trim() } : null);
+    return () => {
+      // 清理资源
+      if (speechServiceRef.current) {
+        speechServiceRef.current.disconnect();
       }
-      
-      setEditingSession(null);
-      message.success('标题已更新');
-    } catch (error) {
-      console.error('更新失败:', error);
-      message.error('更新失败');
-    }
-  };
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
+  useEffect(() => {
+    return () => {
+      clearTypewriterState();
+    };
+  }, []);
 
   return (
     <>
@@ -675,29 +638,18 @@ const AiChatPage: React.FC = () => {
                 block 
                 size="large"
                 onClick={() => {
-                  // 重置会话状态，回到大输入框界面
                   setCurrentSession(null);
                   setMessages([]);
                   setInputValue('');
+                  clearTypewriterState();
                   message.success('已创建新对话，请在下方输入框中开始对话');
                 }}
-                loading={titleGenerating}
               >
                 新建对话
               </Button>
             </div>
             
             <div style={{ padding: '0 16px 16px' }}>
-              <div style={{ marginBottom: '16px' }}>
-                <Title level={5} style={{ margin: '0 0 8px 0', color: '#333' }}>
-                  工作空间
-                </Title>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                  <Button size="small" type="primary">全部</Button>
-                  <Button size="small">收藏</Button>
-                </div>
-              </div>
-              
               <Title level={5} style={{ margin: '0 0 12px 0', color: '#666' }}>
                 对话历史
               </Title>
@@ -731,76 +683,18 @@ const AiChatPage: React.FC = () => {
                         onClick={() => selectSession(session)}
                       >
                         <div style={{ width: '100%' }}>
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'flex-start',
-                            marginBottom: '4px'
-                          }}>
-                            {editingSession?.id === session.id ? (
-                              <Input
-                                size="small"
-                                defaultValue={session.title}
-                                onPressEnter={(e) => saveSessionTitle((e.target as HTMLInputElement).value)}
-                                onBlur={(e) => saveSessionTitle(e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                                autoFocus
-                              />
-                            ) : (
-                              <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                <Text 
-                                  strong 
-                                  style={{ 
-                                    fontSize: '14px',
-                                    lineHeight: '20px',
-                                    color: currentSession?.id === session.id ? '#1890ff' : '#333',
-                                    opacity: generatingTitleForSession === session.id ? 0.6 : 1,
-                                    flex: 1
-                                  }}
-                                  ellipsis={{ tooltip: session.title }}
-                                >
-                                  {session.title}
-                                </Text>
-                                {generatingTitleForSession === session.id && (
-                                  <Spin 
-                                    size="small" 
-                                    style={{ 
-                                      marginLeft: '8px',
-                                      fontSize: '12px'
-                                    }}
-                                  />
-                                )}
-                              </div>
-                            )}
-                            
-                            <Space size="small">
-                              <Tooltip title={session.favorite ? '取消收藏' : '收藏'}>
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={session.favorite ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
-                                  onClick={(e) => toggleFavorite(session, e)}
-                                />
-                              </Tooltip>
-                              <Tooltip title="编辑标题">
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<EditOutlined />}
-                                  onClick={(e) => editSessionTitle(session, e)}
-                                />
-                              </Tooltip>
-                              <Tooltip title="删除">
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  onClick={(e) => deleteSession(session, e)}
-                                />
-                              </Tooltip>
-                            </Space>
-                          </div>
+                          <Text 
+                            strong 
+                            style={{ 
+                              fontSize: '14px',
+                              lineHeight: '20px',
+                              color: currentSession?.id === session.id ? '#1890ff' : '#333',
+                              display: 'block'
+                            }}
+                            ellipsis={{ tooltip: session.title }}
+                          >
+                            {session.title}
+                          </Text>
                           
                           <Text 
                             type="secondary" 
@@ -825,15 +719,11 @@ const AiChatPage: React.FC = () => {
                 <div style={{ 
                   padding: '16px 24px', 
                   borderBottom: '1px solid #e8e8e8',
-                  background: '#fff',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
+                  background: '#fff'
                 }}>
                   <Title level={4} style={{ margin: 0 }}>
                     {currentSession.title}
                   </Title>
-                  
                 </div>
 
                 {/* 消息列表 */}
@@ -843,7 +733,7 @@ const AiChatPage: React.FC = () => {
                   overflowY: 'auto',
                   background: '#fafafa'
                 }}>
-                  {messages.length === 0 ? (
+                  {messages.length === 0 && !isStreaming ? (
                     <div style={{ 
                       display: 'flex', 
                       justifyContent: 'center', 
@@ -884,12 +774,11 @@ const AiChatPage: React.FC = () => {
                               size="small"
                               style={{
                                 backgroundColor: message.role === 'user' ? '#1890ff' : '#fff',
-                                color: message.role === 'user' ? '#fff' : '#333',
                                 borderRadius: '12px',
                                 maxWidth: '100%',
                                 wordBreak: 'break-word'
                               }}
-                              styles={{ body: { padding: '12px 16px' } }}
+                              bodyStyle={{ padding: '12px 16px' }}
                             >
                               <Paragraph 
                                 style={{ 
@@ -930,7 +819,7 @@ const AiChatPage: React.FC = () => {
                       ))}
                       
                       {/* 流式消息显示 */}
-                      {isStreaming && currentStreamMessage && (
+                      {isStreaming && (
                         <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', maxWidth: '70%' }}>
                             <Avatar style={{ backgroundColor: '#1890ff', marginRight: '12px', flexShrink: 0 }}>
@@ -954,41 +843,23 @@ const AiChatPage: React.FC = () => {
                                   lineHeight: '1.6'
                                 }}
                               >
-                                {currentStreamMessage}
-                                <span style={{ 
-                                  display: 'inline-block',
-                                  width: '2px',
-                                  height: '16px',
-                                  backgroundColor: '#1890ff',
-                                  marginLeft: '2px',
-                                  animation: 'blink 1s infinite'
-                                }} />
+                                {streamingMessage || (loading && '正在思考...')}
+                                {streamingMessage && (
+                                  <span style={{ 
+                                    display: 'inline-block',
+                                    width: '2px',
+                                    height: '16px',
+                                    backgroundColor: '#1890ff',
+                                    marginLeft: '2px',
+                                    animation: 'blink 1s infinite'
+                                  }} />
+                                )}
                               </Paragraph>
                             </Card>
                           </div>
                         </div>
                       )}
                       
-                      {/* 加载状态 */}
-                      {loading && !isStreaming && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                            <Avatar style={{ backgroundColor: '#1890ff', marginRight: '12px' }}>
-                              AI
-                            </Avatar>
-                            <Card
-                              size="small"
-                              style={{ borderRadius: '12px' }}
-                              bodyStyle={{ padding: '12px 16px' }}
-                            >
-                              <Spin size="small" />
-                              <Text style={{ marginLeft: '8px', color: '#666' }}>
-                                正在连接AI服务...
-                              </Text>
-                            </Card>
-                          </div>
-                        </div>
-                      )}
                       <div ref={messagesEndRef} />
                     </Space>
                   )}
@@ -1000,21 +871,17 @@ const AiChatPage: React.FC = () => {
                   borderTop: '1px solid #e8e8e8',
                   background: '#fff'
                 }}>
-                  {/* AI对话模式 */}
                   <div style={{ 
                     marginBottom: '12px', 
                     padding: '12px', 
                     background: '#f0f8ff', 
                     borderRadius: '6px' 
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>
-                        <ApiOutlined /> 百炼AI对话 (已启用)
-                      </span>
-                    </div>
+                    <span>
+                      <ApiOutlined /> 百炼AI对话 (已启用)
+                    </span>
                   </div>
 
-                  {/* 语音输入和聊天输入区域 */}
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
                     {/* 语音输入按钮 */}
                     <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
@@ -1049,179 +916,127 @@ const AiChatPage: React.FC = () => {
                         placeholder="输入您的问题..."
                         autoSize={{ minRows: 1, maxRows: 4 }}
                         style={{ resize: 'none' }}
-                        disabled={loading || isRecording}
+                        disabled={loading || isRecording || isStreaming}
                       />
                       <Button
                         type="primary"
                         icon={<SendOutlined />}
                         onClick={sendMessage}
                         loading={loading}
-                        disabled={!inputValue.trim() || isRecording}
+                        disabled={!inputValue.trim() || isRecording || isStreaming}
                         style={{ height: 'auto' }}
                       >
-                        发送
+                        {isStreaming ? '回答中...' : '发送'}
                       </Button>
                     </Space.Compact>
                   </div>
                 </div>
               </>
             ) : (
-              <>
-                {/* 欢迎页面 - 显示输入框 */}
+              /* 欢迎页面 */
+              <div style={{ 
+                flex: 1,
+                display: 'flex', 
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                background: '#fafafa',
+                padding: '40px'
+              }}>
+                <MessageOutlined style={{ fontSize: '72px', color: '#bfbfbf', marginBottom: '24px' }} />
+                <Title level={2} style={{ color: '#666', marginBottom: '16px' }}>
+                  Super Agent
+                </Title>
+                <Paragraph style={{ fontSize: '16px', color: '#999', textAlign: 'center', marginBottom: '40px' }}>
+                  阿里云百炼AI助手，智能对话，实时回复<br />
+                  开始新对话，体验百炼AI的强大能力
+                </Paragraph>
+                
                 <div style={{ 
-                  flex: 1,
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  background: '#fafafa'
+                  width: '100%', 
+                  maxWidth: '600px',
+                  marginBottom: '40px'
                 }}>
-                  {/* 欢迎内容区域 */}
                   <div style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    padding: '40px'
+                    position: 'relative',
+                    border: '2px solid #d9d9d9',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    background: '#fff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}>
-                    <MessageOutlined style={{ fontSize: '72px', color: '#bfbfbf', marginBottom: '24px' }} />
-                    <Title level={2} style={{ color: '#666', marginBottom: '16px' }}>
-                      Super Agent
-                    </Title>
-                    <Paragraph style={{ fontSize: '16px', color: '#999', textAlign: 'center', marginBottom: '40px' }}>
-                      阿里云百炼AI助手，智能对话，实时回复<br />
-                      开始新对话，体验百炼AI的强大能力
-                    </Paragraph>
-                    
-                    {/* 大输入框 */}
-                    <div style={{ 
-                      width: '100%', 
-                      maxWidth: '600px',
-                      marginBottom: '40px'
+                    <TextArea
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="输入您的问题，开始与AI助手对话..."
+                      autoSize={{ minRows: 3, maxRows: 8 }}
+                      style={{ 
+                        border: 'none',
+                        resize: 'none',
+                        fontSize: '16px',
+                        lineHeight: '1.6'
+                      }}
+                      disabled={loading || isStreaming}
+                    />
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginTop: '12px'
                     }}>
-                      <div style={{
-                        position: 'relative',
-                        border: '2px solid #d9d9d9',
-                        borderRadius: '12px',
-                        padding: '16px',
-                        background: '#fff',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        <TextArea
-                          value={inputValue}
-                          onChange={(e) => setInputValue(e.target.value)}
-                          onKeyPress={handleKeyPress}
-                          placeholder="输入您的问题，开始与AI助手对话..."
-                          autoSize={{ minRows: 3, maxRows: 8 }}
-                          style={{ 
-                            border: 'none',
-                            resize: 'none',
-                            fontSize: '16px',
-                            lineHeight: '1.6'
+                      {/* 语音输入按钮 */}
+                      <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
+                        <Button
+                          type={isRecording ? "primary" : "default"}
+                          size="large"
+                          icon={isRecording ? <AudioMutedOutlined /> : <AudioOutlined />}
+                          onClick={toggleVoiceRecording}
+                          disabled={loading || voiceConnectionStatus === 'connecting'}
+                          style={{
+                            borderRadius: '8px',
+                            backgroundColor: isRecording ? '#ff4d4f' : undefined,
+                            borderColor: isRecording ? '#ff4d4f' : undefined,
+                            color: isRecording ? '#fff' : undefined
                           }}
-                          disabled={loading || isRecording}
-                        />
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginTop: '12px'
-                        }}>
-                          {/* 语音输入按钮 */}
-                          <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
-                            <Button
-                              type={isRecording ? "primary" : "default"}
-                              size="large"
-                              icon={isRecording ? <AudioMutedOutlined /> : <AudioOutlined />}
-                              onClick={toggleVoiceRecording}
-                              disabled={loading || voiceConnectionStatus === 'connecting'}
-                              style={{
-                                borderRadius: '8px',
-                                backgroundColor: isRecording ? '#ff4d4f' : undefined,
-                                borderColor: isRecording ? '#ff4d4f' : undefined,
-                                color: isRecording ? '#fff' : undefined
-                              }}
-                              loading={voiceConnectionStatus === 'connecting'}
-                            >
-                              {isRecording ? '停止录音' : '语音输入'}
-                            </Button>
-                          </Tooltip>
+                          loading={voiceConnectionStatus === 'connecting'}
+                        >
+                          {isRecording ? '停止录音' : '语音输入'}
+                        </Button>
+                      </Tooltip>
 
-                          {/* 发送按钮 */}
-                          <Button
-                            type="primary"
-                            size="large"
-                            icon={<SendOutlined />}
-                            onClick={sendMessage}
-                            loading={loading}
-                            disabled={!inputValue.trim() || isRecording}
-                            style={{ 
-                              borderRadius: '8px',
-                              fontWeight: '500'
-                            }}
-                          >
-                            发送
-                          </Button>
-                        </div>
-                        
-                        {/* 录音状态提示 */}
-                        {isRecording && (
-                          <div style={{
-                            marginTop: '8px',
-                            textAlign: 'center',
-                            color: '#ff4d4f',
-                            fontSize: '14px',
-                            fontWeight: 'bold'
-                          }}>
-                            🎤 正在录音中，再次点击停止录音结束语音输入
-                          </div>
-                        )}
-                        
-                      </div>
+                      {/* 发送按钮 */}
+                      <Button
+                        type="primary"
+                        size="large"
+                        icon={<SendOutlined />}
+                        onClick={sendMessage}
+                        loading={loading}
+                        disabled={!inputValue.trim() || isRecording || isStreaming}
+                        style={{ 
+                          borderRadius: '8px',
+                          fontWeight: '500'
+                        }}
+                      >
+                        {isStreaming ? '回答中...' : '发送'}
+                      </Button>
                     </div>
                     
-                    {/* 功能提示 */}
-                    <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                      <Text style={{ fontSize: '16px', color: '#333' }}>
-                        需要Super Agent帮您做哪些事？
-                      </Text>
-                    </div>
-                    
-                    {/* 功能标签 */}
-                    <div style={{ 
-                      display: 'flex', 
-                      gap: '16px', 
-                      flexWrap: 'wrap',
-                      justifyContent: 'center'
-                    }}>
-                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
-                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>🔧</div>
-                        <Text style={{ fontSize: '12px', color: '#666' }}>软件操作</Text>
+                    {/* 录音状态提示 */}
+                    {isRecording && (
+                      <div style={{
+                        marginTop: '8px',
+                        textAlign: 'center',
+                        color: '#ff4d4f',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}>
+                        🎤 正在录音中，再次点击语音按钮停止录音
                       </div>
-                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
-                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>📊</div>
-                        <Text style={{ fontSize: '12px', color: '#666' }}>深度推理</Text>
-                      </div>
-                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
-                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>✂️</div>
-                        <Text style={{ fontSize: '12px', color: '#666' }}>幻灯片制作</Text>
-                      </div>
-                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
-                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>📈</div>
-                        <Text style={{ fontSize: '12px', color: '#666' }}>数据分析</Text>
-                      </div>
-                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
-                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>💻</div>
-                        <Text style={{ fontSize: '12px', color: '#666' }}>网站开发</Text>
-                      </div>
-                      <div style={{ textAlign: 'center', minWidth: '80px' }}>
-                        <Text style={{ fontSize: '12px', color: '#666' }}>更多</Text>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
-
-              </>
+              </div>
             )}
           </Content>
         </Layout>
