@@ -3,22 +3,23 @@ package com.noah.superagent.ai.service.impl;
 import com.alibaba.dashscope.audio.asr.recognition.Recognition;
 import com.alibaba.dashscope.audio.asr.recognition.RecognitionParam;
 import com.alibaba.dashscope.audio.asr.recognition.RecognitionResult;
+import com.alibaba.dashscope.audio.asr.recognition.timestamp.Sentence;
 import com.alibaba.dashscope.common.ResultCallback;
-import com.alibaba.dashscope.exception.NoApiKeyException;
+import java.nio.ByteBuffer;
 import com.noah.superagent.ai.service.SpeechRecognitionService;
 import com.noah.superagent.common.config.AiProperties;
 import com.noah.superagent.common.dto.response.SpeechRecognitionResponse;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
  * 语音识别服务实现类
@@ -67,39 +68,41 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
             AiProperties.SpeechRecognitionConfig speechConfig = dashscopeConfig.getSpeechRecognition();
             
-            // 构建识别参数
+            // 构建识别参数（根据官方文档）
             RecognitionParam param = RecognitionParam.builder()
                     .model(speechConfig.getModel())
                     .format(speechConfig.getAudioFormat())
                     .sampleRate(speechConfig.getSampleRate())
-                    .callback(new ResultCallback<RecognitionResult>() {
-                        @Override
-                        public void onEvent(RecognitionResult result) {
-                            handleRecognitionResult(sessionId, result, resultCallback);
-                        }
-
-                        @Override
-                        public void onError(Exception e) {
-                            handleRecognitionError(sessionId, e, resultCallback);
-                        }
-
-                        @Override
-                        public void onComplete() {
-                            handleRecognitionComplete(sessionId, resultCallback);
-                        }
-                    })
                     .build();
 
             // 创建识别实例
             Recognition recognition = new Recognition();
-            Semaphore semaphore = new Semaphore(0);
+            
+            // 创建回调处理器（根据官方文档）
+            ResultCallback<RecognitionResult> callback = new ResultCallback<>() {
+                @Override
+                public void onEvent(RecognitionResult result) {
+                    handleRecognitionResult(sessionId, result, resultCallback);
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    handleRecognitionError(sessionId, e, resultCallback);
+                }
+
+                @Override
+                public void onComplete() {
+                    handleRecognitionComplete(sessionId, resultCallback);
+                }
+            };
+            
+            // 使用官方源码推荐的基于回调的流式调用方式
+            // 先启动识别流，然后通过sendAudioFrame发送数据
+            recognition.call(param, callback);
             
             // 创建会话记录
-            RecognitionSession session = new RecognitionSession(recognition, param, semaphore, resultCallback);
+            RecognitionSession session = new RecognitionSession(recognition, resultCallback);
             activeSessions.put(sessionId, session);
-            
-            // 启动识别
-            recognition.streamCall(param);
             
             // 发送会话开始状态
             SpeechRecognitionResponse startResponse = SpeechRecognitionResponse.builder()
@@ -114,9 +117,6 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             log.info("语音识别会话启动成功: {}", sessionId);
             return true;
             
-        } catch (NoApiKeyException e) {
-            log.error("API Key未配置，无法启动语音识别会话: {}", sessionId, e);
-            return false;
         } catch (Exception e) {
             log.error("启动语音识别会话失败: {}", sessionId, e);
             return false;
@@ -132,8 +132,10 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         }
 
         try {
+            // 将byte[]转换为ByteBuffer
+            ByteBuffer audioBuffer = ByteBuffer.wrap(audioData);
             // 发送音频数据到识别服务
-            session.getRecognition().sendAudioFrame(audioData);
+            session.getRecognition().sendAudioFrame(audioBuffer);
             log.debug("发送音频数据成功: {} bytes, 会话: {}", audioData.length, sessionId);
             return true;
         } catch (Exception e) {
@@ -234,51 +236,70 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
     }
 
     /**
-     * 转换DashScope结果为统一响应格式
+     * 转换DashScope结果为统一响应格式（根据官方源码API）
      */
     private SpeechRecognitionResponse convertToResponse(String sessionId, RecognitionResult result) {
-        // 构建句子信息
-        var sentences = result.getSentences().stream()
-                .map(sentence -> SpeechRecognitionResponse.SentenceInfo.builder()
+        try {
+            // 根据官方源码，使用正确的API调用方式
+            Sentence sentence = result.getSentence();
+            String recognizedText = sentence != null ? sentence.getText() : "";
+            boolean isFinal = result.isSentenceEnd(); // 官方API：判断句子是否结束
+            
+            // 构建句子信息（如果需要详细信息）
+            SpeechRecognitionResponse.SentenceInfo sentenceInfo = null;
+            if (sentence != null) {
+                sentenceInfo = SpeechRecognitionResponse.SentenceInfo.builder()
                         .beginTime(sentence.getBeginTime())
                         .endTime(sentence.getEndTime())
                         .text(sentence.getText())
-                        .isSentenceEnd(result.isSentenceEnd())
-                        .build())
-                .collect(Collectors.toList());
+                        .isSentenceEnd(isFinal)
+                        .build();
+            }
 
-        return SpeechRecognitionResponse.builder()
-                .sessionId(sessionId)
-                .status(result.isSentenceEnd() ? 
-                        SpeechRecognitionResponse.RecognitionStatus.COMPLETED :
-                        SpeechRecognitionResponse.RecognitionStatus.RECOGNIZING)
-                .text(result.getText())
-                .isFinal(result.isSentenceEnd())
-                .sentences(sentences)
-                .requestId(result.getRequestId())
-                .build();
+            log.debug("识别结果 - 会话: {}, 文本: {}, 最终结果: {}", sessionId, recognizedText, isFinal);
+
+            var responseBuilder = SpeechRecognitionResponse.builder()
+                    .sessionId(sessionId)
+                    .status(isFinal ? 
+                            SpeechRecognitionResponse.RecognitionStatus.COMPLETED :
+                            SpeechRecognitionResponse.RecognitionStatus.RECOGNIZING)
+                    .text(recognizedText)
+                    .isFinal(isFinal)
+                    .requestId(result.getRequestId());
+            
+            // 添加句子信息
+            if (sentenceInfo != null) {
+                responseBuilder.sentences(List.of(sentenceInfo));
+            }
+            
+            return responseBuilder.build();
+                    
+        } catch (Exception e) {
+            log.error("解析识别结果时出现异常: {}", e.getMessage(), e);
+            
+            // 返回错误响应
+            return SpeechRecognitionResponse.builder()
+                    .sessionId(sessionId)
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .text("解析失败: " + e.getMessage())
+                    .isFinal(true)
+                    .requestId(result.getRequestId())
+                    .build();
+        }
     }
 
     /**
      * 识别会话信息
      */
+    @Getter
     private static class RecognitionSession {
         private final Recognition recognition;
-        private final RecognitionParam param;
-        private final Semaphore semaphore;
         private final Consumer<SpeechRecognitionResponse> resultCallback;
 
-        public RecognitionSession(Recognition recognition, RecognitionParam param, 
-                                Semaphore semaphore, Consumer<SpeechRecognitionResponse> resultCallback) {
+        public RecognitionSession(Recognition recognition, Consumer<SpeechRecognitionResponse> resultCallback) {
             this.recognition = recognition;
-            this.param = param;
-            this.semaphore = semaphore;
             this.resultCallback = resultCallback;
         }
 
-        public Recognition getRecognition() { return recognition; }
-        public RecognitionParam getParam() { return param; }
-        public Semaphore getSemaphore() { return semaphore; }
-        public Consumer<SpeechRecognitionResponse> getResultCallback() { return resultCallback; }
     }
 }
