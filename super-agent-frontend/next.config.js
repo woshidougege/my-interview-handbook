@@ -47,6 +47,11 @@ const nextConfig = {
     unoptimized: true
   },
   
+  // 静态导出配置（用于nginx部署）
+  output: 'export',
+  distDir: 'out',
+  trailingSlash: true,
+  
   // HTTP代理配置
   experimental: {
     proxyTimeout: 300000, // 5分钟超时

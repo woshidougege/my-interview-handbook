@@ -19,6 +19,7 @@ interface CreditTransaction {
 
 interface CreditTransactionListProps {
   // 预留扩展属性
+  refreshTrigger?: number;
 }
 
 const CreditTransactionList: React.FC<CreditTransactionListProps> = () => {

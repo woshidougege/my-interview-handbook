@@ -2,15 +2,7 @@
  * 支付状态SSE监听工具类
  */
 
-export interface PaymentStatusEvent {
-  orderNo: string;
-  status: string;
-  amount?: number;
-  paymentMethod?: string;
-  message: string;
-  eventTime: string;
-  extra?: string;
-}
+import { PaymentStatusEvent } from '@/types/user';
 
 export type PaymentStatusCallback = (event: PaymentStatusEvent) => void;
 

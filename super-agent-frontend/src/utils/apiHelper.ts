@@ -85,12 +85,12 @@ export const COMMON_ENDPOINTS = {
   logout: API_ENDPOINTS.AUTH.LOGOUT,
   
   // 用户相关
-  userProfile: API_ENDPOINTS.USER.PROFILE,
+  userProfile: API_ENDPOINTS.USER.CURRENT,
   userPublicKey: API_ENDPOINTS.USER.GET_PUBLIC_KEY,
   
   // 积分相关
-  creditBalance: API_ENDPOINTS.USER_CREDIT.BALANCE,
-  creditHistory: API_ENDPOINTS.USER_CREDIT.HISTORY,
+  creditBalance: 'user/credit/balance',
+  creditHistory: 'user/credit/history',
   
   // 支付相关
   paymentCreate: API_ENDPOINTS.PAYMENT.CREATE,

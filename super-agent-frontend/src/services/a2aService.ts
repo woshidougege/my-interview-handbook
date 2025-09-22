@@ -43,7 +43,7 @@ export interface A2AMessageRequest {
   contextId?: string;
 }
 
-interface A2ASupplementInfoRequest {
+export interface A2ASupplementInfoRequest {
   userId: string;
   taskId: string;
   userInput: string;
@@ -106,7 +106,7 @@ export const sendJsonRpcMessage = (
   // 打印发送的请求体
   console.log('发送SSE请求时的请求体:', JSON.stringify(requestBody, null, 2));
   
-  let abortController = new AbortController();
+  const abortController = new AbortController();
   
   // 获取token
   const token = localStorage.getItem('token');
@@ -159,7 +159,7 @@ export const sendJsonRpcMessage = (
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = ''; // 用于累积接收到的文本
-      let processedMessageIds = new Set<string>(); // 用于跟踪已处理的消息ID
+      const processedMessageIds = new Set<string>(); // 用于跟踪已处理的消息ID
 
       function parseSSEData(data: string): void {
         // 将新数据追加到缓冲区
@@ -285,7 +285,7 @@ export const streamMessage = (
   console.log('完整的API基础URL:', API_CONFIG.BASE_URL);
   console.log('A2A请求参数:', request);
   
-  let abortController = new AbortController();
+  const abortController = new AbortController();
   
   // 获取token
   const token = localStorage.getItem('token');
@@ -341,7 +341,7 @@ export const streamMessage = (
       console.log('响应URL:', response.url);
       console.log('响应状态:', response.status);
       console.log('响应状态文本:', response.statusText);
-      console.log('响应头:', [...response.headers.entries()]);
+      console.log('响应头:', Array.from(response.headers.entries()));
 
       // 特殊处理认证失败的情况
       if (response.status === 401) {
@@ -421,4 +421,15 @@ export const streamMessage = (
   return () => {
     abortController.abort();
   };
+};
+
+// 处理补充信息请求
+export const handleSupplementInfo = async (request: A2ASupplementInfoRequest) => {
+  try {
+    const response = await a2aApi.post('/a2a/supplement-info', request);
+    return response;
+  } catch (error) {
+    console.error('处理补充信息失败:', error);
+    throw error;
+  }
 };

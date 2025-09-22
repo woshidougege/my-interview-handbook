@@ -56,6 +56,7 @@ const ChatPage: React.FC = () => {
     text: string;
     agentEntityCode: string;
     sessionId: string;
+    taskId?: string;
   } | null>(null);
   
   // 添加用于取消请求的引用
@@ -497,7 +498,7 @@ const ChatPage: React.FC = () => {
       // 发送补充信息到A2A平台
       const response = await a2aService.handleSupplementInfo({
         userId: userId,
-        taskId: supplementInfo.taskId,
+        taskId: supplementInfo.taskId || supplementInfo.id,
         userInput: inputValue.trim(),
         sessionId: supplementInfo.sessionId
       });
@@ -1276,7 +1277,7 @@ const ChatPage: React.FC = () => {
                             fontSize: '14px',
                             fontWeight: 'bold'
                           }}>
-                            🎤 正在录音中，再次点击"停止录音"结束语音输入
+                            🎤 正在录音中，再次点击&quot;停止录音&quot;结束语音输入
                           </div>
                         )}
                         

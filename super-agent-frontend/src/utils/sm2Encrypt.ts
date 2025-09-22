@@ -1,4 +1,3 @@
-// @ts-ignore
 import { sm2 } from 'sm-crypto';
 
 // SM2公钥（将从后端API获取）

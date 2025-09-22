@@ -170,6 +170,19 @@ export interface UserSubscriptionResponse {
   subscription: SubscriptionInfo | null;
   planName: string;
   planCode: string;
+  availableCredits?: number;
+  hasCreditAccount?: boolean;
+  totalBalance?: number;
+  freeBalance?: number;
+  subscriptionBalance?: number;
+  permanentBalance?: number;
+  totalEarned?: number;
+  totalSpent?: number;
+  limitedCredits?: number;
+  dailyRefreshCredits?: number;
+  permanentCredits?: number;
+  createTime?: string;
+  updateTime?: string;
 }
 
 // ========== 积分相关类型 ==========
