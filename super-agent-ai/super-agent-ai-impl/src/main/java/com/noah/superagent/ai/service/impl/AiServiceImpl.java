@@ -10,6 +10,8 @@ import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.noah.superagent.common.config.AiProperties;
 import com.noah.superagent.ai.service.AiService;
+import io.reactivex.Flowable;
+import io.reactivex.schedulers.Schedulers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,9 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * AI服务实现类
@@ -163,5 +168,105 @@ public class AiServiceImpl implements AiService {
         }
         
         return cleanText.isEmpty() ? "新对话" : cleanText;
+    }
+    
+    @Override
+    public void streamChat(List<ChatMessage> messages, Consumer<String> resultCallback) {
+        log.info("开始流式聊天，消息数量: {}", messages != null ? messages.size() : 0);
+        
+        AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
+        if (!dashscopeConfig.getEnabled() || !StringUtils.hasText(dashscopeConfig.getApiKey())) {
+            log.warn("AI服务未启用或API Key未配置，无法进行流式聊天");
+            resultCallback.accept("AI服务暂时不可用，请稍后再试。");
+            return;
+        }
+        
+        if (messages == null || messages.isEmpty()) {
+            log.warn("消息列表为空");
+            resultCallback.accept("消息不能为空。");
+            return;
+        }
+        
+        try {
+            callDashscopeStreamSDK(messages, resultCallback);
+        } catch (Exception e) {
+            log.error("调用阿里云百炼流式SDK失败", e);
+            resultCallback.accept("抱歉，AI服务暂时出现问题，请稍后再试。");
+        }
+    }
+    
+    /**
+     * 调用DashScope SDK进行流式聊天
+     */
+    private void callDashscopeStreamSDK(List<ChatMessage> chatMessages, Consumer<String> resultCallback) 
+            throws ApiException, NoApiKeyException, InputRequiredException {
+        
+        AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
+        
+        // 转换消息格式
+        List<Message> messages = chatMessages.stream()
+                .map(msg -> Message.builder()
+                        .role(getRoleValue(msg.getRole()))
+                        .content(msg.getContent())
+                        .build())
+                .collect(Collectors.toList());
+        
+        // 构建参数
+        GenerationParam param = GenerationParam.builder()
+                .apiKey(dashscopeConfig.getApiKey())
+                .model("qwen-plus") // 使用qwen-plus模型进行聊天
+                .messages(messages)
+                .resultFormat(GenerationParam.ResultFormat.MESSAGE)
+                .incrementalOutput(true) // 开启增量输出，流式返回
+                .build();
+        
+        log.debug("调用DashScope SDK进行流式聊天，模型: qwen-plus");
+        
+        Generation gen = new Generation();
+        
+        try {
+            // 使用streamCall进行流式调用
+            Flowable<GenerationResult> result = gen.streamCall(param);
+            
+            result
+                .subscribeOn(Schedulers.io()) // IO线程执行请求
+                .observeOn(Schedulers.computation()) // 计算线程处理响应
+                .subscribe(
+                    // onNext: 处理每个响应片段
+                    message -> {
+                        String content = message.getOutput().getChoices().get(0).getMessage().getContent();
+                        if (StringUtils.hasText(content)) {
+                            resultCallback.accept(content);
+                        }
+                    },
+                    // onError: 处理错误
+                    error -> {
+                        log.error("流式聊天请求失败", error);
+                        resultCallback.accept("\n\n抱歉，AI回答过程中出现问题，请稍后再试。");
+                    },
+                    // onComplete: 完成回调
+                    () -> {
+                        log.debug("流式聊天完成");
+                        // 流式结束，不需要额外操作
+                    }
+                );
+        } catch (Exception e) {
+            log.error("流式聊天调用异常", e);
+            throw new RuntimeException("流式聊天调用失败", e);
+        }
+    }
+    
+    /**
+     * 获取角色值
+     */
+    private String getRoleValue(String role) {
+        if ("user".equals(role)) {
+            return Role.USER.getValue();
+        } else if ("assistant".equals(role)) {
+            return Role.ASSISTANT.getValue();
+        } else if ("system".equals(role)) {
+            return Role.SYSTEM.getValue();
+        }
+        return Role.USER.getValue(); // 默认为用户角色
     }
 }

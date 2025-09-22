@@ -31,7 +31,6 @@ import {
 import AppLayout from '@/components/Layout/AppLayout';
 import { chatTaskApi, workspaceApi, userApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
-import aliCloudAiService from '@/services/aliCloudAiService';
 import * as a2aService from '@/services/a2aService';
 
 const { Sider, Content } = Layout;

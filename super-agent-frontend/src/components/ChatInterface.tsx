@@ -19,7 +19,6 @@ import {
   AudioMutedOutlined
 } from '@ant-design/icons';
 import { ChatMessage } from '@/types/chat';
-import aliCloudAiService from '@/services/aliCloudAiService';
 
 const { TextArea } = Input;
 const { Text, Paragraph } = Typography;
@@ -67,15 +66,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // 检查AI服务可用性
   useEffect(() => {
-    const checkAiService = () => {
-      const available = aliCloudAiService.isAvailable();
-      setAiServiceAvailable(available);
-      if (!available) {
-        message.warning('AI服务配置不完整，请检查API密钥设置');
-      }
-    };
-    
-    checkAiService();
+    // 直接设置为可用，由后端处理AI服务
+    setAiServiceAvailable(true);
   }, []);
 
   // 初始化语音识别服务
@@ -169,15 +161,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }, 100);
   };
 
-  // 生成标题
+  // 生成标题 - 调用现有的后端接口
   const generateTitle = async (firstMessage: string) => {
     if (!onTitleGenerated || !aiServiceAvailable) return;
     
     setTitleGenerating(true);
     try {
-      const title = await aliCloudAiService.generateTitle(firstMessage);
-      onTitleGenerated(title);
-      message.success(`标题已生成: ${title}`);
+      // 调用现有的标题生成接口
+      const response = await fetch(`/api/workspaces/${workspaceId}/chat-tasks/generate-title`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          question: firstMessage,
+          async: false 
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        const title = result.data?.title || '新对话';
+        onTitleGenerated(title);
+        message.success(`标题已生成: ${title}`);
+      } else {
+        throw new Error('标题生成请求失败');
+      }
     } catch (error) {
       console.error('标题生成失败:', error);
       message.error('标题生成失败');
@@ -217,25 +224,55 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }));
 
     try {
-      // 使用阿里云AI服务进行流式聊天
-      await aliCloudAiService.streamChat(
-        chatHistory,
-        {
-          onChunk: (chunk: string) => {
-            handleStreamChunk(chunk);
-          },
-          onComplete: () => {
+      // 调用后端流式聊天接口
+      const response = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: chatHistory,
+          workspaceId: workspaceId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('网络请求失败');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
             handleStreamEnd();
-          },
-          onError: (error: string) => {
-            console.error('AI聊天失败:', error);
-            message.error(`AI聊天失败: ${error}`);
-            setLoading(false);
-            setIsStreaming(false);
-            setCurrentStreamMessage('');
+            break;
+          }
+          
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n').filter(line => line.trim());
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                handleStreamEnd();
+                break;
+              }
+              try {
+                const jsonData = JSON.parse(data);
+                if (jsonData.content) {
+                  handleStreamChunk(jsonData.content);
+                }
+              } catch (e) {
+                console.warn('解析流式数据失败:', e);
+              }
+            }
           }
         }
-      );
+      }
     } catch (error) {
       console.error('发送消息失败:', error);
       message.error('发送消息失败');

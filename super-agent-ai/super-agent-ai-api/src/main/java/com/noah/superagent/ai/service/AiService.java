@@ -1,6 +1,6 @@
 package com.noah.superagent.ai.service;
 
-import com.noah.superagent.common.dto.response.SpeechRecognitionResponse;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
@@ -20,4 +20,31 @@ public interface AiService {
      * @return 生成的标题
      */
     String generateChatTitle(String question);
+    
+    /**
+     * 流式聊天
+     * @param messages 聊天消息历史
+     * @param resultCallback 结果回调，每个流式片段会调用一次
+     */
+    void streamChat(List<ChatMessage> messages, Consumer<String> resultCallback);
+    
+    /**
+     * 聊天消息
+     */
+    class ChatMessage {
+        private String role; // system, user, assistant
+        private String content;
+        
+        public ChatMessage() {}
+        
+        public ChatMessage(String role, String content) {
+            this.role = role;
+            this.content = content;
+        }
+        
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
+    }
 }
