@@ -373,10 +373,10 @@ const ChatPage: React.FC = () => {
         // 创建新会话
         const workspace = await ensureWorkspace();
         const newSession = await createNewSession(inputValue.trim(), workspace);
-        contextId = newSession.contextId; // 修复：使用contextId而不是id
+        contextId = newSession.contextId ?? ''; // 修复：使用空值合并操作符处理可能的undefined
       } else {
         // 使用现有会话的contextId作为上下文ID
-        contextId = currentSession.contextId; // 修复：使用contextId而不是id
+        contextId = currentSession.contextId ?? ''; // 修复：使用空值合并操作符处理可能的undefined
       }
       
       // 生成任务ID
@@ -386,6 +386,8 @@ const ChatPage: React.FC = () => {
       setLoading(true);
       setIsStreaming(true);
       
+      console.log('准备发送A2A请求，上下文ID:', contextId);
+      
       // 准备A2A请求参数
       const a2aRequest = {
         userId: currentUser.id,
@@ -393,6 +395,8 @@ const ChatPage: React.FC = () => {
         sessionId: contextId,   // sessionId保持与contextId一致
         contextId: contextId    // 正确传递contextId参数
       };
+
+      console.log('准备发送A2A请求，参数:', a2aRequest);
 
       // 使用流式方式发送请求并处理响应
       // 用户消息已经在上面的代码块中创建并更新了消息列表
@@ -415,78 +419,46 @@ const ChatPage: React.FC = () => {
               message.info('需要补充信息: ' + supplementData.text);
               setCurrentStreamMessage(prev => prev + `\n需要补充信息: ${supplementData.text}`);
             } catch (e) {
-              setCurrentStreamMessage(prev => prev + chunk);
+              console.error('解析补充信息失败:', e);
             }
           } else {
-            // 处理普通消息 - 移除去重逻辑，直接处理消息
+            // 检查消息ID是否已处理（去重）
             try {
-              // 尝试解析JSON-RPC格式的响应
-              const jsonChunk = JSON.parse(chunk);
+              const jsonData = JSON.parse(chunk);
+              if (jsonData.id && processedMessageIds.has(jsonData.id)) {
+                console.log('跳过重复消息:', jsonData.id);
+                return;
+              }
               
-              // 提取要显示的文本内容
-              const textContent = jsonChunk?.result?.status?.message?.parts?.[0]?.text || '';
-              if (textContent) {
-                setMessages(prev => {
-                  const updated = [...prev];
-                  const lastMessage = updated[updated.length - 1];
-                  if (lastMessage && lastMessage.role === 'assistant') {
-                    // 更新现有助手消息
-                    lastMessage.content += textContent;
-                  } else {
-                    // 添加新的助手消息
-                    updated.push({
-                      id: Date.now().toString(),
-                      role: 'assistant',
-                      content: textContent,
-                      timestamp: new Date().toISOString()
-                    });
-                  }
-                  return updated;
-                });
+              // 添加消息ID到已处理集合
+              if (jsonData.id) {
+                processedMessageIds.add(jsonData.id);
+              }
+              
+              // 处理普通消息
+              if (jsonData.data && jsonData.data.parts && jsonData.data.parts[0]) {
+                const content = jsonData.data.parts[0].text || '';
+                if (content) {
+                  setCurrentStreamMessage(prev => prev + content);
+                }
               }
             } catch (e) {
-              // 如果不是JSON格式，按普通文本处理
-              setMessages(prev => {
-                const updated = [...prev];
-                const lastMessage = updated[updated.length - 1];
-                if (lastMessage && lastMessage.role === 'assistant') {
-                  // 更新现有助手消息
-                  lastMessage.content += chunk;
-                } else {
-                  // 添加新的助手消息
-                  updated.push({
-                    id: Date.now().toString(),
-                    role: 'assistant',
-                    content: chunk,
-                    timestamp: new Date().toISOString()
-                  });
-                }
-                return updated;
-              });
+              // 如果不是JSON格式，直接追加到当前流消息中
+              setCurrentStreamMessage(prev => prev + chunk);
             }
           }
         },
         (error: any) => {
           console.error('A2A流式传输错误:', error);
-          // 特殊处理认证错误
-          if (error.name === 'AuthenticationError') {
-            message.error('认证失败，请重新登录');
-            // 可以考虑跳转到登录页面
-            // window.location.href = '/login';
-          } else {
-            message.error('消息发送失败: ' + (error.message || '未知错误'));
+          message.error('消息发送失败: ' + (error.message || '未知错误'));
+          setIsStreaming(false);
+          setLoading(false);
+          // 重置状态
+          if (cancelRequestRef.current) {
+            cancelRequestRef.current();
+            cancelRequestRef.current = null;
           }
-          setLoading(false);
-          setIsStreaming(false);
           setCurrentStreamMessage('');
-          cancelRequestRef.current = null;
-        },
-        () => {
-          // 流结束时的回调
-          setLoading(false);
-          setIsStreaming(false);
-          setCurrentStreamMessage('');
-          cancelRequestRef.current = null;
         }
       );
       
@@ -650,7 +622,8 @@ const ChatPage: React.FC = () => {
       messages: [], // 实际应用中应该加载历史消息
       workspaceId: session.workspaceId || currentWorkspace?.id || '',
       createdAt: session.createdAt,
-      updatedAt: session.updatedAt
+      updatedAt: session.updatedAt,
+      contextId: session.contextId // 添加contextId字段
     };
     
     setCurrentSession(chatSession);
