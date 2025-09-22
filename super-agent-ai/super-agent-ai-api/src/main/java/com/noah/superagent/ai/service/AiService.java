@@ -1,5 +1,8 @@
 package com.noah.superagent.ai.service;
 
+import com.noah.superagent.common.dto.response.SpeechRecognitionResponse;
+import java.util.function.Consumer;
+
 /**
  * AI服务接口
  * 提供各种AI相关功能

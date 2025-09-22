@@ -39,3 +39,13 @@ super-agent:
       retry:
         max-attempts: ${AI_RETRY_MAX_ATTEMPTS:3}
         delay-seconds: ${AI_RETRY_DELAY:2}
+        
+      # 语音识别配置
+      speech-recognition:
+        model: ${AI_SPEECH_RECOGNITION_MODEL:paraformer-realtime-v2}
+        sample-rate: ${AI_SPEECH_RECOGNITION_SAMPLE_RATE:16000}
+        audio-format: ${AI_SPEECH_RECOGNITION_FORMAT:wav}
+        language-hints: ${AI_SPEECH_RECOGNITION_LANGUAGE:zh}
+        enable-punctuation: ${AI_SPEECH_RECOGNITION_PUNCTUATION:true}
+        enable-itn: ${AI_SPEECH_RECOGNITION_ITN:true}
+        heartbeat: ${AI_SPEECH_RECOGNITION_HEARTBEAT:true}

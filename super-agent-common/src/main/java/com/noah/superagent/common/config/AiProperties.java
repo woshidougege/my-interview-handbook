@@ -50,6 +50,11 @@ public class AiProperties {
          * 重试配置
          */
         private RetryConfig retry = new RetryConfig();
+        
+        /**
+         * 语音识别配置
+         */
+        private SpeechRecognitionConfig speechRecognition = new SpeechRecognitionConfig();
     }
 
     @Data
@@ -110,5 +115,43 @@ public class AiProperties {
          * 重试延迟（秒）
          */
         private Integer delaySeconds = 2;
+    }
+
+    @Data
+    public static class SpeechRecognitionConfig {
+        /**
+         * 使用的模型
+         */
+        private String model = "paraformer-realtime-v2";
+
+        /**
+         * 音频采样率
+         */
+        private Integer sampleRate = 16000;
+
+        /**
+         * 音频格式
+         */
+        private String audioFormat = "wav";
+
+        /**
+         * 语言提示
+         */
+        private String languageHints = "zh";
+
+        /**
+         * 是否启用标点符号预测
+         */
+        private Boolean enablePunctuation = true;
+
+        /**
+         * 是否启用逆文本正则化（ITN）
+         */
+        private Boolean enableItn = true;
+
+        /**
+         * 是否启用心跳保持长连接
+         */
+        private Boolean heartbeat = true;
     }
 }

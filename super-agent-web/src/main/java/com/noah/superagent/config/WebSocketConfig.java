@@ -2,24 +2,23 @@ package com.noah.superagent.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 
-import com.noah.superagent.websocket.ChatWebSocketHandler;
-
+/**
+ * WebSocket配置类
+ * 启用Spring Boot官方的WebSocket注解支持
+ *
+ * @author AI Assistant
+ * @since 1.0.0
+ */
 @Configuration
-@EnableWebSocket
-public class WebSocketConfig implements WebSocketConfigurer {
+public class WebSocketConfig {
 
+    /**
+     * 注入ServerEndpointExporter，这个Bean会自动注册使用了@ServerEndpoint注解声明的WebSocket端点
+     */
     @Bean
-    public ChatWebSocketHandler chatWebSocketHandler() {
-        return new ChatWebSocketHandler();
-    }
-
-    @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(chatWebSocketHandler(), "/ws/chat")
-                .setAllowedOrigins("*");
+    public ServerEndpointExporter serverEndpointExporter() {
+        return new ServerEndpointExporter();
     }
 }
