@@ -47,16 +47,41 @@ public class ChatTaskController {
     public ApiResponse<ChatTaskResponse> createChatTask(
             @Parameter(description = "工作空间ID", example = "1234567890123456789")
             @PathVariable("workspaceId") Long workspaceId,
-            @Valid @RequestBody ChatTaskCreateRequest request) {
-        log.info("接收创建对话任务请求: {}", request.getTitle());
+            @Parameter(description = "对话内容")
+            @RequestBody(required = false) Map<String, String> requestBody) {
+        log.info("接收创建对话任务请求，工作空间ID: {}", workspaceId);
+
+        // 获取对话内容，如果未提供则为空字符串
+        String content = requestBody != null && requestBody.containsKey("content") ? requestBody.get("content") : "";
         
+        // 创建默认的对话任务请求对象
+        ChatTaskCreateRequest request = new ChatTaskCreateRequest();
+        request.setWorkspaceId(workspaceId);
+
+        
+        // 设置标题为内容的前10个字符，如果内容为空则设置默认标题
+        String title = "新对话";
+        if (content != null && !content.isEmpty()) {
+            title = content.length() > 10 ? content.substring(0, 10) : content;
+        }
+        request.setTitle(title);
+        
+        // 设置内容
+        request.setContent(content);
+        
+        // 设置默认收藏状态为未收藏
+        request.setIsFavorite(com.noah.superagent.common.enums.FavoriteEnum.NOT_FAVORITE);
+        
+        // 设置默认状态为进行中
+        request.setStatus(com.noah.superagent.common.enums.ChatTaskStatusEnum.IN_PROGRESS);
+
         // Request -> DTO -> Service -> DTO -> Response
         ChatTaskDTO chatTaskDO = chatTaskWebConvert.fromCreateRequest(request);
         // 设置工作空间ID
         chatTaskDO.setWorkspaceId(workspaceId);
         ChatTaskDTO resultDO = chatTaskService.createChatTask(chatTaskDO);
         ChatTaskResponse response = chatTaskWebConvert.toResponse(resultDO);
-        
+
         return ApiResponse.success("对话任务创建成功", response);
     }
 

@@ -83,6 +83,19 @@ registration:
   callback:
     url: http://192.168.6.86:8000/kl-dt-gateway/user/generatePlanAgentAndDocs
 
+# A2A平台配置
+a2a:
+  platform:
+    base-url: http://192.168.1.66:8000
+    # 能力中心编码配置
+    ability-codes:
+      default: "18961714392032"
+    # 实体编码配置
+    entity-codes:
+      default: "ENTITY_test_pp_dispatch"
+      # 可以添加更多实体编码
+      # example: "ENTITY_example_code"
+
 # ========== 文档库配置 ==========
 file-repository:
   base-url: http://192.168.6.86:8000/kl-dt-gateway

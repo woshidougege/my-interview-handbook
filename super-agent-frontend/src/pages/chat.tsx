@@ -13,7 +13,8 @@ import {
   message,
   Modal,
   Tooltip,
-  Empty
+  Empty,
+  Switch
 } from 'antd';
 import { 
   SendOutlined, 
@@ -24,12 +25,14 @@ import {
   DeleteOutlined,
   MessageOutlined,
   AudioOutlined,
-  AudioMutedOutlined
+  AudioMutedOutlined,
+  ApiOutlined
 } from '@ant-design/icons';
 import AppLayout from '@/components/Layout/AppLayout';
 import { chatTaskApi, workspaceApi, userApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
 import aliCloudAiService from '@/services/aliCloudAiService';
+import * as a2aService from '@/services/a2aService';
 
 const { Sider, Content } = Layout;
 const { TextArea } = Input;
@@ -49,6 +52,15 @@ const ChatPage: React.FC = () => {
   const [generatingTitleForSession, setGeneratingTitleForSession] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamMessage, setCurrentStreamMessage] = useState<string>('');
+  const [supplementInfo, setSupplementInfo] = useState<{
+    id: string;
+    text: string;
+    agentEntityCode: string;
+    sessionId: string;
+  } | null>(null);
+  
+  // 添加用于取消请求的引用
+  const cancelRequestRef = useRef<(() => void) | null>(null);
   
   // 语音输入相关状态
   const [isRecording, setIsRecording] = useState(false);
@@ -86,6 +98,14 @@ const ChatPage: React.FC = () => {
   // 页面加载时尝试获取现有工作空间和会话列表
   useEffect(() => {
     loadExistingWorkspace();
+    
+    // 组件卸载时的清理函数
+    return () => {
+      // 取消正在进行的请求
+      if (cancelRequestRef.current) {
+        cancelRequestRef.current();
+      }
+    };
   }, []);
 
   // 当工作空间准备好后加载会话列表
@@ -242,7 +262,8 @@ const ChatPage: React.FC = () => {
         messages: [],
         workspaceId: newSession.workspaceId,
         createdAt: newSession.createdAt,
-        updatedAt: newSession.updatedAt
+        updatedAt: newSession.updatedAt,
+        contextId: newSession.contextId // 添加contextId字段
       };
       
       setCurrentSession(chatSession);
@@ -301,83 +322,233 @@ const ChatPage: React.FC = () => {
 
   // 发送消息
   const sendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || loading) return;
     
-    setLoading(true);
-    setIsStreaming(true);
-    setCurrentStreamMessage('');
-    
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputValue.trim(),
-      timestamp: new Date().toISOString()
-    };
-    
-    const questionText = inputValue.trim();
-    setInputValue('');
-    
-    try {
-      // 如果没有当前会话，需要先确保工作空间存在，然后创建会话
-      let session = currentSession;
-      if (!session) {
-        // 确保工作空间存在
-        const workspace = await ensureWorkspace();
-        // 创建新会话
-        session = await createNewSession(questionText, workspace);
-        if (!session) {
-          setLoading(false);
-          setIsStreaming(false);
-          return;
-        }
-      }
+    // 如果有待处理的补充信息，优先处理
+    if (supplementInfo) {
+      await handleSupplementInfo();
+      return;
+    }
 
-      // 添加用户消息到UI
+    try {
+      // 创建用户消息
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: inputValue.trim(),
+        timestamp: new Date().toISOString()
+      };
+
+      // 更新消息列表
       const newMessages = [...messages, userMessage];
       setMessages(newMessages);
+      setInputValue('');
       
-      // 准备聊天历史
-      const chatHistory = newMessages.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      }));
+      // 滚动到底部
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
 
-      // 直接调用阿里云AI服务
-      await aliCloudAiService.streamChat(
-        chatHistory,
-        {
-          onChunk: (chunk: string) => {
-            setIsStreaming(true);
-            setCurrentStreamMessage(prev => prev + chunk);
-          },
-          onComplete: (finalMessage: string) => {
-            // 创建AI回复消息
-            if (finalMessage.trim()) {
-              const aiMessage: ChatMessage = {
-                id: Date.now().toString(),
-                role: 'assistant',
-                content: finalMessage,
-                timestamp: new Date().toISOString()
-              };
-              setMessages(prev => [...prev, aiMessage]);
+      // 使用A2A协议发送消息
+      setLoading(true);
+      
+      // 获取当前用户信息
+      let currentUser = null;
+      try {
+        const userResponse = await userApi.getCurrentUser();
+        currentUser = userResponse.data.data;
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+        message.error('获取用户信息失败');
+        setLoading(false);
+        setIsStreaming(false);
+        return;
+      }
+      
+      // 正确处理上下文ID：
+      // 如果当前有会话，则使用会话的contextId作为上下文ID（历史对话）
+      // 如果没有会话，则创建新会话并使用新会话的contextId作为上下文ID（新对话）
+      let contextId = '';
+      if (!currentSession) {
+        // 创建新会话
+        const workspace = await ensureWorkspace();
+        const newSession = await createNewSession(inputValue.trim(), workspace);
+        contextId = newSession.contextId; // 修复：使用contextId而不是id
+      } else {
+        // 使用现有会话的contextId作为上下文ID
+        contextId = currentSession.contextId; // 修复：使用contextId而不是id
+      }
+      
+      // 生成任务ID
+      const taskId = `task_${Date.now()}`;
+      
+      // 使用SSE格式发送JSON-RPC请求
+      setLoading(true);
+      setIsStreaming(true);
+      
+      // 准备A2A请求参数
+      const a2aRequest = {
+        userId: currentUser.id,
+        message: inputValue.trim(),
+        sessionId: contextId,   // sessionId保持与contextId一致
+        contextId: contextId    // 正确传递contextId参数
+      };
+
+      // 使用流式方式发送请求并处理响应
+      // 用户消息已经在上面的代码块中创建并更新了消息列表
+
+      // 在闭包中维护已处理的消息ID集合
+      const processedMessageIds = new Set<string>();
+      
+      // 存储取消函数的引用
+      cancelRequestRef.current = a2aService.streamMessage(
+        a2aRequest,
+        (chunk: string) => {
+          // 检查是否是需要补充信息的情况
+          if (chunk.startsWith('【需要补充信息】')) {
+            try {
+              const supplementData = JSON.parse(chunk.substring(9)); // 去掉"【需要补充信息】"前缀
+              setSupplementInfo({
+                ...supplementData,
+                sessionId: currentSession?.id || ''
+              });
+              message.info('需要补充信息: ' + supplementData.text);
+              setCurrentStreamMessage(prev => prev + `\n需要补充信息: ${supplementData.text}`);
+            } catch (e) {
+              setCurrentStreamMessage(prev => prev + chunk);
             }
-            setCurrentStreamMessage('');
-            setIsStreaming(false);
-            setLoading(false);
-          },
-          onError: (error: string) => {
-            console.error('AI服务错误:', error);
-            message.error(`AI服务错误: ${error}`);
-            setLoading(false);
-            setIsStreaming(false);
-            setCurrentStreamMessage('');
+          } else {
+            // 处理普通消息 - 移除去重逻辑，直接处理消息
+            try {
+              // 尝试解析JSON-RPC格式的响应
+              const jsonChunk = JSON.parse(chunk);
+              
+              // 提取要显示的文本内容
+              const textContent = jsonChunk?.result?.status?.message?.parts?.[0]?.text || '';
+              if (textContent) {
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const lastMessage = updated[updated.length - 1];
+                  if (lastMessage && lastMessage.role === 'assistant') {
+                    // 更新现有助手消息
+                    lastMessage.content += textContent;
+                  } else {
+                    // 添加新的助手消息
+                    updated.push({
+                      id: Date.now().toString(),
+                      role: 'assistant',
+                      content: textContent,
+                      timestamp: new Date().toISOString()
+                    });
+                  }
+                  return updated;
+                });
+              }
+            } catch (e) {
+              // 如果不是JSON格式，按普通文本处理
+              setMessages(prev => {
+                const updated = [...prev];
+                const lastMessage = updated[updated.length - 1];
+                if (lastMessage && lastMessage.role === 'assistant') {
+                  // 更新现有助手消息
+                  lastMessage.content += chunk;
+                } else {
+                  // 添加新的助手消息
+                  updated.push({
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    content: chunk,
+                    timestamp: new Date().toISOString()
+                  });
+                }
+                return updated;
+              });
+            }
           }
+        },
+        (error: any) => {
+          console.error('A2A流式传输错误:', error);
+          // 特殊处理认证错误
+          if (error.name === 'AuthenticationError') {
+            message.error('认证失败，请重新登录');
+            // 可以考虑跳转到登录页面
+            // window.location.href = '/login';
+          } else {
+            message.error('消息发送失败: ' + (error.message || '未知错误'));
+          }
+          setLoading(false);
+          setIsStreaming(false);
+          setCurrentStreamMessage('');
+          cancelRequestRef.current = null;
+        },
+        () => {
+          // 流结束时的回调
+          setLoading(false);
+          setIsStreaming(false);
+          setCurrentStreamMessage('');
+          cancelRequestRef.current = null;
         }
       );
       
-    } catch (err) {
+      // 可以在需要时调用cancelRequest()来取消请求
+    } catch (err: any) {
       console.error('发送消息失败:', err);
-      message.error('发送消息失败');
+      message.error('发送消息失败: ' + (err.message || '未知错误'));
+      
+      // 显示错误信息
+      const errorMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: '抱歉，处理您的请求时出现错误: ' + (err.message || '未知错误'),
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      if (!useA2A || !useSSE) {
+        setLoading(false);
+        setIsStreaming(false);
+        setCurrentStreamMessage('');
+      }
+    }
+  };
+
+  // 处理补充信息
+  const handleSupplementInfo = async () => {
+    if (!supplementInfo || !inputValue.trim()) {
+      message.warning('请输入补充信息');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setIsStreaming(true);
+      
+      // 发送补充信息到A2A平台
+      const response = await a2aService.handleSupplementInfo({
+        userId: userId,
+        taskId: supplementInfo.taskId,
+        userInput: inputValue.trim(),
+        sessionId: supplementInfo.sessionId
+      });
+
+      if (response.data) {
+        // 显示A2A平台的响应
+        const aiMessage: ChatMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: response.data,
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        
+        // 清除补充信息状态
+        setSupplementInfo(null);
+        setInputValue('');
+      }
+    } catch (err: any) {
+      console.error('处理补充信息失败:', err);
+      message.error('处理补充信息失败: ' + (err.message || '未知错误'));
+    } finally {
       setLoading(false);
       setIsStreaming(false);
     }
@@ -387,7 +558,11 @@ const ChatPage: React.FC = () => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      if (supplementInfo) {
+        handleSupplementInfo();
+      } else {
+        sendMessage();
+      }
     }
   };
 
@@ -562,6 +737,28 @@ const ChatPage: React.FC = () => {
       message.error('更新失败');
     }
   };
+
+  // A2A协议相关状态 - 默认启用A2A和SSE
+  const [userId, setUserId] = useState('');
+  const useA2A = true;
+  const useSSE = true;
+  
+  // 在组件加载时获取当前用户信息并设置默认用户ID
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await userApi.getCurrentUser();
+        const currentUser = response.data.data;
+        // 设置默认用户ID为当前登录用户ID
+        setUserId(currentUser.id);
+      } catch (error) {
+        console.error('获取当前用户信息失败:', error);
+        message.error('获取用户信息失败');
+      }
+    };
+    
+    fetchCurrentUser();
+  }, []);
 
   return (
     <>
@@ -811,7 +1008,7 @@ const ChatPage: React.FC = () => {
                                 maxWidth: '100%',
                                 wordBreak: 'break-word'
                               }}
-                              bodyStyle={{ padding: '12px 16px' }}
+                              styles={{ body: { padding: '12px 16px' } }}
                             >
                               <Paragraph 
                                 style={{ 
@@ -922,6 +1119,33 @@ const ChatPage: React.FC = () => {
                   borderTop: '1px solid #e8e8e8',
                   background: '#fff'
                 }}>
+                  {/* A2A协议设置 */}
+                  <div style={{ 
+                    marginBottom: '12px', 
+                    padding: '12px', 
+                    background: '#f5f5f5', 
+                    borderRadius: '6px' 
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>
+                        <ApiOutlined /> A2A协议 (默认启用)
+                      </span>
+                    </div>
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span>SSE格式 (默认启用)</span>
+                      </div>
+                      <Text strong>用户ID:</Text>
+                      <Input 
+                        size="small"
+                        value={userId}
+                        onChange={(e) => setUserId(e.target.value)}
+                        style={{ marginTop: '4px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 语音输入和聊天输入区域 */}
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
                     {/* 语音输入按钮 */}
                     <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
@@ -953,7 +1177,7 @@ const ChatPage: React.FC = () => {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        placeholder="输入您的问题..."
+                        placeholder={supplementInfo ? `请输入补充信息: ${supplementInfo?.text}` : "输入您的问题..."}
                         autoSize={{ minRows: 1, maxRows: 4 }}
                         style={{ resize: 'none' }}
                         disabled={loading || isRecording}
@@ -961,16 +1185,15 @@ const ChatPage: React.FC = () => {
                       <Button
                         type="primary"
                         icon={<SendOutlined />}
-                        onClick={sendMessage}
+                        onClick={supplementInfo ? handleSupplementInfo : sendMessage}
                         loading={loading}
                         disabled={!inputValue.trim() || isRecording}
                         style={{ height: 'auto' }}
                       >
-                        发送
+                        {supplementInfo ? '提交' : '发送'}
                       </Button>
                     </Space.Compact>
                   </div>
-                  
                 </div>
               </>
             ) : (

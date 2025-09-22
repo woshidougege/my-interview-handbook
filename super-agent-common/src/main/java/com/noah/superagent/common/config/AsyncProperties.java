@@ -40,6 +40,11 @@ public class AsyncProperties {
     private ExecutorConfig scheduler = new ExecutorConfig(2, 4, 100, 120, "async-scheduler-", 60, true);
 
     /**
+     * AI对话执行异步线程池配置
+     */
+    private ExecutorConfig aiChatExecution = new ExecutorConfig(10, 20, 500, 60, "ai-chat-execution-", 30, true);
+
+    /**
      * 资源上报异步线程池配置
      */
     private ExecutorConfig resourceReport = new ExecutorConfig(2, 4, 200, 60, "resource-report-", 30, true);

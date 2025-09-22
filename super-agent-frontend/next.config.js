@@ -47,6 +47,11 @@ const nextConfig = {
     unoptimized: true
   },
   
+  // HTTP代理配置
+  experimental: {
+    proxyTimeout: 300000, // 5分钟超时
+  },
+  
   // API代理配置 - 开发环境
   async rewrites() {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8081';
@@ -64,20 +69,17 @@ const nextConfig = {
   },
   
   // 编译优化
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error']
-    } : false,
-  },
+  optimizeFonts: false,
   
-  // TypeScript配置
-  typescript: {
-    ignoreBuildErrors: false,
-  },
-  
-  // ESLint配置
-  eslint: {
-    ignoreDuringBuilds: false,
+  // 构建配置
+  webpack(config) {
+    // 支持 .svg 文件作为 React 组件导入
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ["@svgr/webpack"],
+    });
+    
+    return config;
   },
 };
 

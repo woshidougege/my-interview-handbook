@@ -156,8 +156,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       }
       return ''; // 清空流式消息
     });
+    
+    // 明确重置所有流相关状态
     setIsStreaming(false);
     setLoading(false);
+    
+    // 确保输入框可以继续使用
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
   };
 
   // 生成标题
