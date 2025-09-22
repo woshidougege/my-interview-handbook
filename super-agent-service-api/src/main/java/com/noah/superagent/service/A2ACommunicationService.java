@@ -5,6 +5,8 @@ import com.noah.superagent.common.config.A2APlatformConfig;
 
 import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * A2A通信服务接口
@@ -55,6 +57,18 @@ public interface A2ACommunicationService {
      * @return InputStream 输入流
      */
     InputStream streamMessageToA2APlatform(String userId, String message, String sessionId);
+    
+    /**
+     * 异步流式发送消息到A2A平台
+     *
+     * @param userId     用户ID
+     * @param message    用户消息
+     * @param sessionId  会话ID
+     * @param contextId  上下文ID
+     * @return CompletableFuture<ResponseEntity<StreamingResponseBody>> 异步流式响应体
+     */
+    CompletableFuture<ResponseEntity<StreamingResponseBody>> streamMessageToA2APlatformAsync(
+            String userId, String message, String sessionId, String contextId);
     
     /**
      * 发送JSON-RPC格式消息到A2A平台

@@ -196,7 +196,8 @@ const ChatPage: React.FC = () => {
         messages: [],
         workspaceId: newSession.workspaceId,
         createdAt: newSession.createdAt,
-        updatedAt: newSession.updatedAt
+        updatedAt: newSession.updatedAt,
+        contextId: newSession.contextId // 添加contextId字段
       };
       
       setCurrentSession(chatSession);
@@ -299,17 +300,17 @@ const ChatPage: React.FC = () => {
       }
       
       // 正确处理上下文ID：
-      // 如果当前有会话，则使用会话ID作为上下文ID（历史对话）
-      // 如果没有会话，则创建新会话并使用新会话的ID作为上下文ID（新对话）
+      // 如果当前有会话，则使用会话的contextId作为上下文ID（历史对话）
+      // 如果没有会话，则创建新会话并使用新会话的contextId作为上下文ID（新对话）
       let contextId = '';
       if (!currentSession) {
         // 创建新会话
         const workspace = await ensureWorkspace();
         const newSession = await createNewSession(inputValue.trim(), workspace);
-        contextId = newSession.id;
+        contextId = newSession.contextId; // 修复：使用contextId而不是id
       } else {
-        // 使用现有会话ID作为上下文ID
-        contextId = currentSession.id;
+        // 使用现有会话的contextId作为上下文ID
+        contextId = currentSession.contextId; // 修复：使用contextId而不是id
       }
       
       // 生成任务ID

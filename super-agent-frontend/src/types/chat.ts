@@ -9,6 +9,7 @@ export interface ChatTask {
   favorite: boolean;
   createdAt: string;
   updatedAt: string;
+  contextId?: string; // 添加contextId字段
 }
 
 export interface ChatMessage {
@@ -36,4 +37,5 @@ export interface ChatSession {
   workspaceId: string;
   createdAt: string;
   updatedAt: string;
+  contextId?: string; // 添加contextId字段
 }

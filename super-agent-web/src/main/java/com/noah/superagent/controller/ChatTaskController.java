@@ -57,10 +57,7 @@ public class ChatTaskController {
         // 创建默认的对话任务请求对象
         ChatTaskCreateRequest request = new ChatTaskCreateRequest();
         request.setWorkspaceId(workspaceId);
-        
-        // 生成会话ID
-        String contextId = "ctx_" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID().toString().replace("-", "");
-        request.setContextId(contextId);
+
         
         // 设置标题为内容的前10个字符，如果内容为空则设置默认标题
         String title = "新对话";

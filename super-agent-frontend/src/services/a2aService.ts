@@ -279,7 +279,7 @@ export const streamMessage = (
   console.log('API配置信息:', API_CONFIG);
   
   // 使用正确的URL路径
-  const url = `${API_CONFIG.BASE_URL}/a2a/stream-message-sse`;
+  const url = `${API_CONFIG.BASE_URL}/a2a/stream-message`;
   
   console.log('构造的A2A请求URL:', url);
   console.log('完整的API基础URL:', API_CONFIG.BASE_URL);

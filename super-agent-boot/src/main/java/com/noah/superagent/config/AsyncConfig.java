@@ -94,6 +94,14 @@ public class AsyncConfig {
         return createExecutor(asyncProperties.getScheduler(), "任务调度异步线程池");
     }
 
+    /**
+     * AI对话执行异步线程池
+     * 用于处理AI对话执行相关的异步任务
+     */
+    @Bean("ai-chat-execution-executor")
+    public Executor aiChatExecutionExecutor() {
+        return createExecutor(asyncProperties.getAiChatExecution(), "AI对话执行异步线程池");
+    }
 
     /**
      * 资源上报异步线程池
