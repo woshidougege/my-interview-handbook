@@ -1,23 +1,29 @@
 package com.noah.superagent.controller;
 
-import com.noah.superagent.common.dto.request.PageRequest;
-import com.noah.superagent.common.dto.response.PageResponse;
 import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
 import com.noah.superagent.common.dto.request.ChatTaskUpdateRequest;
 import com.noah.superagent.common.dto.request.ChatTitleGenerateRequest;
+import com.noah.superagent.common.dto.request.PageRequest;
 import com.noah.superagent.common.dto.response.ChatTaskResponse;
 import com.noah.superagent.common.dto.response.ChatTitleGenerateResponse;
+import com.noah.superagent.common.dto.response.PageResponse;
+import com.noah.superagent.common.dto.response.ChatHistoryItemResponse;
+import com.noah.superagent.common.util.ChatHistoryParser;
 import com.noah.superagent.convert.ChatTaskWebConvert;
 import com.noah.superagent.model.ChatTaskDTO;
-import com.noah.superagent.service.ChatTaskService;
 import com.noah.superagent.response.ApiResponse;
+import com.noah.superagent.service.A2ACommunicationService;
+import com.noah.superagent.service.ChatTaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -39,41 +45,21 @@ import java.util.stream.Collectors;
 public class ChatTaskController {
 
     private final ChatTaskService chatTaskService;
-    
+    private final A2ACommunicationService a2aCommunicationService;
+
+
     private final ChatTaskWebConvert chatTaskWebConvert;
+
+    @Value("${kunlun.chat-history.url}")
+    private String chatHistoryUrl;
 
     @PostMapping
     @Operation(summary = "创建对话任务", description = "创建新对话任务")
     public ApiResponse<ChatTaskResponse> createChatTask(
             @Parameter(description = "工作空间ID", example = "1234567890123456789")
             @PathVariable("workspaceId") Long workspaceId,
-            @Parameter(description = "对话内容")
-            @RequestBody(required = false) Map<String, String> requestBody) {
-        log.info("接收创建对话任务请求，工作空间ID: {}", workspaceId);
-
-        // 获取对话内容，如果未提供则为空字符串
-        String content = requestBody != null && requestBody.containsKey("content") ? requestBody.get("content") : "";
-        
-        // 创建默认的对话任务请求对象
-        ChatTaskCreateRequest request = new ChatTaskCreateRequest();
-        request.setWorkspaceId(workspaceId);
-
-        
-        // 设置标题为内容的前10个字符，如果内容为空则设置默认标题
-        String title = "新对话";
-        if (content != null && !content.isEmpty()) {
-            title = content.length() > 10 ? content.substring(0, 10) : content;
-        }
-        request.setTitle(title);
-        
-        // 设置内容
-        request.setContent(content);
-        
-        // 设置默认收藏状态为未收藏
-        request.setIsFavorite(com.noah.superagent.common.enums.FavoriteEnum.NOT_FAVORITE);
-        
-        // 设置默认状态为进行中
-        request.setStatus(com.noah.superagent.common.enums.ChatTaskStatusEnum.IN_PROGRESS);
+            @Valid @RequestBody ChatTaskCreateRequest request) {
+        log.info("接收创建对话任务请求: {}", request.getTitle());
 
         // Request -> DTO -> Service -> DTO -> Response
         ChatTaskDTO chatTaskDO = chatTaskWebConvert.fromCreateRequest(request);
@@ -88,6 +74,8 @@ public class ChatTaskController {
     @GetMapping("/{id}")
     @Operation(summary = "查询对话任务", description = "根据ID查询对话任务详情")
     public ApiResponse<ChatTaskResponse> getChatTaskById(
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
+            @PathVariable("workspaceId") Long workspaceId,
             @Parameter(description = "对话任务ID", example = "1234567890123456789") 
             @PathVariable("id") Long id) {
         log.info("接收查询对话任务请求: {}", id);
@@ -96,7 +84,59 @@ public class ChatTaskController {
         ChatTaskDTO chatTaskDO = chatTaskService.getChatTaskById(id);
         ChatTaskResponse response = chatTaskWebConvert.toResponse(chatTaskDO);
         
+        // 使用默认实体编码调用聊天历史接口并将结果合并到返回数据中
+        if (chatTaskDO.getContextId() != null) {
+            try {
+                // 获取默认实体编码
+                String entityCode = a2aCommunicationService.getDefaultEntityCode();
+                
+                // 构建调用URL
+                String url = String.format("%s?sessionId=%s&entityCode=%s", 
+                        chatHistoryUrl, chatTaskDO.getContextId(), entityCode);
+                
+                // 调用外部接口获取聊天历史详情
+                RestTemplate restTemplate = new RestTemplate();
+                ResponseEntity<String> historyResponse = restTemplate.getForEntity(url, String.class);
+                
+                log.info("聊天历史接口调用成功，状态码: {}", historyResponse.getStatusCode());
+                
+                // 解析聊天历史数据并设置到response中
+                if (historyResponse.getStatusCode().is2xxSuccessful() && historyResponse.getBody() != null) {
+                    List<ChatHistoryItemResponse> chatHistoryList = ChatHistoryParser.parseChatHistory(historyResponse.getBody());
+                    response.setChatHistory(chatHistoryList);
+                }
+            } catch (Exception e) {
+                log.error("调用聊天历史接口失败: ", e);
+            }
+        }
+        
         return ApiResponse.success("查询成功", response);
+    }
+
+    @GetMapping("/{id}/history")
+    @Operation(summary = "查询对话任务历史详情", description = "根据会话ID和实体编码查询对话任务历史详情")
+    public ResponseEntity<String> getChatTaskHistoryById(
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
+            @PathVariable("workspaceId") Long workspaceId,
+            @Parameter(description = "对话任务ID", example = "1234567890123456789") 
+            @PathVariable("id") Long id) {
+        log.info("接收查询对话任务历史详情请求: {}", id);
+        
+        // Service -> DTO -> Response
+        ChatTaskDTO chatTaskDO = chatTaskService.getChatTaskById(id);
+        
+        // 获取默认实体编码
+        String entityCode = a2aCommunicationService.getDefaultEntityCode();
+        
+        // 构建调用URL
+        String url = String.format("%s?sessionId=%s&entityCode=%s", 
+                chatHistoryUrl, chatTaskDO.getContextId(), entityCode);
+        
+        // 调用外部接口获取聊天历史详情
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+        
+        return response;
     }
 
     @GetMapping

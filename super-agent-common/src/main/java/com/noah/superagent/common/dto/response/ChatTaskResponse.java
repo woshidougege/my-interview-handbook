@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 /**
  * 对话任务响应DTO
  *
@@ -40,4 +42,11 @@ public class ChatTaskResponse extends BaseResponse {
     
     @Schema(description = "关联的定时任务ID")
     private Long scheduledTaskId;
+    
+    @Schema(description = "聊天历史详情")
+    private List<ChatHistoryItemResponse> chatHistory;
+    
+    public void setChatHistory(List<ChatHistoryItemResponse> chatHistory) {
+        this.chatHistory = chatHistory;
+    }
 }

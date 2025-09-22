@@ -615,18 +615,95 @@ const ChatPage: React.FC = () => {
 
   // 选择会话
   const selectSession = async (session: ChatTask) => {
-    const chatSession: ChatSession = {
-      id: session.id,
-      title: session.title,
-      messages: [], // 实际应用中应该加载历史消息
-      workspaceId: session.workspaceId || currentWorkspace?.id || '',
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-      contextId: session.contextId // 添加contextId字段
-    };
+    if (!currentWorkspace?.id) {
+      // 如果没有当前工作空间，直接使用会话数据
+      const chatSession: ChatSession = {
+        id: session.id,
+        title: session.title,
+        messages: [], // 实际应用中应该加载历史消息
+        workspaceId: session.workspaceId || '',
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+        contextId: session.contextId // 添加contextId字段
+      };
+      
+      setCurrentSession(chatSession);
+      setMessages([]); // 实际应用中应该加载历史消息
+      return;
+    }
     
-    setCurrentSession(chatSession);
-    setMessages([]); // 实际应用中应该加载历史消息
+    try {
+      // 调用获取对话任务详情接口
+      const response = await chatTaskApi.getChatTask(currentWorkspace.id, session.id);
+      const taskDetail = response.data.data;
+      
+      // 解析聊天历史为消息列表
+      let historyMessages: ChatMessage[] = [];
+      if (taskDetail.chatHistory && Array.isArray(taskDetail.chatHistory)) {
+        historyMessages = taskDetail.chatHistory
+          .filter(item => item.status?.message || item.message) // 过滤有消息内容的项
+          .map(item => {
+            const message = item.status?.message || item.message;
+            if (!message) return null;
+            
+            // 合并所有parts的文本内容（仅处理文本类型）
+            let content = '';
+            const partsData: any[] = []; // 保存完整的parts数据供前端处理
+            
+            if (message.parts) {
+              message.parts.forEach(part => {
+                partsData.push(part);
+                // 如果是文本类型，也添加到content中
+                if (typeof part === 'object' && part !== null && part.kind === 'text') {
+                  content += part.text || '';
+                } else if (typeof part === 'string') {
+                  content += part;
+                }
+              });
+            }
+            
+            return {
+              id: message.messageId || Date.now().toString(),
+              role: message.role === 'user' ? 'user' : 'assistant',
+              content: content,
+              parts: partsData, // 传递完整的parts数据
+              timestamp: item.status?.timestamp || taskDetail.updatedAt || new Date().toISOString()
+            };
+          })
+          .filter((msg): msg is ChatMessage => msg !== null) // 过滤掉null值
+          .reverse(); // 反转数组以正确的时间顺序展示消息
+      }
+      
+      const chatSession: ChatSession = {
+        id: taskDetail.id,
+        title: taskDetail.title,
+        messages: historyMessages,
+        workspaceId: taskDetail.workspaceId?.toString() || currentWorkspace?.id || '',
+        createdAt: taskDetail.createdAt,
+        updatedAt: taskDetail.updatedAt,
+        contextId: taskDetail.contextId // 添加contextId字段
+      };
+      
+      setCurrentSession(chatSession);
+      setMessages(historyMessages);
+    } catch (error) {
+      console.error('获取对话任务详情失败:', error);
+      message.error('获取对话任务详情失败');
+      
+      // 如果获取详情失败，仍然设置会话
+      const chatSession: ChatSession = {
+        id: session.id,
+        title: session.title,
+        messages: [], // 实际应用中应该加载历史消息
+        workspaceId: session.workspaceId || currentWorkspace?.id || '',
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+        contextId: session.contextId // 添加contextId字段
+      };
+      
+      setCurrentSession(chatSession);
+      setMessages([]); // 实际应用中应该加载历史消息
+    }
   };
 
   // 收藏/取消收藏会话
