@@ -20,3 +20,7 @@
 /pid/super-agent.pid
 /super-agent-boot/logs/
 /target/
+/super-agent-ai/super-agent-ai-api/.flattened-pom.xml
+/super-agent-ai/super-agent-ai-impl/.flattened-pom.xml
+/super-agent-ai/super-agent-ai-api/target/
+/super-agent-ai/super-agent-ai-impl/target/

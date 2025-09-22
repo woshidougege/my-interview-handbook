@@ -6,27 +6,15 @@
 
     <parent>
         <groupId>com.noah</groupId>
-        <artifactId>super-agent</artifactId>
+        <artifactId>super-agent-ai</artifactId>
         <version>${revision}</version>
     </parent>
 
-    <artifactId>super-agent-service-impl</artifactId>
-    <name>super-agent-service-impl</name>
-    <description>业务服务实现模块</description>
+    <artifactId>super-agent-ai-impl</artifactId>
+    <name>super-agent-ai-impl</name>
+    <description>AI服务实现模块 - 基于阿里云百炼等大模型的实现</description>
 
     <dependencies>
-        <!-- 依赖服务接口模块 -->
-        <dependency>
-            <groupId>com.noah</groupId>
-            <artifactId>super-agent-service-api</artifactId>
-        </dependency>
-
-        <!-- 依赖DAO模块 -->
-        <dependency>
-            <groupId>com.noah</groupId>
-            <artifactId>super-agent-dao</artifactId>
-        </dependency>
-
         <!-- 依赖AI服务接口模块 -->
         <dependency>
             <groupId>com.noah</groupId>
@@ -39,17 +27,16 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- MapStruct -->
+        <!-- OkHttp HTTP客户端 -->
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
         </dependency>
 
-        <!-- MyBatis-Flex 注解处理器 -->
+        <!-- Jackson JSON处理 -->
         <dependency>
-            <groupId>com.mybatis-flex</groupId>
-            <artifactId>mybatis-flex-processor</artifactId>
-            <scope>provided</scope>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
 
     </dependencies>

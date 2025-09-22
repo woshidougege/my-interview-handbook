@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import com.noah.superagent.common.config.BillingProperties;
 import com.noah.superagent.common.config.AsyncProperties;
 import com.noah.superagent.common.config.PlansConfig;
+import com.noah.superagent.common.config.AiProperties;
 
 /**
  * 统一配置管理类
@@ -19,7 +20,8 @@ import com.noah.superagent.common.config.PlansConfig;
     WxPayProperties.class,
     BillingProperties.class,
     AsyncProperties.class,
-    PlansConfig.class
+    PlansConfig.class,
+    AiProperties.class
     // 未来有新的配置类时，只需要在这里添加
 })
 public class ConfigurationConfig {

@@ -16,6 +16,7 @@
         <module>super-agent-dao</module>
         <module>super-agent-service-api</module>
         <module>super-agent-service-impl</module>
+        <module>super-agent-ai</module>
         <module>super-agent-web</module>
         <module>super-agent-scheduler</module>
         <module>super-agent-boot</module>
@@ -137,6 +138,16 @@
             <dependency>
                 <groupId>com.noah</groupId>
                 <artifactId>super-agent-scheduler</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.noah</groupId>
+                <artifactId>super-agent-ai-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.noah</groupId>
+                <artifactId>super-agent-ai-impl</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

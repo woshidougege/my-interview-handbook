@@ -33,6 +33,12 @@
             <artifactId>super-agent-scheduler</artifactId>
         </dependency>
 
+        <!-- AI实现模块 -->
+        <dependency>
+            <groupId>com.noah</groupId>
+            <artifactId>super-agent-ai-impl</artifactId>
+        </dependency>
+
         <!-- DB Scheduler UI - Web管理界面 
              注释掉：需要JDK17+和Spring Boot 3.3+，不兼容当前环境
         <dependency>

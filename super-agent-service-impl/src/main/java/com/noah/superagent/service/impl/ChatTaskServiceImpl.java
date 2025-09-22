@@ -10,6 +10,7 @@ import com.noah.superagent.dao.mapper.ScheduledChatTaskMapper;
 import com.noah.superagent.dao.entity.ScheduledChatTaskEntity;
 import com.noah.superagent.model.ChatTaskDTO;
 import com.noah.superagent.service.ChatTaskService;
+import com.noah.superagent.ai.service.AiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
     private final ChatTaskMapper chatTaskMapper;
     private final ScheduledChatTaskMapper scheduledChatTaskMapper;
     private final ChatTaskPersistenceConvert chatTaskPersistenceConvert;
+    private final AiService aiService;
 
 
     @Override
@@ -225,20 +227,7 @@ public class ChatTaskServiceImpl implements ChatTaskService {
     public String generateChatTitle(String question) {
         log.info("接收标题生成请求，问题长度: {}", question != null ? question.length() : 0);
         
-        // TODO: 智能标题生成功能暂时未开发，后续等待对接智平台。NLP算法效果不理想，必须对接大模型，或者简单字符串阶段。不做自然语言算法处理。
-        // 目前返回简单的标题生成逻辑，避免影响业务流程
-        
-        if (!StringUtils.hasText(question)) {
-            return "新对话";
-        }
-        
-        String cleanText = question.trim();
-        
-        // 简单截取逻辑
-        if (cleanText.length() > 10) {
-            return cleanText.substring(0, 10) + "...";
-        }
-        
-        return cleanText.isEmpty() ? "新对话" : cleanText;
+        // 使用AI服务生成标题（已对接阿里云百炼大模型）
+        return aiService.generateChatTitle(question);
     }
 }
