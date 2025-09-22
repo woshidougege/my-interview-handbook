@@ -49,6 +49,7 @@ const AiChatPage: React.FC = () => {
   // 语音输入状态
   const [isRecording, setIsRecording] = useState(false);
   const [voiceConnectionStatus, setVoiceConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [voicePreview, setVoicePreview] = useState<string>(''); // 语音识别实时预览
   
   // 流式内容状态  
   const streamContentRef = useRef('');
@@ -500,11 +501,13 @@ const AiChatPage: React.FC = () => {
 
       speechServiceRef.current?.stop();
       setIsRecording(false);
+      setVoicePreview(''); // 清除语音预览
       
       message.info('语音输入已结束');
     } catch (error) {
       console.error('停止语音录音失败:', error);
       message.error('停止语音输入失败');
+      setVoicePreview(''); // 出错时也清除预览
     }
   };
 
@@ -566,11 +569,17 @@ const AiChatPage: React.FC = () => {
         speechServiceRef.current.on('recognition', (result: any) => {
           if (result.text) {
             if (result.isFinal) {
-              // 最终结果，追加到输入框
-              setInputValue(prev => prev + result.text + ' ');
+              // 最终结果，追加到输入框并清除预览
+              setInputValue(prev => {
+                const newValue = prev + result.text + ' ';
+                return newValue;
+              });
+              setVoicePreview('');
+              message.success(`语音识别：${result.text}`);
             } else {
-              // 临时结果，显示预览
-              console.log('临时识别结果:', result.text);
+              // 临时结果，显示实时预览
+              setVoicePreview(result.text);
+              console.log('实时识别结果:', result.text);
             }
           }
         });
@@ -616,6 +625,103 @@ const AiChatPage: React.FC = () => {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
           }
+          
+          /* 移动端适配样式 */
+          @media (max-width: 768px) {
+            :global(.ai-chat-sidebar) {
+              position: fixed !important;
+              z-index: 1000;
+              left: -300px;
+              transition: left 0.3s ease;
+            }
+            
+            :global(.ai-chat-sidebar.ant-layout-sider-collapsed) {
+              left: -300px !important;
+            }
+            
+            :global(.message-container) {
+              max-width: 95% !important;
+            }
+            
+            :global(.input-area) {
+              padding: 8px 12px !important;
+            }
+            
+            :global(.input-controls) {
+              gap: 6px !important;
+            }
+            
+            :global(.voice-btn) {
+              height: 36px !important;
+              width: 36px !important;
+              min-width: 36px !important;
+            }
+            
+            :global(.input-textarea) {
+              font-size: 16px !important;
+              padding: 8px 12px !important;
+            }
+            
+            :global(.send-btn) {
+              min-width: 50px !important;
+              padding: 0 8px !important;
+            }
+            
+            :global(.send-btn-text) {
+              font-size: 14px;
+            }
+            
+            /* 消息卡片移动端优化 */
+            :global(.ant-card-body) {
+              padding: 8px 12px !important;
+            }
+            
+            /* 欢迎页面移动端优化 */
+            :global(.welcome-input-area) {
+              margin: 0 12px !important;
+              max-width: none !important;
+            }
+            
+            :global(.welcome-input-controls) {
+              flex-direction: column !important;
+              gap: 12px !important;
+              align-items: stretch !important;
+            }
+            
+            :global(.welcome-voice-btn) {
+              align-self: center !important;
+            }
+            
+            /* 隐藏侧边栏在移动端 */
+            :global(.ant-layout-sider) {
+              display: none !important;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            :global(.message-container) {
+              max-width: 100% !important;
+              margin: 0 !important;
+            }
+            
+            :global(.input-area) {
+              padding: 6px 8px !important;
+            }
+            
+            :global(.voice-btn) {
+              height: 32px !important;
+              width: 32px !important;
+              min-width: 32px !important;
+            }
+            
+            :global(.send-btn-text) {
+              display: none;
+            }
+            
+            :global(.send-btn) {
+              min-width: 40px !important;
+            }
+          }
         `}</style>
       </Head>
       
@@ -624,12 +730,17 @@ const AiChatPage: React.FC = () => {
           {/* 侧边栏 - 会话列表 */}
           <Sider 
             width={300} 
+            collapsedWidth={0}
+            breakpoint="lg"
+            collapsible
+            trigger={null}
             style={{ 
               background: '#f8f9fa', 
               borderRight: '1px solid #e8e8e8',
               height: '100%',
               overflow: 'auto'
             }}
+            className="ai-chat-sidebar"
           >
             <div style={{ padding: '16px' }}>
               <Button 
@@ -757,7 +868,7 @@ const AiChatPage: React.FC = () => {
                             width: '100%'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'flex-start', maxWidth: '70%' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', maxWidth: '85%' }} className="message-container">
                             {message.role === 'assistant' && (
                               <Avatar 
                                 style={{ 
@@ -821,7 +932,7 @@ const AiChatPage: React.FC = () => {
                       {/* 流式消息显示 */}
                       {isStreaming && (
                         <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', maxWidth: '70%' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', maxWidth: '85%' }} className="message-container">
                             <Avatar style={{ backgroundColor: '#1890ff', marginRight: '12px', flexShrink: 0 }}>
                               AI
                             </Avatar>
@@ -867,22 +978,23 @@ const AiChatPage: React.FC = () => {
 
                 {/* 输入区域 */}
                 <div style={{ 
-                  padding: '16px 24px', 
+                  padding: '12px 16px', 
                   borderTop: '1px solid #e8e8e8',
                   background: '#fff'
-                }}>
+                }} className="input-area">
                   <div style={{ 
-                    marginBottom: '12px', 
-                    padding: '12px', 
+                    marginBottom: '8px', 
+                    padding: '8px 12px', 
                     background: '#f0f8ff', 
-                    borderRadius: '6px' 
+                    borderRadius: '6px',
+                    fontSize: '14px'
                   }}>
                     <span>
                       <ApiOutlined /> 百炼AI对话 (已启用)
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }} className="input-controls">
                     {/* 语音输入按钮 */}
                     <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
                       <Button
@@ -891,10 +1003,10 @@ const AiChatPage: React.FC = () => {
                         onClick={toggleVoiceRecording}
                         disabled={loading || voiceConnectionStatus === 'connecting'}
                         style={{
-                          height: '32px',
-                          width: '32px',
-                          minWidth: '32px',
-                          borderRadius: '6px',
+                          height: '40px',
+                          width: '40px',
+                          minWidth: '40px',
+                          borderRadius: '8px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -903,11 +1015,12 @@ const AiChatPage: React.FC = () => {
                           color: isRecording ? '#fff' : undefined
                         }}
                         loading={voiceConnectionStatus === 'connecting'}
+                        className="voice-btn"
                       />
                     </Tooltip>
 
                     {/* 输入框和发送按钮 */}
-                    <Space.Compact style={{ flex: 1 }}>
+                    <Space.Compact style={{ flex: 1 }} className="input-compact">
                       <TextArea
                         ref={inputRef}
                         value={inputValue}
@@ -915,8 +1028,9 @@ const AiChatPage: React.FC = () => {
                         onKeyPress={handleKeyPress}
                         placeholder="输入您的问题..."
                         autoSize={{ minRows: 1, maxRows: 4 }}
-                        style={{ resize: 'none' }}
+                        style={{ resize: 'none', fontSize: '16px' }}
                         disabled={loading || isRecording || isStreaming}
+                        className="input-textarea"
                       />
                       <Button
                         type="primary"
@@ -924,12 +1038,43 @@ const AiChatPage: React.FC = () => {
                         onClick={sendMessage}
                         loading={loading}
                         disabled={!inputValue.trim() || isRecording || isStreaming}
-                        style={{ height: 'auto' }}
+                        style={{ height: 'auto', minWidth: '60px' }}
+                        className="send-btn"
                       >
-                        {isStreaming ? '回答中...' : '发送'}
+                        <span className="send-btn-text">
+                          {isStreaming ? '回答中...' : '发送'}
+                        </span>
                       </Button>
                     </Space.Compact>
                   </div>
+                  
+                  {/* 语音识别实时预览 */}
+                  {isRecording && voicePreview && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px 12px',
+                      background: '#fff7e6',
+                      border: '1px solid #ffd666',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      color: '#d48806'
+                    }}>
+                      🎤 正在识别：{voicePreview}
+                    </div>
+                  )}
+                  
+                  {/* 录音状态提示 */}
+                  {isRecording && !voicePreview && (
+                    <div style={{
+                      marginTop: '8px',
+                      textAlign: 'center',
+                      color: '#ff4d4f',
+                      fontSize: '14px',
+                      fontWeight: 'bold'
+                    }}>
+                      🎤 正在录音中，请开始说话...
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -956,7 +1101,7 @@ const AiChatPage: React.FC = () => {
                   width: '100%', 
                   maxWidth: '600px',
                   marginBottom: '40px'
-                }}>
+                }} className="welcome-input-area">
                   <div style={{
                     position: 'relative',
                     border: '2px solid #d9d9d9',
@@ -984,7 +1129,7 @@ const AiChatPage: React.FC = () => {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       marginTop: '12px'
-                    }}>
+                    }} className="welcome-input-controls">
                       {/* 语音输入按钮 */}
                       <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
                         <Button
@@ -1000,6 +1145,7 @@ const AiChatPage: React.FC = () => {
                             color: isRecording ? '#fff' : undefined
                           }}
                           loading={voiceConnectionStatus === 'connecting'}
+                          className="welcome-voice-btn"
                         >
                           {isRecording ? '停止录音' : '语音输入'}
                         </Button>
@@ -1022,16 +1168,32 @@ const AiChatPage: React.FC = () => {
                       </Button>
                     </div>
                     
-                    {/* 录音状态提示 */}
-                    {isRecording && (
+                    {/* 语音识别实时预览 */}
+                    {isRecording && voicePreview && (
                       <div style={{
-                        marginTop: '8px',
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: '#fff7e6',
+                        border: '1px solid #ffd666',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        color: '#d48806',
+                        textAlign: 'center'
+                      }}>
+                        🎤 正在识别：{voicePreview}
+                      </div>
+                    )}
+                    
+                    {/* 录音状态提示 */}
+                    {isRecording && !voicePreview && (
+                      <div style={{
+                        marginTop: '12px',
                         textAlign: 'center',
                         color: '#ff4d4f',
-                        fontSize: '14px',
+                        fontSize: '15px',
                         fontWeight: 'bold'
                       }}>
-                        🎤 正在录音中，再次点击语音按钮停止录音
+                        🎤 正在录音中，请开始说话...
                       </div>
                     )}
                   </div>
