@@ -91,19 +91,6 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     loadExistingWorkspace();
     
-    // 获取当前用户ID并设置为默认值
-    const loadCurrentUser = async () => {
-      try {
-        const userResponse = await userApi.getCurrentUser();
-        const currentUser = userResponse.data.data;
-        setUserId(currentUser.id);
-      } catch (error) {
-        console.error('获取用户信息失败:', error);
-      }
-    };
-    
-    loadCurrentUser();
-    
     // 组件卸载时的清理函数
     return () => {
       // 取消正在进行的请求
@@ -295,263 +282,148 @@ const ChatPage: React.FC = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
 
-      if (useA2A) {
-        // 使用A2A协议发送消息
-        setLoading(true);
-        
-        // 生成任务ID和上下文ID
-        const taskId = `task_${Date.now()}`;
-        const contextId = currentSession?.id || `context_${Date.now()}`;
-        
-        if (useSSE) {
-          // 使用SSE格式发送JSON-RPC请求
-          setLoading(true);
-          setIsStreaming(true);
-          
-          // 创建用户消息
-          const a2aUserMessage: ChatMessage = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: inputValue.trim(),
-            timestamp: new Date().toISOString()
-          };
+      // 使用A2A协议发送消息
+      setLoading(true);
+      
+      // 获取当前用户信息
+      let currentUser = null;
+      try {
+        const userResponse = await userApi.getCurrentUser();
+        currentUser = userResponse.data.data;
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+        message.error('获取用户信息失败');
+        setLoading(false);
+        setIsStreaming(false);
+        return;
+      }
+      
+      // 正确处理上下文ID：
+      // 如果当前有会话，则使用会话ID作为上下文ID（历史对话）
+      // 如果没有会话，则创建新会话并使用新会话的ID作为上下文ID（新对话）
+      let contextId = '';
+      if (!currentSession) {
+        // 创建新会话
+        const workspace = await ensureWorkspace();
+        const newSession = await createNewSession(inputValue.trim(), workspace);
+        contextId = newSession.id;
+      } else {
+        // 使用现有会话ID作为上下文ID
+        contextId = currentSession.id;
+      }
+      
+      // 生成任务ID
+      const taskId = `task_${Date.now()}`;
+      
+      // 使用SSE格式发送JSON-RPC请求
+      setLoading(true);
+      setIsStreaming(true);
+      
+      // 准备A2A请求参数
+      const a2aRequest = {
+        userId: currentUser.id,
+        message: inputValue.trim(),
+        sessionId: contextId,   // sessionId保持与contextId一致
+        contextId: contextId    // 正确传递contextId参数
+      };
 
-          // 更新消息列表
-          const a2aNewMessages = [...messages, a2aUserMessage];
-          setMessages(a2aNewMessages);
-          setInputValue('');
-          
-          // 获取当前用户信息
-          let currentUser = null;
-          try {
-            const userResponse = await userApi.getCurrentUser();
-            currentUser = userResponse.data.data;
-          } catch (error) {
-            console.error('获取用户信息失败:', error);
-            message.error('获取用户信息失败');
-            setLoading(false);
-            setIsStreaming(false);
-            return;
-          }
-          
-          // 使用流式方式发送请求并处理响应
-          // 创建用户消息
-          const userMessage: ChatMessage = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: inputValue.trim(),
-            timestamp: new Date().toISOString()
-          };
+      // 使用流式方式发送请求并处理响应
+      // 用户消息已经在上面的代码块中创建并更新了消息列表
 
-          // 更新消息列表
-          const newMessages = [...messages, userMessage];
-          setMessages(newMessages);
-          setInputValue('');
-
-          // 准备A2A请求参数 - 只传递必要参数，其他由后端生成
-          const a2aRequest = {
-            userId: currentUser.id, // 使用登录用户的ID
-            message: inputValue.trim(),
-            sessionId: currentSession?.id || ''
-          };
-
-          // 在闭包中维护已处理的消息ID集合
-          const processedMessageIds = new Set<string>();
-          
-          // 存储取消函数的引用
-          cancelRequestRef.current = a2aService.streamMessage(
-            a2aRequest,
-            (chunk: string) => {
-              // 检查是否是需要补充信息的情况
-              if (chunk.startsWith('【需要补充信息】')) {
-                try {
-                  const supplementData = JSON.parse(chunk.substring(9)); // 去掉"【需要补充信息】"前缀
-                  setSupplementInfo({
-                    ...supplementData,
-                    sessionId: currentSession?.id || ''
-                  });
-                  message.info('需要补充信息: ' + supplementData.text);
-                  setCurrentStreamMessage(prev => prev + `\n需要补充信息: ${supplementData.text}`);
-                } catch (e) {
-                  setCurrentStreamMessage(prev => prev + chunk);
-                }
-              } else {
-                // 处理普通消息 - 移除去重逻辑，直接处理消息
-                try {
-                  // 尝试解析JSON-RPC格式的响应
-                  const jsonChunk = JSON.parse(chunk);
-                  
-                  // 提取要显示的文本内容
-                  const textContent = jsonChunk?.result?.status?.message?.parts?.[0]?.text || '';
-                  if (textContent) {
-                    setMessages(prev => {
-                      const updated = [...prev];
-                      const lastMessage = updated[updated.length - 1];
-                      if (lastMessage && lastMessage.role === 'assistant') {
-                        // 更新现有助手消息
-                        lastMessage.content += textContent;
-                      } else {
-                        // 添加新的助手消息
-                        updated.push({
-                          id: Date.now().toString(),
-                          role: 'assistant',
-                          content: textContent,
-                          timestamp: new Date().toISOString()
-                        });
-                      }
-                      return updated;
+      // 在闭包中维护已处理的消息ID集合
+      const processedMessageIds = new Set<string>();
+      
+      // 存储取消函数的引用
+      cancelRequestRef.current = a2aService.streamMessage(
+        a2aRequest,
+        (chunk: string) => {
+          // 检查是否是需要补充信息的情况
+          if (chunk.startsWith('【需要补充信息】')) {
+            try {
+              const supplementData = JSON.parse(chunk.substring(9)); // 去掉"【需要补充信息】"前缀
+              setSupplementInfo({
+                ...supplementData,
+                sessionId: currentSession?.id || ''
+              });
+              message.info('需要补充信息: ' + supplementData.text);
+              setCurrentStreamMessage(prev => prev + `\n需要补充信息: ${supplementData.text}`);
+            } catch (e) {
+              setCurrentStreamMessage(prev => prev + chunk);
+            }
+          } else {
+            // 处理普通消息 - 移除去重逻辑，直接处理消息
+            try {
+              // 尝试解析JSON-RPC格式的响应
+              const jsonChunk = JSON.parse(chunk);
+              
+              // 提取要显示的文本内容
+              const textContent = jsonChunk?.result?.status?.message?.parts?.[0]?.text || '';
+              if (textContent) {
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const lastMessage = updated[updated.length - 1];
+                  if (lastMessage && lastMessage.role === 'assistant') {
+                    // 更新现有助手消息
+                    lastMessage.content += textContent;
+                  } else {
+                    // 添加新的助手消息
+                    updated.push({
+                      id: Date.now().toString(),
+                      role: 'assistant',
+                      content: textContent,
+                      timestamp: new Date().toISOString()
                     });
                   }
-                } catch (e) {
-                  // 如果不是JSON格式，按普通文本处理
-                  setMessages(prev => {
-                    const updated = [...prev];
-                    const lastMessage = updated[updated.length - 1];
-                    if (lastMessage && lastMessage.role === 'assistant') {
-                      // 更新现有助手消息
-                      lastMessage.content += chunk;
-                    } else {
-                      // 添加新的助手消息
-                      updated.push({
-                        id: Date.now().toString(),
-                        role: 'assistant',
-                        content: chunk,
-                        timestamp: new Date().toISOString()
-                      });
-                    }
-                    return updated;
+                  return updated;
+                });
+              }
+            } catch (e) {
+              // 如果不是JSON格式，按普通文本处理
+              setMessages(prev => {
+                const updated = [...prev];
+                const lastMessage = updated[updated.length - 1];
+                if (lastMessage && lastMessage.role === 'assistant') {
+                  // 更新现有助手消息
+                  lastMessage.content += chunk;
+                } else {
+                  // 添加新的助手消息
+                  updated.push({
+                    id: Date.now().toString(),
+                    role: 'assistant',
+                    content: chunk,
+                    timestamp: new Date().toISOString()
                   });
                 }
-              }
-            },
-            (error: any) => {
-              console.error('A2A流式传输错误:', error);
-              // 特殊处理认证错误
-              if (error.name === 'AuthenticationError') {
-                message.error('认证失败，请重新登录');
-                // 可以考虑跳转到登录页面
-                // window.location.href = '/login';
-              } else {
-                message.error('消息发送失败: ' + (error.message || '未知错误'));
-              }
-              setLoading(false);
-              setIsStreaming(false);
-              setCurrentStreamMessage('');
-              cancelRequestRef.current = null;
-            },
-            () => {
-              // 流结束时的回调
-              setLoading(false);
-              setIsStreaming(false);
-              setCurrentStreamMessage('');
-              cancelRequestRef.current = null;
-              
-              // 确保输入框可以继续使用
-              setTimeout(() => {
-                if (inputRef.current) {
-                  inputRef.current.focus();
-                }
-              }, 100);
-            }
-          );
-          
-          // 可以在需要时调用cancelRequest()来取消请求
-        } else {
-          // 使用普通格式发送消息
-          const response = await a2aService.sendMessageToA2A({
-            userId: userId,
-            message: inputValue.trim(),
-            sessionId: currentSession?.id || ''
-          });
-
-          if (response.code === 200 && response.data) {
-            // 检查是否是需要补充信息的情况
-            if (response.data.startsWith('【需要补充信息】')) {
-              try {
-                const supplementData = JSON.parse(response.data.substring(9)); // 去掉"【需要补充信息】"前缀
-                setSupplementInfo({
-                  ...supplementData,
-                  sessionId: currentSession?.id || ''
-                });
-                message.info('需要补充信息: ' + supplementData.text);
-                
-                // 显示提示信息
-                const aiMessage: ChatMessage = {
-                  id: Date.now().toString(),
-                  role: 'assistant',
-                  content: `需要补充信息: ${supplementData.text}`,
-                  timestamp: new Date().toISOString()
-                };
-                setMessages(prev => [...prev, aiMessage]);
-              } catch (e) {
-                // 显示A2A平台的响应
-                const aiMessage: ChatMessage = {
-                  id: Date.now().toString(),
-                  role: 'assistant',
-                  content: response.data,
-                  timestamp: new Date().toISOString()
-                };
-                setMessages(prev => [...prev, aiMessage]);
-              }
-            } else {
-              // 显示A2A平台的响应
-              const aiMessage: ChatMessage = {
-                  id: Date.now().toString(),
-                  role: 'assistant',
-                  content: response.data,
-                  timestamp: new Date().toISOString()
-                };
-                setMessages(prev => [...prev, aiMessage]);
+                return updated;
+              });
             }
           }
+        },
+        (error: any) => {
+          console.error('A2A流式传输错误:', error);
+          // 特殊处理认证错误
+          if (error.name === 'AuthenticationError') {
+            message.error('认证失败，请重新登录');
+            // 可以考虑跳转到登录页面
+            // window.location.href = '/login';
+          } else {
+            message.error('消息发送失败: ' + (error.message || '未知错误'));
+          }
+          setLoading(false);
+          setIsStreaming(false);
+          setCurrentStreamMessage('');
+          cancelRequestRef.current = null;
+        },
+        () => {
+          // 流结束时的回调
+          setLoading(false);
+          setIsStreaming(false);
+          setCurrentStreamMessage('');
+          cancelRequestRef.current = null;
         }
-      } else {
-        // 使用阿里云AI服务
-        // 准备聊天历史
-        const chatHistory = newMessages.map(msg => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content
-        }));
-
-        // 直接调用阿里云AI服务
-        await aliCloudAiService.streamChat(
-          chatHistory,
-          {
-            onChunk: (chunk: string) => {
-              setIsStreaming(true);
-              setCurrentStreamMessage(prev => prev + chunk);
-            },
-            onComplete: (finalMessage: string) => {
-              // 创建AI回复消息
-              if (finalMessage.trim()) {
-                const aiMessage: ChatMessage = {
-                  id: Date.now().toString(),
-                  role: 'assistant',
-                  content: finalMessage,
-                  timestamp: new Date().toISOString()
-                };
-                setMessages(prev => [...prev, aiMessage]);
-              }
-              setCurrentStreamMessage('');
-              setIsStreaming(false);
-              setLoading(false);
-            },
-            onError: (error: string) => {
-              console.error('AI服务错误:', error);
-              // 检查是否是Ant Design的message组件可用
-              if (typeof window !== 'undefined' && window.document) {
-                message.error(`AI服务错误: ${error}`);
-              } else {
-                // 如果message组件不可用，则使用console.error记录错误
-                console.error('AI服务错误，无法显示消息提示:', error);
-              }
-              setLoading(false);
-              setIsStreaming(false);
-              setCurrentStreamMessage('');
-            }
-          }
-        );
-      }
+      );
+      
+      // 可以在需要时调用cancelRequest()来取消请求
     } catch (err: any) {
       console.error('发送消息失败:', err);
       message.error('发送消息失败: ' + (err.message || '未知错误'));
@@ -723,11 +595,27 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // A2A协议相关状态
-  const [useA2A, setUseA2A] = useState(false);
+  // A2A协议相关状态 - 默认启用A2A和SSE
   const [userId, setUserId] = useState('');
-  const [useSSE, setUseSSE] = useState(true);
-
+  const useA2A = true;
+  const useSSE = true;
+  
+  // 在组件加载时获取当前用户信息并设置默认用户ID
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await userApi.getCurrentUser();
+        const currentUser = response.data.data;
+        // 设置默认用户ID为当前登录用户ID
+        setUserId(currentUser.id);
+      } catch (error) {
+        console.error('获取当前用户信息失败:', error);
+        message.error('获取用户信息失败');
+      }
+    };
+    
+    fetchCurrentUser();
+  }, []);
 
   return (
     <>
@@ -1097,35 +985,21 @@ const ChatPage: React.FC = () => {
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>
-                        <ApiOutlined /> A2A协议
+                        <ApiOutlined /> A2A协议 (默认启用)
                       </span>
-                      <Switch 
-                        checked={useA2A} 
-                        onChange={setUseA2A}
-                        checkedChildren="启用"
-                        unCheckedChildren="关闭"
+                    </div>
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span>SSE格式 (默认启用)</span>
+                      </div>
+                      <Text strong>用户ID:</Text>
+                      <Input 
+                        size="small"
+                        value={userId}
+                        onChange={(e) => setUserId(e.target.value)}
+                        style={{ marginTop: '4px' }}
                       />
                     </div>
-                    {useA2A && (
-                      <div style={{ marginTop: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <span>SSE格式</span>
-                          <Switch 
-                            checked={useSSE} 
-                            onChange={setUseSSE}
-                            checkedChildren="启用"
-                            unCheckedChildren="关闭"
-                          />
-                        </div>
-                        <Text strong>用户ID:</Text>
-                        <Input 
-                          size="small"
-                          value={userId}
-                          onChange={(e) => setUserId(e.target.value)}
-                          style={{ marginTop: '4px' }}
-                        />
-                      </div>
-                    )}
                   </div>
                   
                   <Space.Compact style={{ width: '100%' }}>

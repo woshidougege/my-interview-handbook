@@ -40,6 +40,7 @@ export interface A2AMessageRequest {
   userId: string;
   message: string;
   sessionId: string;
+  contextId?: string;
 }
 
 interface A2ASupplementInfoRequest {
@@ -102,6 +103,9 @@ export const sendJsonRpcMessage = (
     },
   };
 
+  // 打印发送的请求体
+  console.log('发送SSE请求时的请求体:', JSON.stringify(requestBody, null, 2));
+  
   let abortController = new AbortController();
   
   // 获取token
@@ -269,14 +273,13 @@ export const sendJsonRpcMessage = (
 export const streamMessage = (
   request: A2AMessageRequest,
   onMessage: (chunk: string) => void,
-  onError?: (error: any) => void,
-  onClose?: () => void
+  onError?: (error: any) => void
 ): (() => void) => {
   // 记录基础配置信息
   console.log('API配置信息:', API_CONFIG);
   
   // 使用正确的URL路径
-  const url = `${API_CONFIG.BASE_URL}/a2a/stream-message`;
+  const url = `${API_CONFIG.BASE_URL}/a2a/stream-message-sse`;
   
   console.log('构造的A2A请求URL:', url);
   console.log('完整的API基础URL:', API_CONFIG.BASE_URL);
@@ -306,7 +309,8 @@ export const streamMessage = (
   const simplifiedRequest = {
     userId: request.userId,
     message: request.message,
-    sessionId: request.sessionId
+    sessionId: request.sessionId,
+    contextId: request.contextId
   };
 
   // 创建一个Promise来包装fetch请求
@@ -387,10 +391,6 @@ export const streamMessage = (
               // 创建一个临时的结束标记来触发处理剩余数据
               parseSSEData('\n');
             }
-            // 流结束时调用onClose回调
-            if (onClose) {
-              onClose();
-            }
             return;
           }
 
@@ -403,9 +403,6 @@ export const streamMessage = (
             if (onError) {
               onError(error);
             }
-          } else if (onClose) {
-            // 取消请求时也调用onClose回调
-            onClose();
           }
         });
       }
@@ -418,9 +415,6 @@ export const streamMessage = (
         if (onError) {
           onError(error);
         }
-      } else if (onClose) {
-        // 取消请求时也调用onClose回调
-        onClose();
       }
     });
   

@@ -10,6 +10,8 @@ import com.noah.superagent.common.util.SSEventFormatter;
 import com.noah.superagent.service.A2ACommunicationService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +33,11 @@ import java.util.concurrent.CompletableFuture;
 /**
  * A2A通信控制器
  * 用于处理与上游智平台的Agent-to-Agent通信
+ * 
+ * 主要功能包括：
+ * 1. 发送消息到A2A平台（同步/异步/流式）
+ * 2. 处理用户补充信息（同步/异步）
+ * 3. 标准JSON-RPC格式通信
  */
 @Slf4j
 @RestController
@@ -42,7 +49,10 @@ public class A2ACommunicationController {
     private final A2ACommunicationService a2aCommunicationService;
     
     /**
-     * 发送消息到A2A平台
+     * 发送消息到A2A平台（同步）
+     * 
+     * @param request A2A消息请求参数
+     * @return ApiResponse<String> 响应结果
      */
     @PostMapping("/send-message")
     @Operation(summary = "发送消息到A2A平台", description = "将用户消息发送到上游智平台的协同规划智能体")
@@ -56,6 +66,9 @@ public class A2ACommunicationController {
     
     /**
      * 异步发送消息到A2A平台
+     * 
+     * @param request A2A消息请求参数
+     * @return CompletableFuture<ApiResponse<String>> 异步响应结果
      */
     @PostMapping("/send-message-async")
     @Operation(summary = "异步发送消息到A2A平台", description = "异步将用户消息发送到上游智平台的协同规划智能体")
@@ -69,9 +82,16 @@ public class A2ACommunicationController {
 
     /**
      * 流式发送消息到A2A平台（JSON-RPC格式）
+     * 
+     * @param request A2A消息请求参数
+     * @return StreamingResponseBody 流式响应体
      */
     @PostMapping("/stream-message")
     @Operation(summary = "流式发送消息到A2A平台", description = "将用户消息流式发送到上游智平台的协同规划智能体")
+    @Parameters({
+        @Parameter(name = "contextId", description = "上下文ID", in = ParameterIn.QUERY),
+        @Parameter(name = "message", description = "用户消息", in = ParameterIn.QUERY)
+    })
     public StreamingResponseBody streamMessageToA2APlatform(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request) {
         log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
@@ -83,7 +103,8 @@ public class A2ACommunicationController {
         String message = request.getMessage();
         // 由后端生成默认值
         String taskId = "task_" + System.currentTimeMillis();
-        String contextId = "";
+        // 修改contextId从请求中获取，如果请求中没有则使用默认值
+        String contextId = request.getContextId() != null ? request.getContextId() : "";
 
         return outputStream -> {
             long startTime = System.currentTimeMillis();
@@ -141,7 +162,10 @@ public class A2ACommunicationController {
     }
     
     /**
-     * 处理补充信息
+     * 处理补充信息（同步）
+     * 
+     * @param request A2A补充信息请求参数
+     * @return ApiResponse<String> 响应结果
      */
     @PostMapping("/supplement-info")
     @Operation(summary = "处理补充信息", description = "处理用户补充的信息并发送到A2A代理")
@@ -155,6 +179,9 @@ public class A2ACommunicationController {
     
     /**
      * 异步处理补充信息
+     * 
+     * @param request A2A补充信息请求参数
+     * @return CompletableFuture<ApiResponse<String>> 异步响应结果
      */
     @PostMapping("/supplement-info-async")
     @Operation(summary = "异步处理补充信息", description = "异步处理用户补充的信息并发送到A2A代理")
@@ -168,6 +195,9 @@ public class A2ACommunicationController {
     
     /**
      * 流式发送消息到A2A平台（SSE格式）
+     * 
+     * @param request A2A消息请求参数
+     * @return ResponseEntity<StreamingResponseBody> SSE格式响应
      */
     @PostMapping("/stream-message-sse")
     @Operation(summary = "流式发送消息到A2A平台（SSE格式）", description = "将用户消息流式发送到上游智平台的协同规划智能体，使用SSE格式返回")
@@ -175,13 +205,26 @@ public class A2ACommunicationController {
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request) {
         log.info("接收SSE格式流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
         
+        // 所有参数都由后端生成
+        String abilityCode = a2aCommunicationService.getDefaultAbilityCode();
+        String entityCode = a2aCommunicationService.getDefaultEntityCode();
+        String userId = request.getUserId();
+        String message = request.getMessage();
+        // 由后端生成默认值
+        String taskId = "task_" + System.currentTimeMillis();
+        // 修改contextId从请求中获取，如果请求中没有则使用默认值
+        String contextId = request.getContextId() != null ? request.getContextId() : "";
+        
         StreamingResponseBody responseBody = outputStream -> {
             long startTime = System.currentTimeMillis();
             log.info("开始处理SSE格式流式响应 - 用户ID: {}, 消息: {}, 开始时间: {}", 
-                request.getUserId(), request.getMessage(), startTime);
+                userId, message, startTime);
             
-            try (InputStream inputStream = a2aCommunicationService.streamMessageToA2APlatform(
-                    request.getUserId(), request.getMessage(), request.getSessionId())) {
+            InputStream inputStream = null;
+            try {
+                // 使用与streamMessageToA2APlatform相同的方式调用服务
+                inputStream = a2aCommunicationService.sendJsonRpcMessageToA2APlatform(
+                        abilityCode, entityCode, userId, message, taskId, contextId);
                 
                 if (inputStream != null) {
                     log.info("成功获取A2A平台输入流，开始读取数据");
@@ -189,15 +232,28 @@ public class A2ACommunicationController {
                     int bytesRead;
                     int totalBytes = 0;
                     int chunkCount = 0;
+                    boolean hasReadData = false; // 标记是否读取到数据
                     
                     // 用于检测重复内容的缓冲区
                     Set<String> processedMessages = new HashSet<>();
                     StringBuilder sseBuffer = new StringBuilder(); // 用于组装完整的SSE事件
 
                     // 循环读取数据直到流结束
-                    while (!Thread.currentThread().isInterrupted() && (bytesRead = inputStream.read(buffer)) != -1) {
+                    while (!Thread.currentThread().isInterrupted()) {
                         try {
+                            // 检查输入流是否已关闭
+                            bytesRead = inputStream.read(buffer);
+                            if (bytesRead == -1) {
+                                // 流结束
+                                log.debug("A2A平台输入流已到达末尾");
+                                break;
+                            }
+                            
+                            // 标记已读取到数据
+                            hasReadData = true;
+                            
                             String chunk = new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
+                            log.debug("从A2A平台读取到数据块，大小: {} 字节", bytesRead);
                             sseBuffer.append(chunk);
                             
                             // 处理SSE事件
@@ -247,6 +303,7 @@ public class A2ACommunicationController {
                                                 outputStream.flush();
                                                 totalBytes += line.getBytes(StandardCharsets.UTF_8).length + 2;
                                                 chunkCount++;
+                                                log.debug("已转发数据块到客户端，当前总块数: {}", chunkCount);
                                             } catch (Exception e) {
                                                 log.warn("JSON解析失败: {}", e.getMessage());
                                                 // 即使解析失败也传输数据
@@ -255,6 +312,7 @@ public class A2ACommunicationController {
                                                 outputStream.flush();
                                                 totalBytes += line.getBytes(StandardCharsets.UTF_8).length + 2;
                                                 chunkCount++;
+                                                log.debug("已转发原始数据到客户端，当前总块数: {}", chunkCount);
                                             }
                                         }
                                     }
@@ -268,7 +326,7 @@ public class A2ACommunicationController {
                                 sseBuffer = new StringBuilder();
                             }
 
-                            if (chunkCount % 10 == 0) {
+                            if (chunkCount % 10 == 0 && chunkCount > 0) {
                                 long currentTime = System.currentTimeMillis();
                                 log.debug("已传输数据块数量: {}, 总字节数: {}, 已用时间: {}ms",
                                         chunkCount, totalBytes, (currentTime - startTime));
@@ -276,15 +334,28 @@ public class A2ACommunicationController {
 
                             Thread.sleep(1);
                         } catch (IOException e) {
+                            // 检查异常是否是由于输入流关闭导致的
+                            if (e.getMessage() != null && e.getMessage().contains("stream is closed")) {
+                                log.info("A2A平台输入流已关闭，结束数据读取 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}", 
+                                    userId, chunkCount, totalBytes);
+                                break;
+                            }
+                            
                             // 客户端可能已经断开连接
-                            log.warn("客户端连接已断开，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}", 
-                                request.getUserId(), chunkCount, totalBytes);
+                            log.warn("IO异常，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}, 异常: {}", 
+                                userId, chunkCount, totalBytes, e.getMessage());
                             break;
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             log.warn("数据传输线程被中断");
                             break;
                         }
+                    }
+                    
+                    // 如果没有读取到任何数据，记录警告信息并向客户端发送错误信息
+                    if (!hasReadData) {
+                        log.warn("从未A2A平台输入流中读取到任何数据，可能上游服务未返回有效数据");
+                        writeErrorToStream(outputStream, "未从A2A平台获取到有效响应数据");
                     }
                     
                     // 处理剩余的不完整事件
@@ -294,11 +365,15 @@ public class A2ACommunicationController {
                             String[] lines = sseBuffer.toString().split("\n");
                             for (String line : lines) {
                                 if (line.startsWith("data:")) {
-                                    outputStream.write(line.getBytes(StandardCharsets.UTF_8));
-                                    outputStream.write("\n\n".getBytes(StandardCharsets.UTF_8));
-                                    outputStream.flush();
-                                    totalBytes += line.getBytes(StandardCharsets.UTF_8).length + 2;
-                                    chunkCount++;
+                                    String dataPart = line.substring(5).trim();
+                                    if (!dataPart.isEmpty() && !dataPart.equals("ping")) {
+                                        outputStream.write(line.getBytes(StandardCharsets.UTF_8));
+                                        outputStream.write("\n\n".getBytes(StandardCharsets.UTF_8));
+                                        outputStream.flush();
+                                        totalBytes += line.getBytes(StandardCharsets.UTF_8).length + 2;
+                                        chunkCount++;
+                                        log.debug("已转发剩余数据块到客户端");
+                                    }
                                 }
                             }
                         } catch (IOException e) {
@@ -314,22 +389,39 @@ public class A2ACommunicationController {
                     long errorTime = System.currentTimeMillis();
                     log.error("从A2A平台获取的输入流为空，耗时: {}ms", (errorTime - startTime));
                     // 如果输入流为空，返回错误信息
-                    sendSSEEvent(outputStream, SSEventFormatter.formatEvent("error", "错误：无法从A2A平台获取响应流"));
+                    writeErrorToStream(outputStream, "错误：无法从A2A平台获取响应流");
                 }
             } catch (Exception e) {
                 long errorTime = System.currentTimeMillis();
                 log.error("SSE格式流式传输过程中发生异常 - 耗时: {}ms", (errorTime - startTime), e);
-                try {
-                    sendSSEEvent(outputStream, SSEventFormatter.formatEvent("error", "错误：" + e.getMessage()));
-                } catch (IOException ioException) {
-                    log.error("写入错误信息时发生异常", ioException);
-                }
+                writeErrorToStream(outputStream, "错误：" + e.getMessage());
             } finally {
+                // 关闭输入流
+                if (inputStream != null) {
+                    try {
+                        inputStream.close();
+                        log.debug("已关闭A2A平台输入流");
+                    } catch (IOException e) {
+                        log.warn("关闭A2A平台输入流时发生异常: {}", e.getMessage());
+                    }
+                }
+                
                 try {
-                    // 发送结束标记
+                    // 发送结束标记，但需要确保客户端仍在连接
                     sendSSEEvent(outputStream, SSEventFormatter.formatEvent("end", "end"));
+                    // 确保数据被刷新到客户端
+                    outputStream.flush();
+                    log.debug("已发送结束标记并刷新输出流");
                 } catch (IOException e) {
-                    log.warn("发送结束标记失败", e);
+                    log.debug("发送结束标记失败，客户端可能已断开连接: {}", e.getMessage());
+                } finally {
+                    try {
+                        // 最后尝试关闭输出流
+                        outputStream.close();
+                        log.debug("已关闭输出流");
+                    } catch (IOException e) {
+                        log.debug("关闭输出流时发生异常（客户端可能已断开连接）: {}", e.getMessage());
+                    }
                 }
             }
         };
@@ -339,6 +431,7 @@ public class A2ACommunicationController {
                 .header("Content-Type", "text/event-stream;charset=UTF-8")
                 .header("Cache-Control", "no-cache")
                 .header("Connection", "keep-alive")
+                .header("X-Accel-Buffering", "no") // 禁用nginx缓冲
                 .header("Access-Control-Allow-Origin", "*")
                 .body(responseBody);
     }
@@ -346,6 +439,12 @@ public class A2ACommunicationController {
     /**
      * 标准JSON-RPC格式接口 - 根据用户提供的URL格式
      * URL: /kunlun/a2a/api/{abilityCode}/entity/{entityCode}/userid/{userId}
+     * 
+     * @param abilityCode 能力中心编码
+     * @param entityCode 实体编码
+     * @param userId 用户ID
+     * @param request JSON-RPC请求参数
+     * @return ResponseEntity<StreamingResponseBody> JSON-RPC格式响应
      */
     @PostMapping(value = {"/kunlun/a2a/api/{abilityCode}/entity/{entityCode}/userid/{userId}", 
                  "/api/v1/a2a/kunlun/a2a/api/{abilityCode}/entity/{entityCode}/userid/{userId}",
@@ -492,8 +591,18 @@ public class A2ACommunicationController {
      * @throws IOException IO异常
      */
     private void sendSSEEvent(OutputStream outputStream, String event) throws IOException {
-        outputStream.write(event.getBytes());
-        outputStream.flush();
+        if (outputStream != null) {
+            try {
+                outputStream.write(event.getBytes(StandardCharsets.UTF_8));
+                outputStream.flush();
+            } catch (IOException e) {
+                log.debug("向客户端写入SSE事件失败，可能客户端已断开连接: {}", e.getMessage());
+                throw e; // 重新抛出异常，让调用者知道连接已断开
+            }
+        } else {
+            log.warn("输出流为空，无法发送SSE事件");
+            throw new IOException("输出流为空");
+        }
     }
     
     /**

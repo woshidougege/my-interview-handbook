@@ -18,4 +18,7 @@ public class A2AMessageRequest {
     
     @Schema(description = "会话ID", example = "sessionId_161312")
     private String sessionId;
+
+    @Schema(description = "上下文ID", example = "contextId_161312")
+    private String contextId;
 }

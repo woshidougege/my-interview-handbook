@@ -262,7 +262,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
                     String requestBody = String.format(
                             "{\"jsonrpc\":\"2.0\",\"method\":\"message/stream\",\"id\":\"%s\",\"params\":{\"message\":{\"role\":\"user\",\"parts\":[{\"kind\":\"text\",\"text\":\"%s\"}],\"kind\":\"message\",\"taskId\":\"%s\",\"contextId\":\"%s\"}}}",
                             requestId, message, actualTaskId, actualContextId);
-
+                    System.out.println(requestBody);
                     // 设置请求头
                     HttpHeaders headers = new HttpHeaders();
                     headers.setContentType(MediaType.APPLICATION_JSON);

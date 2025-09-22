@@ -56,10 +56,6 @@ export const API_ENDPOINTS = {
     CURRENT: 'auth/user/current',
     // 获取加密公钥
     GET_PUBLIC_KEY: 'auth/public-key',
-    // 获取当前用户积分信息
-    CREDIT_INFO: 'credit/details',
-    // 获取积分交易记录
-    CREDIT_TRANSACTIONS: 'credit/transactions',
   },
 
   // ========== 工作空间相关 ==========
@@ -126,6 +122,7 @@ export const API_ENDPOINTS = {
     DETAILS: 'credit/details',
     TRANSACTIONS: 'credit/transactions',
   },
+
 
 
   // ========== 资源使用相关 ==========
