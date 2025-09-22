@@ -84,22 +84,27 @@ public class AiServiceImpl implements AiService {
         AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
         AiProperties.TitleGenerationConfig titleConfig = dashscopeConfig.getTitleGeneration();
         
-        // 构建提示词
-        String prompt = titleConfig.getPromptTemplate().replace("{question}", question);
-        
-        // 构建消息
+        // 构建消息 - 标准对话模式
+        // System: 完整的角色定义和指令
+        Message systemMessage = Message.builder()
+                .role(Role.SYSTEM.getValue())
+                .content(titleConfig.getSystemPrompt())
+                .build();
+                
+        // User: 直接是用户的问题
         Message userMessage = Message.builder()
                 .role(Role.USER.getValue())
-                .content(prompt)
+                .content(question)
                 .build();
         
-        // 构建生成参数
+        // 构建生成参数 - 按照官方示例添加resultFormat
         GenerationParam param = GenerationParam.builder()
                 .apiKey(dashscopeConfig.getApiKey())
                 .model(titleConfig.getModel())
-                .messages(Arrays.asList(userMessage))
+                .messages(Arrays.asList(systemMessage, userMessage))
                 .maxTokens(titleConfig.getMaxTokens())
                 .temperature(titleConfig.getTemperature().floatValue())
+                .resultFormat(GenerationParam.ResultFormat.MESSAGE)
                 .build();
         
         log.debug("调用DashScope SDK生成标题，模型: {}", titleConfig.getModel());
@@ -110,6 +115,7 @@ public class AiServiceImpl implements AiService {
         
         if (result == null || result.getOutput() == null || result.getOutput().getChoices() == null 
             || result.getOutput().getChoices().isEmpty()) {
+            log.error("DashScope SDK响应异常: result={}", result);
             throw new RuntimeException("SDK响应为空或格式错误");
         }
         

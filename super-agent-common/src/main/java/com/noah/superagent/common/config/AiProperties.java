@@ -60,10 +60,10 @@ public class AiProperties {
         private Double temperature = 0.7;
 
         /**
-         * 标题生成提示词模板（支持{question}占位符）
+         * 系统角色提示词 - 定义AI的角色、能力和规则
          * 默认值在YAML配置文件中定义
          */
-        private String promptTemplate;
+        private String systemPrompt;
     }
 
 

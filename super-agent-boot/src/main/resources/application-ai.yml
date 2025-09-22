@@ -11,20 +11,18 @@ super-agent:
         model: ${AI_TITLE_GENERATION_MODEL:qwen-plus}
         max-tokens: ${AI_TITLE_GENERATION_MAX_TOKENS:50}
         temperature: ${AI_TITLE_GENERATION_TEMPERATURE:0.7}
-        # 标题生成提示词模板（支持{question}占位符）
-        prompt-template: |
-          你是一个专业的对话标题生成助手。请根据用户的问题生成一个简洁、准确的对话标题。
+        # 系统角色提示词 - 完整的指令和要求
+        system-prompt: |
+          为用户的问题生成简洁的对话标题。要求：
 
-          要求：
-          1. 标题长度不超过20个字符
-          2. 准确概括问题的核心内容
-          3. 使用简洁、专业的表达
-          4. 直接输出标题，不要包含引号或其他格式符号
+          - 准确提取问题的核心主题或意图
+          - 控制在3-8个词，简洁明了
+          - 使用具体、专业的表述
+          - 避免"如何"、"关于"、"问题"等泛化词汇
+          - 突出具体的主题或行动
+          - 便于分类和检索
 
-          用户问题：
-          {question}
-
-          请生成标题：
+          只返回标题文本。
         
       # 语音识别配置
       speech-recognition:
