@@ -1,30 +1,26 @@
 package com.noah.superagent.ai.service.impl;
 
+import com.alibaba.dashscope.aigc.generation.Generation;
+import com.alibaba.dashscope.aigc.generation.GenerationParam;
+import com.alibaba.dashscope.aigc.generation.GenerationResult;
+import com.alibaba.dashscope.common.Message;
+import com.alibaba.dashscope.common.Role;
+import com.alibaba.dashscope.exception.ApiException;
+import com.alibaba.dashscope.exception.InputRequiredException;
+import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.noah.superagent.common.config.AiProperties;
 import com.noah.superagent.ai.service.AiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
-import okhttp3.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
 
 /**
  * AI服务实现类
- * 基于阿里云百炼大模型提供AI功能
+ * 基于阿里云百炼DashScope SDK提供AI功能
  *
  * @author AI Assistant
  * @since 1.0.0
@@ -35,24 +31,18 @@ import java.util.Map;
 public class AiServiceImpl implements AiService {
 
     private final AiProperties aiProperties;
-    private final ObjectMapper objectMapper;
-    
-    private OkHttpClient httpClient;
 
     @PostConstruct
     public void init() {
-        // 根据配置初始化HTTP客户端
         AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
-        AiProperties.HttpConfig httpConfig = dashscopeConfig.getHttp();
         
-        this.httpClient = new OkHttpClient.Builder()
-                .connectTimeout(httpConfig.getConnectTimeoutSeconds(), TimeUnit.SECONDS)
-                .readTimeout(httpConfig.getReadTimeoutSeconds(), TimeUnit.SECONDS)
-                .writeTimeout(httpConfig.getWriteTimeoutSeconds(), TimeUnit.SECONDS)
-                .build();
-                
-        log.info("AI服务初始化完成 - 基础URL: {}, 模型: {}", 
-                dashscopeConfig.getBaseUrl(), 
+        // 检查API Key配置
+        if (!StringUtils.hasText(dashscopeConfig.getApiKey())) {
+            log.warn("阿里云百炼API Key未配置，AI服务将无法正常工作");
+            return;
+        }
+        
+        log.info("AI服务初始化完成 - 模型: {}", 
                 dashscopeConfig.getTitleGeneration().getModel());
     }
 
@@ -80,91 +70,56 @@ public class AiServiceImpl implements AiService {
         }
         
         try {
-            return callDashscopeApi(question.trim());
+            return callDashscopeSDK(question.trim());
         } catch (Exception e) {
-            log.error("调用阿里云百炼大模型失败", e);
+            log.error("调用阿里云百炼SDK失败", e);
             return getDefaultTitle(question);
         }
     }
     
     /**
-     * 调用阿里云百炼大模型API
+     * 调用阿里云百炼DashScope SDK
      */
-    private String callDashscopeApi(String question) throws IOException {
+    private String callDashscopeSDK(String question) throws ApiException, NoApiKeyException, InputRequiredException {
         AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
         AiProperties.TitleGenerationConfig titleConfig = dashscopeConfig.getTitleGeneration();
         
         // 构建提示词
         String prompt = titleConfig.getPromptTemplate().replace("{question}", question);
         
-        // 构建请求体
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", titleConfig.getModel());
-        requestBody.put("max_tokens", titleConfig.getMaxTokens());
-        requestBody.put("temperature", titleConfig.getTemperature());
-        
-        // 构建消息列表
-        Map<String, String> messageContent = new HashMap<>();
-        messageContent.put("role", "user");
-        messageContent.put("content", prompt);
-        requestBody.put("messages", List.of(messageContent));
-        
-        // 序列化请求体
-        String jsonBody = objectMapper.writeValueAsString(requestBody);
-        
-        // 构建HTTP请求
-        Request request = new Request.Builder()
-                .url(dashscopeConfig.getBaseUrl() + "/chat/completions")
-                .header("Authorization", "Bearer " + dashscopeConfig.getApiKey())
-                .header("Content-Type", "application/json")
-                .post(RequestBody.create(jsonBody, MediaType.get("application/json")))
+        // 构建消息
+        Message userMessage = Message.builder()
+                .role(Role.USER.getValue())
+                .content(prompt)
                 .build();
         
-        log.debug("发送请求到阿里云百炼: {}", dashscopeConfig.getBaseUrl());
+        // 构建生成参数
+        GenerationParam param = GenerationParam.builder()
+                .apiKey(dashscopeConfig.getApiKey())
+                .model(titleConfig.getModel())
+                .messages(Arrays.asList(userMessage))
+                .maxTokens(titleConfig.getMaxTokens())
+                .temperature(titleConfig.getTemperature().floatValue())
+                .build();
         
-        // 发送请求并处理响应
-        try (Response response = httpClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                log.error("API调用失败，状态码: {}, 响应: {}", response.code(), response.body() != null ? response.body().string() : "无响应体");
-                throw new IOException("API调用失败: " + response.code());
-            }
-            
-            ResponseBody responseBody = response.body();
-            if (responseBody == null) {
-                throw new IOException("响应体为空");
-            }
-            
-            String responseText = responseBody.string();
-            log.debug("API响应: {}", responseText);
-            
-            // 解析响应
-            JsonNode responseJson = objectMapper.readTree(responseText);
-            JsonNode choices = responseJson.get("choices");
-            
-            if (choices == null || !choices.isArray() || choices.isEmpty()) {
-                throw new IOException("响应格式错误：choices为空");
-            }
-            
-            JsonNode firstChoice = choices.get(0);
-            JsonNode message = firstChoice.get("message");
-            
-            if (message == null) {
-                throw new IOException("响应格式错误：message为空");
-            }
-            
-            JsonNode content = message.get("content");
-            if (content == null) {
-                throw new IOException("响应格式错误：content为空");
-            }
-            
-            String generatedTitle = content.asText().trim();
-            
-            // 清理生成的标题
-            generatedTitle = cleanTitle(generatedTitle);
-            
-            log.info("成功生成标题: {}", generatedTitle);
-            return generatedTitle;
+        log.debug("调用DashScope SDK生成标题，模型: {}", titleConfig.getModel());
+        
+        // 调用SDK
+        Generation gen = new Generation();
+        GenerationResult result = gen.call(param);
+        
+        if (result == null || result.getOutput() == null || result.getOutput().getChoices() == null 
+            || result.getOutput().getChoices().isEmpty()) {
+            throw new RuntimeException("SDK响应为空或格式错误");
         }
+        
+        String generatedTitle = result.getOutput().getChoices().get(0).getMessage().getContent().trim();
+        
+        // 清理生成的标题
+        generatedTitle = cleanTitle(generatedTitle);
+        
+        log.info("成功生成标题: {}", generatedTitle);
+        return generatedTitle;
     }
     
     /**

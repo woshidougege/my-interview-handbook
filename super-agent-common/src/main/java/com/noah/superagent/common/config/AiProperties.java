@@ -32,24 +32,9 @@ public class AiProperties {
         private String apiKey;
 
         /**
-         * 基础URL
-         */
-        private String baseUrl = "https://dashscope.aliyuncs.com/api/v1";
-
-        /**
          * 标题生成配置
          */
         private TitleGenerationConfig titleGeneration = new TitleGenerationConfig();
-
-        /**
-         * HTTP客户端配置
-         */
-        private HttpConfig http = new HttpConfig();
-
-        /**
-         * 重试配置
-         */
-        private RetryConfig retry = new RetryConfig();
         
         /**
          * 语音识别配置
@@ -75,47 +60,12 @@ public class AiProperties {
         private Double temperature = 0.7;
 
         /**
-         * 超时时间（秒）
-         */
-        private Integer timeoutSeconds = 10;
-
-        /**
          * 标题生成提示词模板（支持{question}占位符）
          * 默认值在YAML配置文件中定义
          */
         private String promptTemplate;
     }
 
-    @Data
-    public static class HttpConfig {
-        /**
-         * 连接超时时间（秒）
-         */
-        private Integer connectTimeoutSeconds = 10;
-
-        /**
-         * 读取超时时间（秒）
-         */
-        private Integer readTimeoutSeconds = 30;
-
-        /**
-         * 写入超时时间（秒）
-         */
-        private Integer writeTimeoutSeconds = 30;
-    }
-
-    @Data
-    public static class RetryConfig {
-        /**
-         * 最大重试次数
-         */
-        private Integer maxAttempts = 3;
-
-        /**
-         * 重试延迟（秒）
-         */
-        private Integer delaySeconds = 2;
-    }
 
     @Data
     public static class SpeechRecognitionConfig {

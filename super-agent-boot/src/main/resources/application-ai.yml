@@ -5,16 +5,13 @@ super-agent:
     alibaba-dashscope:
       enabled: ${AI_ALIBABA_DASHSCOPE_ENABLED:true}
       api-key: ${AI_ALIBABA_DASHSCOPE_API_KEY:sk-461c4edfdd274e12b2b807cf3b6de44e}
-      base-url: ${AI_ALIBABA_DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
       
       # 标题生成模型配置
       title-generation:
         model: ${AI_TITLE_GENERATION_MODEL:qwen-plus}
         max-tokens: ${AI_TITLE_GENERATION_MAX_TOKENS:50}
         temperature: ${AI_TITLE_GENERATION_TEMPERATURE:0.7}
-        timeout-seconds: ${AI_TITLE_GENERATION_TIMEOUT:10}
         # 标题生成提示词模板（支持{question}占位符）
-        # 可通过环境变量 AI_TITLE_GENERATION_PROMPT 覆盖
         prompt-template: |
           你是一个专业的对话标题生成助手。请根据用户的问题生成一个简洁、准确的对话标题。
 
@@ -28,17 +25,6 @@ super-agent:
           {question}
 
           请生成标题：
-        
-      # HTTP客户端配置
-      http:
-        connect-timeout-seconds: ${AI_HTTP_CONNECT_TIMEOUT:10}
-        read-timeout-seconds: ${AI_HTTP_READ_TIMEOUT:30}
-        write-timeout-seconds: ${AI_HTTP_WRITE_TIMEOUT:30}
-        
-      # 重试配置
-      retry:
-        max-attempts: ${AI_RETRY_MAX_ATTEMPTS:3}
-        delay-seconds: ${AI_RETRY_DELAY:2}
         
       # 语音识别配置
       speech-recognition:
