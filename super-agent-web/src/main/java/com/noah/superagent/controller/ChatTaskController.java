@@ -53,6 +53,9 @@ public class ChatTaskController {
     @Value("${kunlun.chat-history.url}")
     private String chatHistoryUrl;
 
+    @Value("${kunlun.chat-history.delete.url}")
+    private String chatHistoryDeleteUrl;
+
     @PostMapping
     @Operation(summary = "创建对话任务", description = "创建新对话任务")
     public ApiResponse<ChatTaskResponse> createChatTask(
@@ -203,9 +206,34 @@ public class ChatTaskController {
             @PathVariable("workspaceId") Long workspaceId,
             @Parameter(description = "对话任务ID", example = "1234567890123456789") 
             @PathVariable("id") Long id) {
-        log.info("接收删除对话任务请求: {}", id);
+        log.info("接收删除对话任务请求: workspaceId={}, id={}", workspaceId, id);
         
+        // 先获取任务信息，用于后续调用删除历史会话接口
+        ChatTaskDTO chatTaskDO = chatTaskService.getChatTaskById(id);
+        
+        // Service -> DO
         chatTaskService.deleteChatTask(id);
+        
+        // 如果存在contextId，则调用删除历史会话接口
+        if (chatTaskDO != null && chatTaskDO.getContextId() != null) {
+            try {
+                // 获取默认实体编码
+                String entityCode = a2aCommunicationService.getDefaultEntityCode();
+                
+                // 构建调用URL
+                String url = String.format("%s?sessionId=%s&entityCode=%s", 
+                        chatHistoryDeleteUrl, chatTaskDO.getContextId(), entityCode);
+                
+                // 调用外部接口删除历史会话
+                RestTemplate restTemplate = new RestTemplate();
+                ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+                
+                log.info("删除历史会话接口调用完成，状态码: {}", response.getStatusCode());
+            } catch (Exception e) {
+                log.error("调用删除历史会话接口失败: ", e);
+            }
+        }
+        
         return ApiResponse.success("删除成功");
     }
     

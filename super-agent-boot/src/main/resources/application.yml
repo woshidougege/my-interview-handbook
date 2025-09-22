@@ -107,3 +107,5 @@ file-repository:
 kunlun:
   chat-history:
     url: http://192.168.1.137:7667/kunlun/chatHistory/getById
+    delete:
+      url: http://192.168.1.137:7667/kunlun/chatHistory/deleteById
