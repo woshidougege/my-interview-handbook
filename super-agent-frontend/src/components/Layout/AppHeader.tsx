@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout, Typography, Space, Menu } from 'antd';
 import { useRouter } from 'next/router';
-import { HomeOutlined, ShoppingOutlined, UnorderedListOutlined, MessageOutlined } from '@ant-design/icons';
+import { HomeOutlined, ShoppingOutlined, UnorderedListOutlined, MessageOutlined, RobotOutlined } from '@ant-design/icons';
 import UserProfile from '../UserProfile';
 
 const { Header } = Layout;
@@ -19,7 +19,12 @@ const AppHeader: React.FC = () => {
     {
       key: '/chat',
       icon: <MessageOutlined />,
-      label: 'AI对话',
+      label: 'A2A对话',
+    },
+    {
+      key: '/ai-chat',
+      icon: <RobotOutlined />,
+      label: 'AI对话（百炼）',
     },
     {
       key: '/orders',
@@ -33,7 +38,7 @@ const AppHeader: React.FC = () => {
     },
   ];
 
-  const handleMenuClick = (e: any) => {
+  const handleMenuClick = (e: { key: string }) => {
     router.push(e.key);
   };
 
@@ -65,8 +70,11 @@ const AppHeader: React.FC = () => {
         style={{ 
           border: 'none',
           background: 'transparent',
-          minWidth: '300px',
+          minWidth: '500px',
+          flex: 1,
+          justifyContent: 'center',
         }}
+        disabledOverflow={true}
       />
 
       {/* 右侧用户信息 */}
