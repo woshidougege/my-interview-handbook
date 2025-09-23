@@ -51,10 +51,6 @@
             <artifactId>mybatis-flex-processor</artifactId>
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-        </dependency>
 
     </dependencies>
 
