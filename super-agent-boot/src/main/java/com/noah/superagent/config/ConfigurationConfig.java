@@ -10,6 +10,7 @@ import com.noah.superagent.common.config.CorsProperties;
 import com.noah.superagent.common.config.SsoProperties;
 import com.noah.superagent.common.config.RegistrationProperties;
 import com.noah.superagent.common.config.FileRepositoryProperties;
+import com.noah.superagent.common.config.SpeechRecognitionProperties;
 
 /**
  * 统一配置管理类
@@ -29,7 +30,8 @@ import com.noah.superagent.common.config.FileRepositoryProperties;
     CorsProperties.class,
     SsoProperties.class,
     RegistrationProperties.class,
-    FileRepositoryProperties.class
+    FileRepositoryProperties.class,
+    SpeechRecognitionProperties.class
     // 未来有新的配置类时，只需要在这里添加
 })
 public class ConfigurationConfig {

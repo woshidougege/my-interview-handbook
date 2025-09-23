@@ -6,7 +6,7 @@ import java.io.InputStream;
 
 /**
  * 语音识别服务接口
- * 基于阿里云百炼SenseVoice录音文件识别
+ * 基于阿里云百炼Gummy实时语音识别API
  *
  * @author 任相鹏
  * @since 1.0.0
@@ -22,5 +22,6 @@ public interface SpeechRecognitionService {
      * @return 识别结果
      */
     SpeechRecognitionResponse recognizeAudioStream(InputStream audioStream, String filename, String language);
+
 
 }

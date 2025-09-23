@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import type { AppProps } from 'next/app';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import '../styles/global.css';
 import dayjs from 'dayjs';
@@ -39,7 +39,9 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <ConfigProvider locale={zhCN} theme={theme}>
-      <Component {...pageProps} />
+      <AntdApp>
+        <Component {...pageProps} />
+      </AntdApp>
     </ConfigProvider>
   );
 }
