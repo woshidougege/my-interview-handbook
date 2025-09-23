@@ -20,7 +20,7 @@ import javax.validation.constraints.NotNull;
 @Schema(description = "对话任务创建请求")
 public class ChatTaskCreateRequest extends BaseRequest {
 
-    @NotNull(message = "关联工作空间ID不能为空")
+
     @Schema(description = "关联工作空间ID", example = "1234567890123456789")
     private Long workspaceId;
 

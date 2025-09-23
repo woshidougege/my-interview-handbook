@@ -40,10 +40,18 @@
             <artifactId>swagger-annotations</artifactId>
         </dependency>
         
-        <!-- Jackson JSON注解支持（枚举序列化等） -->
+        <!-- Jackson JSON处理 -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
         </dependency>
 
         <!-- 工具类 -->
