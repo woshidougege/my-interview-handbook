@@ -26,30 +26,47 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         if (corsProperties.getEnabled()) {
-            registry.addMapping("/**")
-                    .allowedOrigins(corsProperties.getAllowedOrigins().toArray(new String[0]))
+            var mapping = registry.addMapping("/**")
                     .allowedMethods(corsProperties.getAllowedMethods().toArray(new String[0]))
                     .allowedHeaders(corsProperties.getAllowedHeaders().toArray(new String[0]))
                     .allowCredentials(corsProperties.getAllowCredentials())
                     .maxAge(corsProperties.getMaxAge());
+
+            // 优先使用 allowedOriginPatterns（支持通配符且可与认证同时使用）
+            if (!corsProperties.getAllowedOriginPatterns().isEmpty()) {
+                mapping.allowedOriginPatterns(corsProperties.getAllowedOriginPatterns().toArray(new String[0]));
+            } else if (!corsProperties.getAllowedOrigins().isEmpty()) {
+                mapping.allowedOrigins(corsProperties.getAllowedOrigins().toArray(new String[0]));
+            }
         }
     }
 
     /**
      * CORS过滤器配置
+     * 提供更细粒度的CORS控制，支持通配符模式匹配
      */
     @Bean
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         
-        if (corsProperties.getEnabled() && !corsProperties.getAllowedOrigins().isEmpty()) {
-            // 只在启用CORS且配置了允许的源时才设置
-            corsProperties.getAllowedOrigins().forEach(config::addAllowedOrigin);
+        if (corsProperties.getEnabled()) {
+            // 配置HTTP方法和请求头
             corsProperties.getAllowedMethods().forEach(config::addAllowedMethod);
             corsProperties.getAllowedHeaders().forEach(config::addAllowedHeader);
             config.setAllowCredentials(corsProperties.getAllowCredentials());
             config.setMaxAge(corsProperties.getMaxAge());
+            
+            // 优先使用 allowedOriginPatterns（支持通配符且可与认证同时使用）
+            if (!corsProperties.getAllowedOriginPatterns().isEmpty()) {
+                corsProperties.getAllowedOriginPatterns().forEach(config::addAllowedOriginPattern);
+            } else if (!corsProperties.getAllowedOrigins().isEmpty()) {
+                corsProperties.getAllowedOrigins().forEach(config::addAllowedOrigin);
+            } else {
+                // 如果都没有配置，默认允许所有来源（但不能携带认证信息）
+                config.addAllowedOrigin("*");
+                config.setAllowCredentials(false);
+            }
             
             source.registerCorsConfiguration("/**", config);
         }
