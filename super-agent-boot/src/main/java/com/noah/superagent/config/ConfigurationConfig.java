@@ -8,8 +8,7 @@ import com.noah.superagent.common.config.PlansConfig;
 import com.noah.superagent.common.config.AiProperties;
 import com.noah.superagent.common.config.CorsProperties;
 import com.noah.superagent.common.config.SsoProperties;
-import com.noah.superagent.common.config.RegistrationProperties;
-import com.noah.superagent.common.config.FileRepositoryProperties;
+import com.noah.superagent.common.config.KunlunProperties;
 import com.noah.superagent.common.config.SpeechRecognitionProperties;
 
 /**
@@ -29,8 +28,7 @@ import com.noah.superagent.common.config.SpeechRecognitionProperties;
     AiProperties.class,
     CorsProperties.class,
     SsoProperties.class,
-    RegistrationProperties.class,
-    FileRepositoryProperties.class,
+    KunlunProperties.class,
     SpeechRecognitionProperties.class
     // 未来有新的配置类时，只需要在这里添加
 })

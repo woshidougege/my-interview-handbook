@@ -1,6 +1,12 @@
 package com.noah.superagent.controller;
 
+import cn.hutool.core.lang.Validator;
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.util.URLUtil;
+import com.noah.superagent.common.config.KunlunProperties;
+import com.noah.superagent.common.config.SsoProperties;
 import com.noah.superagent.common.dto.request.PasswordLoginRequest;
 import com.noah.superagent.common.dto.request.PhoneLoginRequest;
 import com.noah.superagent.common.dto.request.RegisterRequest;
@@ -8,12 +14,6 @@ import com.noah.superagent.common.dto.request.ResetPasswordRequest;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.service.UserCreditService;
 import com.norinrd.client.controller.SsoClientController;
-import com.norinrd.gttoken.SaManager;
-import com.norinrd.gttoken.session.SaSessionCustomUtil;
-import com.norinrd.gttoken.stp.SaLoginModel;
-import com.norinrd.gttoken.stp.StpUtil;
-import com.norinrd.gttoken.util.SaResult;
-import com.norinrd.interfaces.loginFlow.ILoginFlow;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,20 +23,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.noah.superagent.common.config.SsoProperties;
-import com.noah.superagent.common.config.RegistrationProperties;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.util.MultiValueMap;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.core.ParameterizedTypeReference;
-
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.core.map.MapUtil;
-import cn.hutool.core.util.URLUtil;
-import cn.hutool.core.lang.Validator;
 import org.springframework.web.util.UriComponentsBuilder;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -58,7 +52,8 @@ public class AuthController extends SsoClientController {
     private final RestTemplate restTemplate;
 
     private final SsoProperties ssoProperties;
-    private final RegistrationProperties registrationProperties;
+
+    private final KunlunProperties kunlunProperties;
 
     /**
      * 创建 ParameterizedTypeReference 用于 Map<String, Object>
@@ -411,8 +406,8 @@ public class AuthController extends SsoClientController {
             log.info("开始执行注册回调 - userId: {}, phoneNum: {}", userId, phone);
             
             // 构建回调URL
-            String fullUrl = UriComponentsBuilder.fromHttpUrl(registrationProperties.getCallback().getUrl())
-                    .queryParam("userId", userId)  // 注意：接口参数名是userld而非userId
+            String fullUrl = UriComponentsBuilder.fromHttpUrl(kunlunProperties.getRegistration().getCallbackUrl())
+                    .queryParam("userId", userId)
                     .queryParam("phoneNum", phone)
                     .toUriString();
             
@@ -563,7 +558,7 @@ public class AuthController extends SsoClientController {
             // 构建请求参数
             Map<String, String> requestBody = MapUtil.<String, String>builder()
                     .put("userId", currentUserId.toString())
-                    .put("pwd", newPassword) // 前端已经SM2加密过的密码
+                    .put("pwd", newPassword)
                     .put("servicecode", ssoProperties.getServicecode())
                     .build();
 

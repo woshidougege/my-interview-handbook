@@ -1,5 +1,6 @@
 package com.noah.superagent.controller;
 
+import com.noah.superagent.common.config.KunlunProperties;
 import com.noah.superagent.common.dto.request.A2AMessageRequest;
 import com.noah.superagent.common.dto.request.A2ASupplementInfoRequest;
 import com.noah.superagent.common.dto.response.ApiResponse;
@@ -33,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * A2A通信控制器
  * 用于处理与上游智平台的Agent-to-Agent通信
- * <p>
+ * 
  * 主要功能包括：
  * 1. 发送消息到A2A平台（同步/异步/流式）
  * 2. 处理用户补充信息（同步/异步）
@@ -48,45 +49,16 @@ public class A2ACommunicationController {
     private final A2ACommunicationService a2aCommunicationService;
     
     private final Executor aiChatExecutionExecutor;
-    
-    public A2ACommunicationController(A2ACommunicationService a2aCommunicationService, 
-                                     @Qualifier("ai-chat-execution-executor") Executor aiChatExecutionExecutor) {
+
+    private final KunlunProperties kunlunProperties;
+
+    public A2ACommunicationController(A2ACommunicationService a2aCommunicationService,
+                                      @Qualifier("ai-chat-execution-executor") Executor aiChatExecutionExecutor, KunlunProperties kunlunProperties) {
         this.a2aCommunicationService = a2aCommunicationService;
         this.aiChatExecutionExecutor = aiChatExecutionExecutor;
+        this.kunlunProperties = kunlunProperties;
     }
-    
-    
-    /**
-     * 发送消息到A2A平台（同步）
-     * 
-     * @param request A2A消息请求参数
-     * @return ApiResponse<String> 响应结果
-     */
-    @PostMapping("/send-message")
-    @Operation(summary = "发送消息到A2A平台", description = "将用户消息发送到上游智平台的协同规划智能体")
-    public ApiResponse<String> sendMessageToA2APlatform(
-            @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request) {
-        log.info("接收发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
-        
-        return a2aCommunicationService.sendMessageToA2APlatform(
-                request.getUserId(), request.getMessage(), request.getSessionId());
-    }
-    
-    /**
-     * 异步发送消息到A2A平台
-     * 
-     * @param request A2A消息请求参数
-     * @return CompletableFuture<ApiResponse<String>> 异步响应结果
-     */
-    @PostMapping("/send-message-async")
-    @Operation(summary = "异步发送消息到A2A平台", description = "异步将用户消息发送到上游智平台的协同规划智能体")
-    public CompletableFuture<ApiResponse<String>> sendMessageToA2APlatformAsync(
-            @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request) {
-        log.info("接收异步发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
-        
-        return a2aCommunicationService.sendMessageToA2APlatformAsync(
-                request.getUserId(), request.getMessage(), request.getSessionId());
-    }
+
 
     /**
      * 流式发送消息到A2A平台（JSON-RPC格式）
@@ -103,10 +75,10 @@ public class A2ACommunicationController {
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
             @Parameter(hidden = true) @SaToken String satoken) {
         log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
-        
+
         // 所有参数都由后端生成
-        String abilityCode = a2aCommunicationService.getDefaultAbilityCode();
-        String entityCode = a2aCommunicationService.getDefaultEntityCode();
+        String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
+        String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
         String userId = request.getUserId();
         String message = request.getMessage();
         // 由后端生成默认值
@@ -161,13 +133,13 @@ public class A2ACommunicationController {
         @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
     })
     public ResponseEntity<StreamingResponseBody> streamMessageToA2APlatformWithSSE(
-            @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request, 
+            @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
             @Parameter(hidden = true) @SaToken String satoken) {
         log.info("接收SSE格式流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
         
         // 所有参数都由后端生成
-        String abilityCode = a2aCommunicationService.getDefaultAbilityCode();
-        String entityCode = a2aCommunicationService.getDefaultEntityCode();
+        String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
+        String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
         String userId = request.getUserId();
         String message = request.getMessage();
         // 由后端生成默认值
@@ -330,8 +302,8 @@ public class A2ACommunicationController {
         // 使用AI对话专用线程池执行异步流式任务
         return CompletableFuture.supplyAsync(() -> {
             // 所有参数都由后端生成
-            String abilityCode = a2aCommunicationService.getDefaultAbilityCode();
-            String entityCode = a2aCommunicationService.getDefaultEntityCode();
+            String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
+            String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
             String userId = request.getUserId();
             String message = request.getMessage();
             // 由后端生成默认值
