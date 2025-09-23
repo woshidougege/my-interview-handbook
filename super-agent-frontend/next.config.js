@@ -51,22 +51,24 @@ const nextConfig = {
   output: 'export',
   distDir: 'out',
   trailingSlash: true,
+  assetPrefix: '/test',
+  basePath: '/test',
   
   // HTTP代理配置
   experimental: {
     proxyTimeout: 300000, // 5分钟超时
   },
   
-  // API代理配置 - 开发环境
-  async rewrites() {
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent';
-    return process.env.NODE_ENV === 'development' ? [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/v1/:path*`,
-      },
-    ] : [];
-  },
+  // API代理配置 - 静态导出时禁用
+  // async rewrites() {
+  //   const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent';
+  //   return process.env.NODE_ENV === 'development' ? [
+  //     {
+  //       source: '/api/:path*',
+  //       destination: `${backendUrl}/api/v1/:path*`,
+  //     },
+  //   ] : [];
+  // },
   
   // 环境变量
   env: {

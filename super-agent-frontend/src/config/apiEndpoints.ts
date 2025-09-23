@@ -8,8 +8,8 @@
 
 // API基础配置
 export const API_CONFIG = {
-  // API基础路径
-  BASE_URL: process.env.NODE_ENV === 'development' ? '/api' : '/super-agent/api',
+  // API基础路径 - 统一使用 /api 路径，由nginx代理到后端
+  BASE_URL: '/api',
   
   // API版本
   VERSION: 'v1',
