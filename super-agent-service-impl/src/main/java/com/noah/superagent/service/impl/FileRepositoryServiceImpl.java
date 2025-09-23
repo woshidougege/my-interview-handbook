@@ -2,6 +2,7 @@ package com.noah.superagent.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.noah.superagent.common.config.KunlunProperties;
 import com.noah.superagent.common.dto.response.FileUploadResponse;
 import com.noah.superagent.service.FileRepositoryService;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,6 @@ import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import com.noah.superagent.common.config.FileRepositoryProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -40,34 +40,39 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FileRepositoryServiceImpl implements FileRepositoryService {
 
-    private final FileRepositoryProperties fileRepositoryProperties;
+    private final KunlunProperties kunlunProperties;
 
     @Override
     public FileUploadResponse uploadFile(String entityCode, String directory, MultipartFile file) {
         CloseableHttpClient httpClient = null;
         CloseableHttpResponse response = null;
-        
+
         try {
             // 构建请求URL - 使用配置项
-            String url = fileRepositoryProperties.getBaseUrl() + fileRepositoryProperties.getUploadPath();
-            
-            log.info("调用文件上传接口: {}", url);
-            
+            String uploadUrl = kunlunProperties.getFileRepository().getUploadPath();
+
+            // 检查URL配置
+            if (uploadUrl == null || uploadUrl.isEmpty()) {
+                throw new IllegalStateException("文件上传URL未配置");
+            }
+
+            log.info("调用文件上传接口: {}", uploadUrl);
+
             // 创建HttpClient实例
             httpClient = HttpClients.createDefault();
-            
+
             // 创建HttpPost请求
-            HttpPost httpPost = new HttpPost(url);
-            
+            HttpPost httpPost = new HttpPost(uploadUrl);
+
             // 设置请求头
             httpPost.setHeader("Accept", "*/*");
-            
+
             // 验证entityCode是否为空
             if (entityCode == null || entityCode.trim().isEmpty()) {
                 log.warn("entityCode不能为空，使用默认值: default_entity");
                 entityCode = "default_entity";
             }
-            
+
             // 新增：校验entityCode格式
             if (!isValidEntityCode(entityCode)) {
                 log.warn("entityCode格式不合法: {}", entityCode);
@@ -76,57 +81,58 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
                 errorResponse.setUrl("");
                 return errorResponse;
             }
-            
+
             // 构建params参数
             Map<String, String> paramsMap = new HashMap<>();
             paramsMap.put("entityCode", entityCode);
             paramsMap.put("directory", directory != null ? directory : "");
-            
+
             ObjectMapper objectMapper = new ObjectMapper();
             String paramsJson = objectMapper.writeValueAsString(paramsMap);
-            
+
             // 打印完整请求体用于调试
             log.info("发送到远程服务的请求体: params={}", paramsJson);
-            
+
             // 构建multipart请求体
             HttpEntity multipartEntity = MultipartEntityBuilder.create()
                     .addPart("params", new StringBody(paramsJson, ContentType.APPLICATION_JSON))
                     .addBinaryBody("file", file.getInputStream(), ContentType.APPLICATION_OCTET_STREAM, file.getOriginalFilename())
                     .build();
-            
+
             // 设置请求体
             httpPost.setEntity(multipartEntity);
-            
+
             // 执行请求
             response = httpClient.execute(httpPost);
-            
+
             // 获取响应
             String responseString = EntityUtils.toString(response.getEntity());
             log.info("文件上传接口响应: {}", responseString);
-            
+
             // 解析响应
-            Map<String, Object> responseMap = objectMapper.readValue(responseString, new TypeReference<Map<String, Object>>() {});
-            
+            Map<String, Object> responseMap = objectMapper.readValue(responseString, new TypeReference<Map<String, Object>>() {
+            });
+
             // 检查响应码
             Object codeObj = responseMap.get("code");
             if (codeObj instanceof Number && ((Number) codeObj).intValue() == 100000) {
                 Object dataObj = responseMap.get("data");
                 if (dataObj instanceof Map) {
                     Map<String, Object> dataMap = (Map<String, Object>) dataObj;
-                    
+
                     FileUploadResponse fileUploadResponse = new FileUploadResponse();
                     fileUploadResponse.setName((String) dataMap.get("name"));
                     fileUploadResponse.setUrl((String) dataMap.get("url"));
                     return fileUploadResponse;
                 }
             }
-            
+
             log.warn("文件上传接口调用失败，返回码: {}", codeObj);
             FileUploadResponse errorResponse = new FileUploadResponse();
             errorResponse.setName("upload_failed");
             errorResponse.setUrl("");
             return errorResponse;
-            
+
         } catch (Exception e) {
             log.error("调用文件上传接口时发生异常", e);
             FileUploadResponse errorResponse = new FileUploadResponse();
@@ -152,40 +158,43 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     public List<String> listObjectNames(String entityCode, String directory, boolean recursive) {
         try {
             // 构建请求URL - 使用配置项
-            String url = String.format("%s%s", fileRepositoryProperties.getBaseUrl(), fileRepositoryProperties.getListObjectNamesPath().replace("{entityCode}", entityCode != null ? entityCode : "default_entity"));
-            
+            String url = kunlunProperties.getFileRepository().getListObjectNamesPath()
+                            .replace("{entityCode}", kunlunProperties.getEntityCodes().getDefaultCode())
+                            .replace("{abilityCode}", kunlunProperties.getAbilityCodes().getDefaultCode());
+
             log.info("调用文件列表接口: {}", url);
-            
+
             // 创建RestTemplate实例
             RestTemplate restTemplate = new RestTemplate();
-            
+
             // 设置请求头
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/json");
             headers.set("Content-Type", "application/json");
-            
+
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("directory", directory != null ? directory : "");
             requestBody.put("recursive", recursive);
-            
+
             // 创建请求实体
             org.springframework.http.HttpEntity<Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(requestBody, headers);
-            
+
             // 使用POST方法
             ResponseEntity<String> response = restTemplate.exchange(
-                url, 
-                HttpMethod.POST, 
-                entity, 
-                String.class
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
             );
-            
+
             log.info("文件列表接口响应: {}", response.getBody());
-            
+
             // 解析响应
             ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {});
-            
+            Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {
+            });
+
             // 检查响应码
             Object codeObj = responseMap.get("code");
             if (codeObj instanceof Number && ((Number) codeObj).intValue() == 0) {
@@ -200,17 +209,18 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
                             Object resultObj = firstItem.get("result");
                             if (resultObj instanceof String) {
                                 String resultStr = (String) resultObj;
-                                List<String> fileNames = objectMapper.readValue(resultStr, new TypeReference<List<String>>() {});
+                                List<String> fileNames = objectMapper.readValue(resultStr, new TypeReference<List<String>>() {
+                                });
                                 return fileNames;
                             }
                         }
                     }
                 }
             }
-            
+
             log.warn("文件列表接口调用失败，返回码: {}", codeObj);
             return new ArrayList<>();
-            
+
         } catch (Exception e) {
             log.error("调用文件列表接口时发生异常", e);
             return new ArrayList<>();
@@ -221,39 +231,42 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     public String getObjectURL(String entityCode, String filename) {
         try {
             // 构建请求URL - 使用配置项
-            String url = String.format("%s%s", fileRepositoryProperties.getBaseUrl(), fileRepositoryProperties.getGetObjectUrlPath().replace("{entityCode}", entityCode != null ? entityCode : "default_entity"));
-            
+            String url =kunlunProperties.getFileRepository().getGetObjectUrlPath()
+                            .replace("{entityCode}", kunlunProperties.getEntityCodes().getDefaultCode())
+                            .replace("{abilityCode}", kunlunProperties.getAbilityCodes().getDefaultCode());
+
             log.info("调用获取文件URL接口: {}", url);
-            
+
             // 创建RestTemplate实例
             RestTemplate restTemplate = new RestTemplate();
-            
+
             // 设置请求头
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/json");
             headers.set("Content-Type", "application/json");
-            
+
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("filename", filename);
-            
+
             // 创建请求实体
             org.springframework.http.HttpEntity<Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(requestBody, headers);
-            
+
             // 使用POST方法
             ResponseEntity<String> response = restTemplate.exchange(
-                url, 
-                HttpMethod.POST, 
-                entity, 
-                String.class
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
             );
-            
+
             log.info("获取文件URL接口响应: {}", response.getBody());
-            
+
             // 解析响应
             ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {});
-            
+            Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {
+            });
+
             // 检查响应码
             Object codeObj = responseMap.get("code");
             if (codeObj instanceof Number && ((Number) codeObj).intValue() == 0) {
@@ -273,10 +286,10 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
                     }
                 }
             }
-            
+
             log.warn("获取文件URL接口调用失败，返回码: {}", codeObj);
             return "";
-            
+
         } catch (Exception e) {
             log.error("调用获取文件URL接口时发生异常", e);
             return "";
@@ -289,34 +302,34 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
         if (entityCode == null || entityCode.length() < 8) {
             return false;
         }
-        
+
         // 检查是否以ENTITY_开头
         if (!entityCode.startsWith("ENTITY_")) {
             log.warn("entityCode必须以ENTITY_开头: {}", entityCode);
             return false;
         }
-        
+
         // 获取实体编码部分（去掉ENTITY_前缀）
         String entityPart = entityCode.substring(7);
-        
+
         // 检查实体编码部分是否为空或仅包含空格
         if (entityPart == null || entityPart.trim().isEmpty()) {
             log.warn("entityCode的实体编码部分不能为空: {}", entityCode);
             return false;
         }
-        
+
         // 放宽校验规则：允许字母、数字、下划线、连字符等常见字符
         if (!entityPart.matches("[a-zA-Z0-9_-]+")) {
             log.warn("entityCode的实体编码部分只能包含字母、数字、下划线和连字符: {}", entityCode);
             return false;
         }
-        
+
         // 验证长度限制（例如最大长度为100）
         if (entityPart.length() > 100) {
             log.warn("entityCode的实体编码部分长度不能超过100: {}", entityCode);
             return false;
         }
-        
+
         return true;
     }
 }

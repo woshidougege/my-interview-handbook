@@ -21,7 +21,7 @@ server:
     # 使用直接内存提升性能
     direct-buffers: ${SERVER_UNDERTOW_DIRECT_BUFFERS:true}
     # 最大HTTP POST请求大小
-    max-http-post-size: ${SERVER_UNDERTOW_MAX_HTTP_POST_SIZE:100MB}
+    max-http-post-size: ${SERVER_UNDERTOW_MAX_HTTP_POST_SIZE:10MB}
 
 # Spring配置
 spring:
@@ -80,34 +80,35 @@ management:
     env:
       enabled: true
 
-# A2A平台配置
-a2a:
-  platform:
-    base-url: http://192.168.1.66:8000
-    # 能力中心编码配置
-    ability-codes:
-      default: "18961714392032"
-    # 实体编码配置
-    entity-codes:
-      default: "ENTITY_test_pp_dispatch"
-      # 可以添加更多实体编码
-      # example: "ENTITY_example_code"
-
-# ========== 注册回调配置 ==========
-registration:
-  callback:
-    url: ${REGISTRATION_CALLBACK_URL:http://localhost:3000/register-callback}
-
-# ========== 文档库配置 ==========
-file-repository:
-  base-url: http://192.168.6.86:8000/kl-dt-gateway
-  upload-path: /gateway/twin/FileRepository/stream/put
-  list-object-names-path: /gateway/15523003548256/twin/FileRepository/entity/{entityCode}/service/listObjectNames
-  get-object-url-path: /gateway/15523003548256/twin/FileRepository/entity/{entityCode}/service/getObjectURL
-
-# ========== 昆仑平台配置 ==========
+# Kunlun平台配置
 kunlun:
+  # 能力中心编码配置
+  ability-codes:
+    defaultCode: "18961714392032"
+  # 实体编码配置
+  entity-codes:
+    defaultCode: "ENTITY_test_pp_dispatch"
+  # 聊天历史相关配置
   chat-history:
-    url: http://192.168.1.137:7667/kunlun/chatHistory/getById
-    delete:
-      url: http://192.168.1.137:7667/kunlun/chatHistory/deleteById
+    url: ${KUNLUN_CHAT_HISTORY_DETAIL_URL:http://192.168.1.137:7667/kunlun/chatHistory/getById}
+    list-url: ${KUNLUN_CHAT_HISTORY_LIST_URL:http://192.168.1.137:7667/kunlun/chatHistory/list}
+    delete-url: ${KUNLUN_CHAT_HISTORY_DELETE_URL:http://192.168.1.137:7667/kunlun/chatHistory/deleteById}
+  # 规划智能体改造相关配置
+  a2a:
+    # 会话执行接口
+    session-execution:
+      url: ${KUNLUN_A2A_SESSION_EXECUTION_URL:http://192.168.1.66:8000/kunlun/a2a/api/{abilityCode}/entity/{entityCode}/userid/{userId}/satoken/{satoken}}
+    # 补充信息接口
+    supplement-info:
+      url: ${KUNLUN_A2A_SUPPLEMENT_INFO_URL:http://192.168.1.66:8000/kunlun/a2a/api/{abilityCode}/entity/{entityCode}/userid/{userId}/satoken/{satoken}}
+    # A2AProtocolProxy实体编码（用于补充信息）
+    protocol-proxy:
+      entity-code: ${KUNLUN_A2A_PROTOCOL_PROXY_ENTITY_CODE:ENTITY_EXCEL_ANAYSIS}
+  # 注册回调配置
+  registration:
+    callback-url: ${REGISTRATION_CALLBACK_URL:http://192.168.1.66:8000/kl-dt-gateway/user/generatePlanAgentAndDocs}
+  # 文档库配置
+  file-repository:
+    upload-path: ${FILE_REPOSITORY_UPLOAD_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/twin/FileRepository/stream/put}
+    list-object-names-path: ${FILE_REPOSITORY_LIST_OBJECT_NAMES_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/{abilityCode}/twin/FileRepository/entity/{entityCode}/service/listObjectNames}
+    get-object-url-path: ${FILE_REPOSITORY_GET_OBJECT_URL_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/{abilityCode}/twin/FileRepository/entity/{entityCode}/service/getObjectURL}

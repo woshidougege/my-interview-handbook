@@ -1,5 +1,6 @@
 package com.noah.superagent.controller;
 
+import com.noah.superagent.common.config.KunlunProperties;
 import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
 import com.noah.superagent.common.dto.request.ChatTaskUpdateRequest;
 import com.noah.superagent.common.dto.request.ChatTitleGenerateRequest;
@@ -19,7 +20,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -46,15 +46,8 @@ public class ChatTaskController {
 
     private final ChatTaskService chatTaskService;
     private final A2ACommunicationService a2aCommunicationService;
-
-
+    private final KunlunProperties kunlunProperties;
     private final ChatTaskWebConvert chatTaskWebConvert;
-
-    @Value("${kunlun.chat-history.url}")
-    private String chatHistoryUrl;
-
-    @Value("${kunlun.chat-history.delete.url}")
-    private String chatHistoryDeleteUrl;
 
     @PostMapping
     @Operation(summary = "创建对话任务", description = "创建新对话任务")
@@ -92,11 +85,11 @@ public class ChatTaskController {
         if (chatTaskDO.getContextId() != null) {
             try {
                 // 获取默认实体编码
-                String entityCode = a2aCommunicationService.getDefaultEntityCode();
+                String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
 
-                // 构建调用URL
+                // 构建调用URL，使用配置文件中的URL
                 String url = String.format("%s?sessionId=%s&entityCode=%s",
-                        chatHistoryUrl, chatTaskDO.getContextId(), entityCode);
+                        kunlunProperties.getChatHistory().getUrl(), chatTaskDO.getContextId(), entityCode);
 
                 // 调用外部接口获取聊天历史详情
                 RestTemplate restTemplate = new RestTemplate();
@@ -128,13 +121,40 @@ public class ChatTaskController {
         ChatTaskDTO chatTaskDO = chatTaskService.getChatTaskById(id);
 
         // 获取默认实体编码
-        String entityCode = a2aCommunicationService.getDefaultEntityCode();
+        String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
 
-        // 构建调用URL
+        // 构建调用URL，使用配置文件中的URL
         String url = String.format("%s?sessionId=%s&entityCode=%s",
-                chatHistoryUrl, chatTaskDO.getContextId(), entityCode);
+                kunlunProperties.getChatHistory().getUrl(), chatTaskDO.getContextId(), entityCode);
 
         // 调用外部接口获取聊天历史详情
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+        return response;
+    }
+
+    @GetMapping("/history/list")
+    @Operation(summary = "查询用户聊天历史列表", description = "根据用户ID和实体编码查询聊天历史列表")
+    public ResponseEntity<String> getChatHistoryList(
+            @Parameter(description = "工作空间ID", example = "1234567890123456789")
+            @PathVariable("workspaceId") Long workspaceId,
+            @Parameter(description = "用户ID")
+            @RequestParam("userId") String userId,
+            @Parameter(description = "实体编码")
+            @RequestParam(value = "entityCode", required = false) String entityCode) {
+        log.info("接收查询聊天历史列表请求: userId={}, entityCode={}", userId, entityCode);
+
+        // 如果未提供实体编码，使用默认实体编码
+        if (entityCode == null || entityCode.isEmpty()) {
+            entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
+        }
+
+        // 构建调用URL，使用配置文件中的URL
+        String url = String.format("%s?userId=%s&entityCode=%s",
+                kunlunProperties.getChatHistory().getListUrl(), userId, entityCode);
+
+        // 调用外部接口获取聊天历史列表
         RestTemplate restTemplate = new RestTemplate();
         ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
@@ -217,11 +237,11 @@ public class ChatTaskController {
         if (chatTaskDO != null && chatTaskDO.getContextId() != null) {
             try {
                 // 获取默认实体编码
-                String entityCode = a2aCommunicationService.getDefaultEntityCode();
+                String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
 
-                // 构建调用URL
+                // 构建调用URL，使用配置文件中的URL
                 String url = String.format("%s?sessionId=%s&entityCode=%s",
-                        chatHistoryDeleteUrl, chatTaskDO.getContextId(), entityCode);
+                        kunlunProperties.getChatHistory().getDeleteUrl(), chatTaskDO.getContextId(), entityCode);
 
                 // 调用外部接口删除历史会话
                 RestTemplate restTemplate = new RestTemplate();
