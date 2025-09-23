@@ -62,6 +62,10 @@ public class ChatTaskController {
             @Parameter(description = "工作空间ID", example = "1234567890123456789")
             @PathVariable("workspaceId") Long workspaceId,
             @Valid @RequestBody ChatTaskCreateRequest request) {
+
+        String generatedTitle = chatTaskService.generateChatTitle(request.getContent());
+        request.setTitle(generatedTitle);
+
         log.info("接收创建对话任务请求: {}", request.getTitle());
 
         // Request -> DTO -> Service -> DTO -> Response
