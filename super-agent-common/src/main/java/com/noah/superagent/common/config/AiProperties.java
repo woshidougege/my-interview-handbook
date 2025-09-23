@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * AI服务配置属性
  * 对应 application-ai.yml 中的 super-agent.ai 配置
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

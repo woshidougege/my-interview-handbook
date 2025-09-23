@@ -2,14 +2,14 @@
  * API端点配置
  * 统一管理所有后端API路径，避免硬编码
  * 
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 
 // API基础配置
 export const API_CONFIG = {
-  // API基础路径
-  BASE_URL: process.env.NODE_ENV === 'development' ? '/api' : '/super-agent/api',
+  // API基础路径 - 直接使用真实的后端路径，与nginx配置保持一致
+  BASE_URL: '/super-agent/api/v1',
   
   // API版本
   VERSION: 'v1',
@@ -32,14 +32,13 @@ export const API_CONFIG = {
 } as const;
 
 // API端点路径配置  
-// 重要！后端@RequestMapping("/api/v1/...")但前端不需要v1前缀！
-// 因为：axios baseURL="/api" + 端点"subscription/plans" = "/api/subscription/plans"
-// 服务器会自动处理v1路径映射，所以前端直接去掉v1即可
-// 这样就避免了双重v1问题：/api/v1/v1/ ❌
+// 重要！前端直接使用完整的后端路径，与nginx配置保持一致
+// 因为：axios baseURL="/super-agent/api/v1" + 端点"auth/login" = "/super-agent/api/v1/auth/login"
+// 这样确保了前端请求路径与nginx拦截规则完全匹配
 
 export const API_ENDPOINTS = {
   // ========== 认证相关 ==========
-  // 后端: @RequestMapping("/api/v1/auth") -> 前端直接用: auth/* (后端已有v1)
+  // 后端: @RequestMapping("/api/v1/auth") -> 前端: auth/* (baseURL已包含/super-agent/api/v1)
   AUTH: {
     BASE: 'auth',
     LOGIN: 'auth/login',
@@ -91,6 +90,20 @@ export const API_ENDPOINTS = {
     GENERATE_TITLE: (workspaceId: string) => `workspaces/${workspaceId}/chat-tasks/generate-title`,
   },
 
+  // ========== 语音识别相关 ==========
+  SPEECH: {
+    RECOGNITION_UPLOAD: 'speech/recognition/upload',
+  },
+
+  // ========== 聊天相关 ==========
+  // 后端: @PostMapping("/api/v1/chat/stream") -> 前端直接用: chat/* (后端已有v1)
+  CHAT: {
+    BASE: 'chat',
+    STREAM: 'chat/stream',
+    SSE: (sessionId: string) => `chat/sse/${sessionId}`,
+    GENERATE_TITLE: 'chat/generate-title',
+  },
+
   // ========== 支付相关 ==========
   // 后端: @RequestMapping("/api/v1/payment") -> 前端直接用: payment/*
   PAYMENT: {
@@ -98,6 +111,7 @@ export const API_ENDPOINTS = {
     CREATE: 'payment/create',
     CONFIRM: 'payment/confirm',
     STATUS: (paymentId: string) => `payment/${paymentId}/status`,
+    STATUS_LISTEN: (orderNo: string) => `payment/status/listen/${orderNo}`,
     CALLBACK: 'payment/callback',
     CANCEL: (paymentId: string) => `payment/${paymentId}/cancel`,
   },
@@ -160,11 +174,11 @@ export const API_ENDPOINTS = {
   },
 
   // ========== SSO单点登录相关 ==========
-  // 这些接口由SSO SDK直接提供，需要包含完整的后端地址
+  // 生产环境使用相对路径，依赖nginx代理；开发环境使用完整路径
   SSO: {
-    DO_LOGIN_BY_TICKET: (ticket: string) => `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent'}/sso/doLoginByTicket?ticket=${ticket}`,
-    GET_USER: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent'}/sso/getuser`,
-    GET_MENU: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent'}/sso/getmenu`,
+    DO_LOGIN_BY_TICKET: (ticket: string) => `/super-agent/sso/doLoginByTicket?ticket=${ticket}`,
+    GET_USER: `/super-agent/sso/getuser`,
+    GET_MENU: `/super-agent/sso/getmenu`,
   },
 } as const;
 

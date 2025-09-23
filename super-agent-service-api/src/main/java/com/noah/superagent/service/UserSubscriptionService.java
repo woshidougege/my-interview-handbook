@@ -7,7 +7,7 @@ import java.util.List;
  * 用户订阅服务接口
  * 对应数据库表：t_user_subscription
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface UserSubscriptionService {

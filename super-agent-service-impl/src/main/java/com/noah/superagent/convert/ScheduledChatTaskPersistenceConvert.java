@@ -13,7 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * 定时对话任务持久化层转换器
  * 负责 DTO <-> Entity 转换
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper(componentModel = "spring")

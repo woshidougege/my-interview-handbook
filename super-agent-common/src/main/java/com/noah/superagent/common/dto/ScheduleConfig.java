@@ -9,7 +9,7 @@ import java.io.Serializable;
  * 用于前端友好的参数配置，替代复杂的Cron表达式
  * 支持重复任务的配置
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

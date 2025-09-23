@@ -11,7 +11,7 @@ import java.util.Date;
  * <p>
  * 对应数据库表: t_scheduled_chat_task_execution_log
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

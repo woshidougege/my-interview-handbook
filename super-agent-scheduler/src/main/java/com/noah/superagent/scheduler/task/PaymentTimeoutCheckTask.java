@@ -24,7 +24,7 @@ import java.io.Serializable;
  * 3. 30分钟后 → 主动查询微信支付状态
  * 4. 系统重启 → db-scheduler自动恢复未执行的任务
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

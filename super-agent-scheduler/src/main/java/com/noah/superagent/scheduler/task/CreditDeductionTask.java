@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
  * - 提供重试机制，确保积分扣减的可靠性
  * - 系统重启后任务自动恢复执行
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

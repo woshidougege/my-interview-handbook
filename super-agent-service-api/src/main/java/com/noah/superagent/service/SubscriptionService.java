@@ -9,7 +9,7 @@ import java.util.List;
  * 订阅服务接口
  * 管理套餐模板和用户订阅记录
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface SubscriptionService {

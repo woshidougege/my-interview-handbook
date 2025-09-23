@@ -9,7 +9,7 @@ import java.util.List;
  * 定时对话任务服务接口
  * 对应数据库表：t_scheduled_chat_task
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface ScheduledChatTaskService {

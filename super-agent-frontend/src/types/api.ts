@@ -1,7 +1,7 @@
 /**
  * API相关的TypeScript类型定义
  * 
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 
@@ -170,6 +170,19 @@ export interface UserSubscriptionResponse {
   subscription: SubscriptionInfo | null;
   planName: string;
   planCode: string;
+  availableCredits?: number;
+  hasCreditAccount?: boolean;
+  totalBalance?: number;
+  freeBalance?: number;
+  subscriptionBalance?: number;
+  permanentBalance?: number;
+  totalEarned?: number;
+  totalSpent?: number;
+  limitedCredits?: number;
+  dailyRefreshCredits?: number;
+  permanentCredits?: number;
+  createTime?: string;
+  updateTime?: string;
 }
 
 // ========== 积分相关类型 ==========

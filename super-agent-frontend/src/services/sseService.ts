@@ -1,5 +1,7 @@
 // SSE服务不需要ChatMessage类型
 
+import { API_CONFIG, API_ENDPOINTS } from '@/config/apiEndpoints';
+
 /**
  * SSE连接状态
  */
@@ -74,7 +76,7 @@ class SseService {
       workspaceId,
       ...(userId && { userId })
     });
-    return `${baseUrl}/api/v1/chat/sse/${sessionId}?${params.toString()}`;
+    return `${baseUrl}/${API_CONFIG.BASE_URL}/${API_ENDPOINTS.CHAT.SSE(sessionId)}?${params.toString()}`;
   }
   
   /**
@@ -219,7 +221,7 @@ class SseService {
     }
     
     try {
-      const url = `${this.getBaseUrl()}/api/v1/chat/stream/${this.currentSessionId}`;
+      const url = `${this.getBaseUrl()}/${API_CONFIG.BASE_URL}/${API_ENDPOINTS.CHAT.STREAM}/${this.currentSessionId}`;
       const params = new URLSearchParams({
         message: content,
         workspaceId: this.currentWorkspaceId,

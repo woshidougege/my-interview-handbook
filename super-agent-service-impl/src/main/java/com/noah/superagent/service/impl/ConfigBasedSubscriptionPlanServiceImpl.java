@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * 基于配置文件的订阅套餐服务实现类
  * 替代数据库查询，从配置文件读取套餐信息
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

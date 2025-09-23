@@ -8,7 +8,7 @@ import org.springframework.context.ApplicationEvent;
  * <p>
  * 当用户删除定时聊天任务时发布此事件，用于取消已安排的调度任务
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Getter

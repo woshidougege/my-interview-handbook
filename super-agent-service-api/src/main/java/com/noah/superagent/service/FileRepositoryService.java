@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * 文件仓库服务接口
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface FileRepositoryService {

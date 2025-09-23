@@ -8,7 +8,7 @@ import java.util.Date;
 /**
  * 定时对话任务执行日志DTO
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

@@ -43,7 +43,8 @@ sa-token:
       # 静态资源
       "/chat.html",
       "/static/**",
-      "/api/v1/resource-usage/report"
+      "/api/v1/resource-usage/report",
+      "/api/v1/**"
     ]
     isHttp: true
   # Token超时配置（控制您系统中satoken的有效期）

@@ -38,6 +38,7 @@ spring:
     import:
       # === 基础框架配置 ===
       - classpath:application-spring.yml      # Spring Framework配置
+      - classpath:application-cors.yml        # CORS跨域配置
       - classpath:application-datasource.yml  # 数据源配置
       - classpath:application-mybatis.yml     # MyBatis-Flex配置
       - classpath:application-flyway.yml      # Flyway配置
@@ -95,6 +96,11 @@ a2a:
       default: "ENTITY_test_pp_dispatch"
       # 可以添加更多实体编码
       # example: "ENTITY_example_code"
+
+# ========== 注册回调配置 ==========
+registration:
+  callback:
+    url: ${REGISTRATION_CALLBACK_URL:http://localhost:3000/register-callback}
 
 # ========== 文档库配置 ==========
 file-repository:

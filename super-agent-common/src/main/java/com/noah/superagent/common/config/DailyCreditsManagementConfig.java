@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  * 用于配置每日积分管理任务的执行时间和开关
  * 包含积分清理和积分补发的完整流程
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

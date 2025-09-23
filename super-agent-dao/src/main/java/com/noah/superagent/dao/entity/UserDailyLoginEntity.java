@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 /**
  * 用户每日登录记录表
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

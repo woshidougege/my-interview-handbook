@@ -10,7 +10,7 @@ import java.util.List;
  * 定时对话任务执行日志Web层转换器
  * 实现DTO与Response之间的相互转换
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper(componentModel = "spring")

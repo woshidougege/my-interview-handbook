@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
  * - 避免频繁轮询检查，提高效率
  * - 系统重启后任务自动恢复，保证可靠性
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

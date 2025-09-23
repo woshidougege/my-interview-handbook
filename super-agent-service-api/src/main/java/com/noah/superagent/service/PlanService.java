@@ -8,7 +8,7 @@ import java.util.List;
  * 套餐模板服务接口
  * 管理系统预设的套餐类型（免费版、基础版、高级版等）
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface PlanService {

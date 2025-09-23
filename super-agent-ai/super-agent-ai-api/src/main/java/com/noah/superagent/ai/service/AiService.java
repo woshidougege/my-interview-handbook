@@ -7,7 +7,7 @@ import java.util.function.Consumer;
  * AI服务接口
  * 提供各种AI相关功能
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 public interface AiService {
@@ -25,8 +25,9 @@ public interface AiService {
      * 流式聊天
      * @param messages 聊天消息历史
      * @param resultCallback 结果回调，每个流式片段会调用一次
+     * @param completeCallback 完成回调，流式处理完成时调用
      */
-    void streamChat(List<ChatMessage> messages, Consumer<String> resultCallback);
+    void streamChat(List<ChatMessage> messages, Consumer<String> resultCallback, Runnable completeCallback);
     
     /**
      * 聊天消息

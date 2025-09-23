@@ -417,7 +417,7 @@ const Orders: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       width: 120,
-      render: (status: string) => getStatusTag(status),
+      render: (status: PaymentStatusType) => getStatusTag(status),
     },
     {
       title: '订单金额',

@@ -11,7 +11,7 @@ import java.util.List;
  * 套餐配置类
  * 从配置文件读取套餐信息，替代数据库存储
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Data

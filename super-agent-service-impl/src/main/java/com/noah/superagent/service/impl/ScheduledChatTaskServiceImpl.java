@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * 定时对话任务服务实现
  * 对应数据库表：t_scheduled_chat_task
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

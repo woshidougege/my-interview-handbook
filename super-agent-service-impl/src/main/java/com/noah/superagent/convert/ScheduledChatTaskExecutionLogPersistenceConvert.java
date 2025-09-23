@@ -8,7 +8,7 @@ import org.mapstruct.Mapper;
  * 定时对话任务执行日志持久化层转换器
  * 负责 DTO <-> Entity 转换
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Mapper(componentModel = "spring")

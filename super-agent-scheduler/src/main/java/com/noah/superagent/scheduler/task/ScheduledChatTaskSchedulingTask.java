@@ -24,7 +24,7 @@ import java.util.Date;
  * 监听定时聊天任务的创建、更新、删除事件，动态管理调度任务
  * 采用事件驱动架构，精确控制任务执行时间，避免轮询数据库
  *
- * @author System
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

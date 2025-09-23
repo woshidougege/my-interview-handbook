@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * AI服务实现类
  * 基于阿里云百炼DashScope SDK提供AI功能
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j
@@ -171,34 +171,37 @@ public class AiServiceImpl implements AiService {
     }
     
     @Override
-    public void streamChat(List<ChatMessage> messages, Consumer<String> resultCallback) {
+    public void streamChat(List<ChatMessage> messages, Consumer<String> resultCallback, Runnable completeCallback) {
         log.info("开始流式聊天，消息数量: {}", messages != null ? messages.size() : 0);
         
         AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
         if (!dashscopeConfig.getEnabled() || !StringUtils.hasText(dashscopeConfig.getApiKey())) {
             log.warn("AI服务未启用或API Key未配置，无法进行流式聊天");
             resultCallback.accept("AI服务暂时不可用，请稍后再试。");
+            completeCallback.run();
             return;
         }
         
         if (messages == null || messages.isEmpty()) {
             log.warn("消息列表为空");
             resultCallback.accept("消息不能为空。");
+            completeCallback.run();
             return;
         }
         
         try {
-            callDashscopeStreamSDK(messages, resultCallback);
+            callDashscopeStreamSDK(messages, resultCallback, completeCallback);
         } catch (Exception e) {
             log.error("调用阿里云百炼流式SDK失败", e);
             resultCallback.accept("抱歉，AI服务暂时出现问题，请稍后再试。");
+            completeCallback.run();
         }
     }
     
     /**
      * 调用DashScope SDK进行流式聊天
      */
-    private void callDashscopeStreamSDK(List<ChatMessage> chatMessages, Consumer<String> resultCallback) 
+    private void callDashscopeStreamSDK(List<ChatMessage> chatMessages, Consumer<String> resultCallback, Runnable completeCallback) 
             throws ApiException, NoApiKeyException, InputRequiredException {
         
         AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
@@ -211,13 +214,15 @@ public class AiServiceImpl implements AiService {
                         .build())
                 .collect(Collectors.toList());
         
-        // 构建参数
+        // 构建参数 - 按照官方文档的最佳实践
         GenerationParam param = GenerationParam.builder()
                 .apiKey(dashscopeConfig.getApiKey())
                 .model("qwen-plus") // 使用qwen-plus模型进行聊天
                 .messages(messages)
                 .resultFormat(GenerationParam.ResultFormat.MESSAGE)
-                .incrementalOutput(true) // 开启增量输出，流式返回
+                .incrementalOutput(true) // 关键：开启增量输出，真正的流式返回
+                .maxTokens(2000) // 添加token限制，避免长时间等待
+                .temperature(0.7f) // 添加温度参数，提高响应性
                 .build();
         
         log.debug("调用DashScope SDK进行流式聊天，模型: qwen-plus");
@@ -225,31 +230,77 @@ public class AiServiceImpl implements AiService {
         Generation gen = new Generation();
         
         try {
-            // 使用streamCall进行流式调用
+            // 🔧 关键修复：简化线程模型，避免缓冲延迟
             Flowable<GenerationResult> result = gen.streamCall(param);
             
             result
-                .subscribeOn(Schedulers.io()) // IO线程执行请求
-                .observeOn(Schedulers.computation()) // 计算线程处理响应
+                // 🚀 重要：直接在IO线程处理，避免线程切换导致的缓冲延迟
+                .subscribeOn(Schedulers.io()) 
+                // 移除 observeOn，避免线程切换缓冲
                 .subscribe(
-                    // onNext: 处理每个响应片段
+                    // onNext: 处理每个响应片段 - 立即处理，无缓冲
                     message -> {
-                        String content = message.getOutput().getChoices().get(0).getMessage().getContent();
-                        if (StringUtils.hasText(content)) {
-                            resultCallback.accept(content);
+                        try {
+                            // 获取增量内容
+                            String content = message.getOutput().getChoices().get(0).getMessage().getContent();
+                            if (StringUtils.hasText(content)) {
+                                long currentTime = System.currentTimeMillis();
+                                log.info("🔥 DashScope增量数据: [{}] 长度: {} 时间: {}", 
+                                    content.length() > 50 ? content.substring(0, 50) + "..." : content, 
+                                    content.length(), 
+                                    currentTime);
+                                
+                                // 🚀 立即回调，但要处理连接断开的情况
+                                try {
+                                    resultCallback.accept(content);
+                                } catch (Exception callbackException) {
+                                    // 如果回调失败（如连接断开），记录并停止处理
+                                    log.warn("流式数据回调失败，可能是连接断开: {}", callbackException.getMessage());
+                                    return; // 停止处理后续数据
+                                }
+                                
+                                // 强制刷新，确保立即发送
+                                Thread.yield(); // 让其他线程有机会处理
+                            }
+                            
+                            // 检查是否完成
+                            String finishReason = message.getOutput().getChoices().get(0).getFinishReason();
+                            if (finishReason != null && !"null".equals(finishReason)) {
+                                log.info("DashScope流式调用完成，finishReason: {}", finishReason);
+                                if (message.getUsage() != null) {
+                                    log.info("Token使用情况 - 输入: {}, 输出: {}, 总计: {}", 
+                                        message.getUsage().getInputTokens(),
+                                        message.getUsage().getOutputTokens(), 
+                                        message.getUsage().getTotalTokens());
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.error("处理流式响应片段失败", e);
                         }
                     },
                     // onError: 处理错误
                     error -> {
-                        log.error("流式聊天请求失败", error);
-                        resultCallback.accept("\n\n抱歉，AI回答过程中出现问题，请稍后再试。");
+                        try {
+                            log.error("DashScope流式聊天请求失败", error);
+                            resultCallback.accept("\n\n抱歉，AI回答过程中出现问题，请稍后再试。");
+                        } catch (Exception e) {
+                            log.error("处理流式聊天错误失败", e);
+                        } finally {
+                            completeCallback.run();
+                        }
                     },
                     // onComplete: 完成回调
                     () -> {
-                        log.debug("流式聊天完成");
-                        // 流式结束，不需要额外操作
+                        try {
+                            log.info("DashScope流式聊天完成");
+                            completeCallback.run();
+                        } catch (Exception e) {
+                            // 完成回调失败通常是因为连接断开，不需要error级别
+                            log.warn("处理流式聊天完成回调失败，可能是连接断开: {}", e.getMessage());
+                        }
                     }
                 );
+            
         } catch (Exception e) {
             log.error("流式聊天调用异常", e);
             throw new RuntimeException("流式聊天调用失败", e);

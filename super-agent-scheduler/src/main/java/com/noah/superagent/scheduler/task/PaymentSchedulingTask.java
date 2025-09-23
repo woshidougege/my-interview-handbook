@@ -25,7 +25,7 @@ import java.time.ZoneId;
  * 3. 用户取消订单 → 取消超时检查任务
  * 4. 支付失败 → 可安排重试任务（可选）
  *
- * @author AI Assistant
+ * @author 任相鹏
  * @since 1.0.0
  */
 @Slf4j

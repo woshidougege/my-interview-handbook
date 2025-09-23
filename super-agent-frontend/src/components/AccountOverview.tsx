@@ -52,7 +52,16 @@ const AccountOverview: React.FC<AccountOverviewProps> = ({ userId = '1001' }) =>
         const subscriptionResponse = await subscriptionApi.getCurrentSubscription();
         const data = subscriptionResponse.data.data;
         
-        const creditInfo = {
+        const creditInfo: UserCredit = {
+          userId: '',
+          totalBalance: 0,
+          freeBalance: 0,
+          subscriptionBalance: 0,
+          permanentBalance: 0,
+          totalEarned: 0,
+          totalSpent: 0,
+          createTime: '',
+          updateTime: '',
           availableCredits: data.availableCredits || 0,
           hasCreditAccount: data.hasCreditAccount || false
         };
