@@ -56,7 +56,7 @@ public interface A2ACommunicationService {
      * @param sessionId 会话ID
      * @return InputStream 输入流
      */
-    InputStream streamMessageToA2APlatform(String userId, String message, String sessionId);
+    InputStream streamMessageToA2APlatform(String userId, String message, String sessionId,String satoken);
     
     /**
      * 异步流式发送消息到A2A平台
@@ -68,7 +68,7 @@ public interface A2ACommunicationService {
      * @return CompletableFuture<ResponseEntity<StreamingResponseBody>> 异步流式响应体
      */
     CompletableFuture<ResponseEntity<StreamingResponseBody>> streamMessageToA2APlatformAsync(
-            String userId, String message, String sessionId, String contextId);
+            String userId, String message, String sessionId, String contextId,String satoken);
     
     /**
      * 发送JSON-RPC格式消息到A2A平台
@@ -83,7 +83,7 @@ public interface A2ACommunicationService {
      */
     InputStream sendJsonRpcMessageToA2APlatform(
             String abilityCode, String entityCode, String userId, 
-            String message, String taskId, String contextId);
+            String message, String taskId, String contextId,String satoken);
     
     /**
      * 处理补充信息
