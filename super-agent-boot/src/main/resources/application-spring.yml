@@ -106,6 +106,18 @@ spring:
     # 使用代码作为默认消息
     use-code-as-default-message: false
   
+  # 文件上传配置
+  servlet:
+    multipart:
+      # 单个文件最大大小
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:100MB}
+      # 单次请求最大大小
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:100MB}
+      # 文件上传临时目录
+      location: ${MULTIPART_TEMP_LOCATION:temp/uploads}
+      # 写入磁盘的临界值
+      file-size-threshold: ${MULTIPART_FILE_SIZE_THRESHOLD:2MB}
+
   # 输出配置
   output:
     ansi:

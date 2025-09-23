@@ -21,7 +21,7 @@ server:
     # 使用直接内存提升性能
     direct-buffers: ${SERVER_UNDERTOW_DIRECT_BUFFERS:true}
     # 最大HTTP POST请求大小
-    max-http-post-size: ${SERVER_UNDERTOW_MAX_HTTP_POST_SIZE:10MB}
+    max-http-post-size: ${SERVER_UNDERTOW_MAX_HTTP_POST_SIZE:100MB}
 
 # Spring配置
 spring:

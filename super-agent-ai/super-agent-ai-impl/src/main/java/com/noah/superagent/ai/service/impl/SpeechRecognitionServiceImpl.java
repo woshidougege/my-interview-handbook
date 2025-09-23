@@ -10,6 +10,7 @@ import com.noah.superagent.common.config.SpeechRecognitionProperties;
 import com.noah.superagent.common.dto.response.SpeechRecognitionResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.mime.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import java.io.File;
@@ -20,12 +21,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
 
 import javax.annotation.PostConstruct;
+
+import org.apache.tika.Tika;
 
 /**
  * 语音识别服务实现类
  * 基于阿里云百炼Gummy实时语音识别API
+ * 
+ * 注意：临时文件不会自动删除，需要定期手动清理temp/uploads目录
  *
  * @author 任相鹏
  * @since 1.0.0
@@ -42,6 +49,11 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
      * 临时文件目录
      */
     private static final String TEMP_UPLOAD_DIR = "temp/uploads";
+    
+    /**
+     * Apache Tika实例，用于检测文件真实格式
+     */
+    private final Tika tika = new Tika();
 
     @PostConstruct
     public void init() {
@@ -125,8 +137,39 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             // 确保API Key已设置
             System.setProperty("dashscope.api.key", apiKey);
             
-            // 使用文件调用API
-            return recognizeAudioFile(tempFilePath, getFileExtension(filename), language);
+            // 检测真实的音频格式
+            String realFormat = detectAudioFormat(tempFilePath);
+            String fileExtension = getFileExtension(filename);
+            
+            if (realFormat == null) {
+                // 如果无法检测，回退到文件扩展名
+                realFormat = fileExtension;
+                log.warn("无法检测音频文件真实格式，使用文件扩展名: {}", realFormat);
+            } else {
+                log.info("检测到音频文件真实格式: {} (文件名扩展名: {})", realFormat, fileExtension);
+            }
+            
+            // 首先尝试使用检测到的格式
+            try {
+                return recognizeAudioFile(tempFilePath, realFormat, language);
+            } catch (Exception e) {
+                log.warn("使用检测格式 {} 失败: {}", realFormat, e.getMessage());
+                
+                // 智能回退策略
+                List<String> fallbackFormats = getFallbackFormats(realFormat, fileExtension);
+                
+                for (String fallbackFormat : fallbackFormats) {
+                    log.warn("尝试回退格式: {}", fallbackFormat);
+                    try {
+                        return recognizeAudioFile(tempFilePath, fallbackFormat, language);
+                    } catch (Exception fallbackException) {
+                        log.warn("回退格式 {} 也失败: {}", fallbackFormat, fallbackException.getMessage());
+                    }
+                }
+                
+                log.error("所有格式都失败，抛出原始异常");
+                throw e; // 所有回退都失败，抛出原始异常
+            }
             
         } catch (Exception e) {
             log.error("语音识别失败", e);
@@ -135,9 +178,6 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                     .errorMessage("识别失败: " + e.getMessage())
                     .isFinal(true)
                     .build();
-        } finally {
-            // 清理临时文件
-            cleanupTemporaryFile(tempFilePath);
         }
     }
 
@@ -147,6 +187,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
     private SpeechRecognitionResponse recognizeAudioFile(String filePath, String format, String language) {
         log.info("使用Gummy API识别音频文件: {}, 格式: {}, 语言: {}", filePath, format, language);
         
+        TranslationRecognizerRealtime translator = null;
         try {
             // 构建识别参数
             TranslationRecognizerParam param = TranslationRecognizerParam.builder()
@@ -160,14 +201,11 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                     .build();
             
             // 创建识别器
-            TranslationRecognizerRealtime translator = new TranslationRecognizerRealtime();
+            translator = new TranslationRecognizerRealtime();
             
             // 使用文件调用API
             log.info("开始语音识别...");
             TranslationRecognizerResultPack result = translator.call(param, new File(filePath));
-            
-            // 关闭连接
-            translator.getDuplexApi().close(1000, "bye");
             
             // 处理识别结果
             return parseTranslationResult(result);
@@ -179,6 +217,16 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                     .errorMessage("识别失败: " + e.getMessage())
                     .isFinal(true)
                     .build();
+        } finally {
+            // 确保连接被正确关闭，释放文件句柄
+            if (translator != null) {
+                try {
+                    translator.getDuplexApi().close(1000, "bye");
+                    log.debug("API连接已关闭，文件句柄已释放");
+                } catch (Exception e) {
+                    log.warn("关闭API连接失败", e);
+                }
+            }
         }
     }
 
@@ -285,7 +333,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             // 保存文件
             Files.copy(audioStream, tempFilePath);
             
-            log.info("临时文件保存成功: {}", tempFilePath.toAbsolutePath());
+            log.info("临时文件保存成功: {} (注意：临时文件不会自动删除，需要手动清理)", tempFilePath.toAbsolutePath());
             return tempFilePath.toString();
             
         } catch (IOException e) {
@@ -295,16 +343,159 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
     }
     
     /**
-     * 清理临时文件
+     * 检测音频文件的真实格式
+     * 使用Apache Tika基于文件头检测，不依赖文件扩展名
      */
-    private void cleanupTemporaryFile(String filePath) {
-        if (filePath == null) return;
-        
+    private String detectAudioFormat(String filePath) {
         try {
-            Files.deleteIfExists(Paths.get(filePath));
-            log.debug("清理临时文件: {}", filePath);
-        } catch (IOException e) {
-            log.warn("清理临时文件失败: {}", filePath, e);
+            File file = new File(filePath);
+            if (!file.exists()) {
+                log.warn("文件不存在: {}", filePath);
+                return null;
+            }
+            
+            // 记录文件基本信息
+            long fileSize = file.length();
+            log.info("音频文件信息: 路径={}, 大小={} bytes ({} KB)", 
+                    filePath, fileSize, fileSize / 1024);
+            
+            // 使用Tika检测MIME类型
+            MediaType mediaType = MediaType.parse(tika.detect(file));
+            log.info("检测到完整MIME类型: {} (主类型:{}, 子类型:{})", 
+                    mediaType, mediaType.getType(), mediaType.getSubtype());
+            
+            // 记录MIME类型的参数信息（如果有的话）
+            if (!mediaType.getParameters().isEmpty()) {
+                log.info("MIME类型参数: {}", mediaType.getParameters());
+            }
+            
+            // 将MediaType转换为我们支持的格式
+            String format = mediaTypeToFormat(mediaType);
+            
+            // 验证格式是否被支持
+            if (format != null && speechProperties.getSupportedFormats().contains(format)) {
+                log.info("格式映射成功: {} -> {}", mediaType.getSubtype(), format);
+                return format;
+            } else {
+                log.warn("检测到不支持的音频格式: {} (MIME: {}, 支持的格式: {})", 
+                        format, mediaType, speechProperties.getSupportedFormats());
+                return null;
+            }
+            
+        } catch (Exception e) {
+            log.error("检测音频格式失败: {}", filePath, e);
+            return null;
         }
     }
+    
+    /**
+     * 将MediaType转换为我们支持的音频格式代码
+     * 使用类型安全的MediaType，避免字符串比较
+     */
+    private String mediaTypeToFormat(MediaType mediaType) {
+        if (mediaType == null) {
+            return null;
+        }
+        
+        // 获取主类型和子类型进行匹配
+        String type = mediaType.getType();
+        String subtype = mediaType.getSubtype();
+        
+        // 只处理音频类型
+        if (!"audio".equals(type)) {
+            log.debug("非音频类型: {}", mediaType);
+            return null;
+        }
+        
+        // 根据子类型映射到我们支持的格式
+        switch (subtype.toLowerCase()) {
+            case "wav":
+            case "wave":
+            case "x-wav":
+            case "vnd.wave":  // 添加对audio/vnd.wave的支持
+                return "wav";
+                
+            case "mpeg":
+            case "mp3":
+                return "mp3";
+                
+            case "mp4":
+            case "m4a":
+                // MP4/M4A格式的智能处理
+                log.info("检测到MP4/M4A容器格式，尝试多种格式兼容");
+                return "aac"; // 优先尝试AAC
+                
+            case "aac":
+                return "aac";
+                
+            case "ogg":
+            case "opus":
+                return "opus";
+                
+            case "x-speex":
+                return "speex";
+                
+            case "amr":
+                return "amr";
+                
+            case "basic":
+            case "l16":
+            case "pcm":
+                return "pcm";
+                
+            default:
+                log.debug("未映射的音频子类型: {} (完整类型: {})", subtype, mediaType);
+                return null;
+        }
+    }
+    
+    /**
+     * 获取智能回退格式列表
+     * 根据检测到的格式和文件扩展名，提供合理的回退选项
+     */
+    private List<String> getFallbackFormats(String detectedFormat, String fileExtension) {
+        List<String> fallbacks = new ArrayList<>();
+        
+        // 如果检测格式与文件扩展名不同，优先尝试文件扩展名
+        if (!detectedFormat.equals(fileExtension)) {
+            fallbacks.add(fileExtension);
+        }
+        
+        // 根据检测到的格式添加特定的回退策略
+        switch (detectedFormat) {
+            case "aac":
+                // AAC失败时，尝试MP3和MP4
+                if (!"mp3".equals(fileExtension)) fallbacks.add("mp3");
+                if (!"mp4".equals(fileExtension)) fallbacks.add("mp4");
+                break;
+                
+            case "mp3":
+                // MP3失败时，尝试AAC（可能是MP4容器）
+                if (!"aac".equals(fileExtension)) fallbacks.add("aac");
+                break;
+                
+            case "wav":
+                // WAV失败时，尝试PCM
+                if (!"pcm".equals(fileExtension)) fallbacks.add("pcm");
+                break;
+                
+            case "opus":
+                // Opus失败时，尝试OGG
+                if (!"ogg".equals(fileExtension)) fallbacks.add("ogg");
+                break;
+        }
+        
+        // 通用回退：如果都失败，尝试最常见的格式
+        for (String commonFormat : Arrays.asList("mp3", "wav", "aac")) {
+            if (!commonFormat.equals(detectedFormat) && 
+                !commonFormat.equals(fileExtension) && 
+                !fallbacks.contains(commonFormat)) {
+                fallbacks.add(commonFormat);
+            }
+        }
+        
+        log.info("为格式 {} (扩展名: {}) 生成回退策略: {}", detectedFormat, fileExtension, fallbacks);
+        return fallbacks;
+    }
+    
 }
