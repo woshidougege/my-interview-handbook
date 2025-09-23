@@ -6,6 +6,7 @@ import com.noah.superagent.common.config.BillingProperties;
 import com.noah.superagent.common.config.AsyncProperties;
 import com.noah.superagent.common.config.PlansConfig;
 import com.noah.superagent.common.config.AiProperties;
+import com.noah.superagent.common.config.CorsProperties;
 
 /**
  * 统一配置管理类
@@ -21,7 +22,8 @@ import com.noah.superagent.common.config.AiProperties;
     BillingProperties.class,
     AsyncProperties.class,
     PlansConfig.class,
-    AiProperties.class
+    AiProperties.class,
+    CorsProperties.class
     // 未来有新的配置类时，只需要在这里添加
 })
 public class ConfigurationConfig {

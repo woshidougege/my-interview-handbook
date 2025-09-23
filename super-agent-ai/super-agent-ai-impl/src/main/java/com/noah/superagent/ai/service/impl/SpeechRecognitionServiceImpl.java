@@ -104,7 +104,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         }
 
         // 验证文件格式
-        if (filename == null || !isValidAudioFormat(filename)) {
+        if (!isValidAudioFormat(filename)) {
             log.error("不支持的音频格式: {}", filename);
             return SpeechRecognitionResponse.builder()
                     .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)

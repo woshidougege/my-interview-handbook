@@ -38,6 +38,7 @@ spring:
     import:
       # === 基础框架配置 ===
       - classpath:application-spring.yml      # Spring Framework配置
+      - classpath:application-cors.yml        # CORS跨域配置
       - classpath:application-datasource.yml  # 数据源配置
       - classpath:application-mybatis.yml     # MyBatis-Flex配置
       - classpath:application-flyway.yml      # Flyway配置

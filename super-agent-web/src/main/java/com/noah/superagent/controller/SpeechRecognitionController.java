@@ -22,7 +22,6 @@ import java.io.IOException;
 @RestController
 @RequestMapping("/api/v1/speech")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class SpeechRecognitionController {
 
     private final SpeechRecognitionService speechRecognitionService;
