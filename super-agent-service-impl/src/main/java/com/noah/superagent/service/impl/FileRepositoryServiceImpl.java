@@ -15,7 +15,7 @@ import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.springframework.beans.factory.annotation.Value;
+import com.noah.superagent.common.config.FileRepositoryProperties;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -40,17 +40,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class FileRepositoryServiceImpl implements FileRepositoryService {
 
-    @Value("${file-repository.base-url}")
-    private String baseUrl;
-
-    @Value("${file-repository.upload-path}")
-    private String uploadPath;
-
-    @Value("${file-repository.list-object-names-path}")
-    private String listObjectNamesPath;
-
-    @Value("${file-repository.get-object-url-path}")
-    private String getObjectUrlPath;
+    private final FileRepositoryProperties fileRepositoryProperties;
 
     @Override
     public FileUploadResponse uploadFile(String entityCode, String directory, MultipartFile file) {
@@ -59,7 +49,7 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
         
         try {
             // 构建请求URL - 使用配置项
-            String url = baseUrl + uploadPath;
+            String url = fileRepositoryProperties.getBaseUrl() + fileRepositoryProperties.getUploadPath();
             
             log.info("调用文件上传接口: {}", url);
             
@@ -162,7 +152,7 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     public List<String> listObjectNames(String entityCode, String directory, boolean recursive) {
         try {
             // 构建请求URL - 使用配置项
-            String url = String.format("%s%s", baseUrl, listObjectNamesPath.replace("{entityCode}", entityCode != null ? entityCode : "default_entity"));
+            String url = String.format("%s%s", fileRepositoryProperties.getBaseUrl(), fileRepositoryProperties.getListObjectNamesPath().replace("{entityCode}", entityCode != null ? entityCode : "default_entity"));
             
             log.info("调用文件列表接口: {}", url);
             
@@ -231,7 +221,7 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     public String getObjectURL(String entityCode, String filename) {
         try {
             // 构建请求URL - 使用配置项
-            String url = String.format("%s%s", baseUrl, getObjectUrlPath.replace("{entityCode}", entityCode != null ? entityCode : "default_entity"));
+            String url = String.format("%s%s", fileRepositoryProperties.getBaseUrl(), fileRepositoryProperties.getGetObjectUrlPath().replace("{entityCode}", entityCode != null ? entityCode : "default_entity"));
             
             log.info("调用获取文件URL接口: {}", url);
             

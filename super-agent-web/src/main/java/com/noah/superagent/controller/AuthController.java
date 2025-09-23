@@ -23,7 +23,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import com.noah.superagent.common.config.SsoProperties;
+import com.noah.superagent.common.config.RegistrationProperties;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -56,17 +57,8 @@ public class AuthController extends SsoClientController {
 
     private final RestTemplate restTemplate;
 
-    @Value("${sa-token.sso.server-url:}")
-    private String ssoServerUrl;
-
-    @Value("${sa-token.sso.servicecode:super_agent}")
-    private String serviceCode;
-
-    @Value("${sa-token.sso.sm2-key:}")
-    private String sm2Key;
-    
-    @Value("${registration.callback.url:}")
-    private String callbackUrl;
+    private final SsoProperties ssoProperties;
+    private final RegistrationProperties registrationProperties;
 
     /**
      * 创建 ParameterizedTypeReference 用于 Map<String, Object>
@@ -174,12 +166,12 @@ public class AuthController extends SsoClientController {
         log.info("密码登录请求，用户名: {}", loginRequest.getUsername());
 
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent","sso","doLogin").toUriString();
+            String url = UriComponentsBuilder.fromHttpUrl(ssoProperties.getServerUrl()).pathSegment("agent","sso","doLogin").toUriString();
             // 使用hutool的MapUtil构建请求参数，代码更简洁
             Map<String, String> requestBody = MapUtil.<String, String>builder()
                     .put("username", loginRequest.getUsername())
                     .put("pwd", loginRequest.getPwd())
-                    .put("servicecode", serviceCode)
+                    .put("servicecode", ssoProperties.getServicecode())
                     .build();
 
             return getMapApiResponse(url, requestBody);
@@ -268,13 +260,13 @@ public class AuthController extends SsoClientController {
         log.info("手机验证码登录请求，手机号: {}", loginRequest.getPhone());
 
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent","sso","doLogin").toUriString();
+            String url = UriComponentsBuilder.fromHttpUrl(ssoProperties.getServerUrl()).pathSegment("agent","sso","doLogin").toUriString();
 
             // 使用hutool的MapUtil构建请求参数，代码更简洁
             Map<String, String> requestBody = MapUtil.<String, String>builder()
                     .put("phone", loginRequest.getPhone())
                     .put("phoneCode", loginRequest.getPhoneCode())
-                    .put("servicecode", serviceCode)
+                    .put("servicecode", ssoProperties.getServicecode())
                     .build();
 
             return getMapApiResponse(url, requestBody);
@@ -314,7 +306,7 @@ public class AuthController extends SsoClientController {
         try {
             // 使用安全的URL构建方法，防止SSRF攻击
             Map<String, String> params = MapUtil.of("phoneNumber", phoneNumber);
-            String url = buildSecureUrl(ssoServerUrl, params);
+            String url = buildSecureUrl(ssoProperties.getServerUrl(), params);
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     url, HttpMethod.POST, null, MAP_TYPE_REFERENCE);
@@ -357,14 +349,14 @@ public class AuthController extends SsoClientController {
                 request.getUsername(), request.getPhone());
 
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("agent","sso","userRegister").toUriString();
+            String url = UriComponentsBuilder.fromHttpUrl(ssoProperties.getServerUrl()).pathSegment("agent","sso","userRegister").toUriString();
             
             Map<String, String> requestBody = new HashMap<>();
             requestBody.put("username", request.getUsername());
             requestBody.put("userPwd", request.getUserPwd());
             requestBody.put("phone", request.getPhone());
             requestBody.put("phoneCode", request.getPhoneCode());
-            requestBody.put("servicecode", serviceCode);
+            requestBody.put("servicecode", ssoProperties.getServicecode());
 
             HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -419,7 +411,7 @@ public class AuthController extends SsoClientController {
             log.info("开始执行注册回调 - userId: {}, phoneNum: {}", userId, phone);
             
             // 构建回调URL
-            String fullUrl = UriComponentsBuilder.fromHttpUrl(callbackUrl)
+            String fullUrl = UriComponentsBuilder.fromHttpUrl(registrationProperties.getCallback().getUrl())
                     .queryParam("userId", userId)  // 注意：接口参数名是userld而非userId
                     .queryParam("phoneNum", phone)
                     .toUriString();
@@ -447,24 +439,24 @@ public class AuthController extends SsoClientController {
         description = "获取SM2加密所需的公钥信息，用于前端密码加密"
     )
     public ApiResponse<Map<String, Object>> getPublicKey() {
-        log.info("获取公钥信息请求，serviceCode: {}", serviceCode);
+        log.info("获取公钥信息请求，ssoProperties.getServicecode(): {}", ssoProperties.getServicecode());
         
         try {
             // 如果配置文件中sm2-key不为空，则直接返回配置的值
-            if (StrUtil.isNotBlank(sm2Key)) {
+            if (StrUtil.isNotBlank(ssoProperties.getSm2Key())) {
                 Map<String, Object> data = new HashMap<>();
-                data.put("publicKey", sm2Key);
+                data.put("publicKey", ssoProperties.getSm2Key());
                 return ApiResponse.success("获取公钥成功", data);
             }
             
-            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment("getSysClientInfo").toUriString();
+            String url = UriComponentsBuilder.fromHttpUrl(ssoProperties.getServerUrl()).pathSegment("getSysClientInfo").toUriString();
             
-            // 使用POST请求，将serviceCode作为表单参数
+            // 使用POST请求，将ssoProperties.getServicecode()作为表单参数
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-            formData.add("serviceCode", serviceCode);
+            formData.add("ssoProperties.getServicecode()", ssoProperties.getServicecode());
             
             HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(formData, headers);
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -497,13 +489,13 @@ public class AuthController extends SsoClientController {
         log.info("找回密码请求，手机号: {}", resetRequest.getPhone());
 
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl).pathSegment(  "agent","sso","resetPassword").toUriString();
+            String url = UriComponentsBuilder.fromHttpUrl(ssoProperties.getServerUrl()).pathSegment(  "agent","sso","resetPassword").toUriString();
 
             Map<String, String> requestBody = new HashMap<>();
             requestBody.put("phone", resetRequest.getPhone());
             requestBody.put("phoneCode", resetRequest.getPhoneCode());
             requestBody.put("newPassword", resetRequest.getNewPassword());
-            requestBody.put("servicecode", serviceCode);
+            requestBody.put("servicecode", ssoProperties.getServicecode());
 
             HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -564,7 +556,7 @@ public class AuthController extends SsoClientController {
         log.info("修改密码请求，用户ID: {}", currentUserId);
 
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(ssoServerUrl)
+            String url = UriComponentsBuilder.fromHttpUrl(ssoProperties.getServerUrl())
                     .pathSegment("agent", "sso", "restPassword")
                     .toUriString();
 
@@ -572,7 +564,7 @@ public class AuthController extends SsoClientController {
             Map<String, String> requestBody = MapUtil.<String, String>builder()
                     .put("userId", currentUserId.toString())
                     .put("pwd", newPassword) // 前端已经SM2加密过的密码
-                    .put("servicecode", serviceCode)
+                    .put("servicecode", ssoProperties.getServicecode())
                     .build();
 
             HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);

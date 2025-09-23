@@ -97,6 +97,11 @@ a2a:
       # 可以添加更多实体编码
       # example: "ENTITY_example_code"
 
+# ========== 注册回调配置 ==========
+registration:
+  callback:
+    url: ${REGISTRATION_CALLBACK_URL:http://localhost:3000/register-callback}
+
 # ========== 文档库配置 ==========
 file-repository:
   base-url: http://192.168.6.86:8000/kl-dt-gateway

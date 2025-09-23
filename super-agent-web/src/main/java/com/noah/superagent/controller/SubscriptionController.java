@@ -20,7 +20,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import com.noah.superagent.common.config.BillingProperties;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -42,11 +42,7 @@ public class SubscriptionController {
     private final UserCreditService userCreditService;
     private final CreditPurchaseConfig creditPurchaseConfig;
 
-    /**
-     * 按年订阅优惠比例（Web层配置）
-     */
-    @Value("${super-agent.billing.subscription.yearly-discount-rate:0.17}")
-    private Double yearlyDiscountRate;
+    private final BillingProperties billingProperties;
 
     @Operation(
         summary = "获取所有启用的套餐", 
@@ -219,6 +215,7 @@ public class SubscriptionController {
         
         // Web层组装Response
         PlansListResponse response = new PlansListResponse();
+        Double yearlyDiscountRate = billingProperties.getSubscription().getYearlyDiscountRate();
         response.setYearlyDiscountRate(yearlyDiscountRate);
         response.setDiscountPercentageText(Math.round(yearlyDiscountRate * 100) + "%");
         response.setPlans(webConvert.toResponseList(planDTOs));
