@@ -93,6 +93,7 @@ export const API_ENDPOINTS = {
   // ========== 语音识别相关 ==========
   SPEECH: {
     RECOGNITION_UPLOAD: 'speech/recognition/upload',
+    CONFIG: 'speech/config',
   },
 
   // ========== 聊天相关 ==========
