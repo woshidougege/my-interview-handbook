@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { API_CONFIG, API_ENDPOINTS } from '@/config/apiEndpoints';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -25,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.write('data: {"message": "SSE连接建立成功", "orderNo": "' + orderNo + '", "time": "' + new Date().toISOString() + '"}\n\n');
 
   try {
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent'}/api/v1/payment/status/listen/${orderNo}`;
+    const backendBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent';
+    const backendUrl = `${backendBaseUrl}/${API_CONFIG.VERSION}/${API_ENDPOINTS.PAYMENT.STATUS_LISTEN(orderNo)}`;
 
     const http = await import('http');
     const url = await import('url');

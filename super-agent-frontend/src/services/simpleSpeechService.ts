@@ -149,25 +149,6 @@ export class SimpleSpeechService {
     }
   }
 
-  /**
-   * 一键录音并识别
-   */
-  async recordAndRecognize(_language: string = 'zh'): Promise<SpeechRecognitionResult> {
-    // 开始录音
-    const startSuccess = await this.startRecording();
-    if (!startSuccess) {
-      return {
-        success: false,
-        error: '无法开始录音，请检查麦克风权限'
-      };
-    }
-
-    // 等待用户停止录音（需要外部调用stopRecording）
-    return {
-      success: false,
-      error: '请调用stopRecording()来完成录音'
-    };
-  }
 
   /**
    * 获取当前录音状态

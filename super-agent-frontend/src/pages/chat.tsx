@@ -69,7 +69,6 @@ const ChatPage: React.FC = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const speechServiceRef = useRef<any>(null); // TODO: 添加正确的类型定义
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -120,48 +119,16 @@ const ChatPage: React.FC = () => {
     scrollToBottom();
   }, [messages, currentStreamMessage]);
 
-  // 初始化语音识别服务
+  // 初始化简单语音识别服务
   useEffect(() => {
     const initSpeechService = async () => {
       try {
-        const { SpeechRecognitionService } = await import('@/services/speechRecognitionService');
-        speechServiceRef.current = new SpeechRecognitionService();
-
-        // 设置事件监听
-        speechServiceRef.current.on('connectionOpen', () => {
-          setVoiceConnectionStatus('connected');
-        });
-
-        speechServiceRef.current.on('connectionClose', () => {
-          setVoiceConnectionStatus('disconnected');
-          setIsRecording(false);
-        });
-
-        speechServiceRef.current.on('connectionError', (error: string) => {
-          setVoiceConnectionStatus('error');
-          setIsRecording(false);
-          message.error(`语音识别连接失败: ${error}`);
-        });
-
-        speechServiceRef.current.on('recognition', (result: any) => {
-          if (result.text) {
-            if (result.isFinal) {
-              // 最终结果，追加到输入框
-              setInputValue(prev => prev + result.text + ' ');
-            } else {
-              // 临时结果，显示预览（可选实现）
-              console.log('临时识别结果:', result.text);
-            }
-          }
-        });
-
-        speechServiceRef.current.on('error', (error: string) => {
-          message.error(`语音识别错误: ${error}`);
-          setIsRecording(false);
-        });
-
+        const { SimpleSpeechService } = await import('@/services/simpleSpeechService');
+        speechServiceRef.current = new SimpleSpeechService();
+        setVoiceConnectionStatus('connected');
       } catch (error) {
         console.error('语音识别服务初始化失败:', error);
+        setVoiceConnectionStatus('error');
       }
     };
 
@@ -170,10 +137,7 @@ const ChatPage: React.FC = () => {
     return () => {
       // 清理资源
       if (speechServiceRef.current) {
-        speechServiceRef.current.disconnect();
-      }
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
+        speechServiceRef.current.cleanup();
       }
     };
   }, []);
@@ -550,44 +514,20 @@ const ChatPage: React.FC = () => {
   // 开始语音录音
   const startVoiceRecording = async () => {
     try {
-      setVoiceConnectionStatus('connecting');
-      
-      // 连接WebSocket
-      await speechServiceRef.current?.connect();
-      
-      // 请求麦克风权限并开始录音
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
+      if (!speechServiceRef.current) {
+        message.error('语音识别服务未初始化');
+        return;
+      }
 
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const arrayBuffer = reader.result as ArrayBuffer;
-            speechServiceRef.current?.sendAudioData(arrayBuffer);
-          };
-          reader.readAsArrayBuffer(event.data);
-        }
-      };
-
-      mediaRecorderRef.current.start(100); // 每100ms发送一次数据
-      setIsRecording(true);
-
-      // 启动语音识别会话
-      speechServiceRef.current?.start();
-
-      message.success('开始语音输入');
+      const success = await speechServiceRef.current.startRecording();
+      if (success) {
+        setIsRecording(true);
+        setVoiceConnectionStatus('connected');
+        message.success('开始录音，说完后点击停止进行识别');
+      } else {
+        message.error('无法开始录音，请检查麦克风权限');
+        setVoiceConnectionStatus('error');
+      }
     } catch (error: any) {
       console.error('启动语音录音失败:', error);
       message.error(`无法启动语音输入: ${error.message}`);
@@ -595,22 +535,39 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // 停止语音录音
-  const stopVoiceRecording = () => {
+  // 停止语音录音并识别
+  const stopVoiceRecording = async () => {
     try {
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
-        const tracks = mediaRecorderRef.current.stream.getTracks();
-        tracks.forEach(track => track.stop());
+      if (!speechServiceRef.current || !isRecording) {
+        return;
       }
 
-      speechServiceRef.current?.stop();
+      setVoiceConnectionStatus('connecting'); // 显示处理中状态
+      message.loading('正在识别语音...');
+
+      // 停止录音并获取音频文件
+      const audioBlob = await speechServiceRef.current.stopRecording();
+      if (audioBlob) {
+        // 识别音频
+        const result = await speechServiceRef.current.recognizeAudio(audioBlob);
+        if (result.success && result.text) {
+          // 将识别结果添加到输入框
+          setInputValue(prev => prev + result.text + ' ');
+          message.success('语音识别成功');
+        } else {
+          message.error(result.error || '语音识别失败');
+        }
+      } else {
+        message.error('录音失败，请重试');
+      }
+
       setIsRecording(false);
-      
-      message.info('语音输入已结束');
-    } catch (error) {
+      setVoiceConnectionStatus('connected');
+    } catch (error: any) {
       console.error('停止语音录音失败:', error);
-      message.error('停止语音输入失败');
+      message.error(`语音识别失败: ${error.message}`);
+      setIsRecording(false);
+      setVoiceConnectionStatus('error');
     }
   };
 

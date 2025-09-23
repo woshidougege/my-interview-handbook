@@ -23,12 +23,4 @@ public interface SpeechRecognitionService {
      */
     SpeechRecognitionResponse recognizeAudioStream(InputStream audioStream, String filename, String language);
 
-    /**
-     * 通过文件URL识别录音文件
-     * 
-     * @param audioFileUrl 录音文件的公网访问URL
-     * @param language 语言提示（可选，如：zh、en等）
-     * @return 识别结果
-     */
-    SpeechRecognitionResponse recognizeAudioUrl(String audioFileUrl, String language);
 }

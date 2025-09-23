@@ -92,7 +92,6 @@ export const API_ENDPOINTS = {
 
   // ========== 语音识别相关 ==========
   SPEECH: {
-    BASE: 'speech',
     RECOGNITION_UPLOAD: 'speech/recognition/upload',
   },
 
@@ -101,6 +100,7 @@ export const API_ENDPOINTS = {
   CHAT: {
     BASE: 'chat',
     STREAM: 'chat/stream',
+    SSE: (sessionId: string) => `chat/sse/${sessionId}`,
     GENERATE_TITLE: 'chat/generate-title',
   },
 
@@ -111,6 +111,7 @@ export const API_ENDPOINTS = {
     CREATE: 'payment/create',
     CONFIRM: 'payment/confirm',
     STATUS: (paymentId: string) => `payment/${paymentId}/status`,
+    STATUS_LISTEN: (orderNo: string) => `payment/status/listen/${orderNo}`,
     CALLBACK: 'payment/callback',
     CANCEL: (paymentId: string) => `payment/${paymentId}/cancel`,
   },
