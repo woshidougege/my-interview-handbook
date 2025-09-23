@@ -1,11 +1,12 @@
 package com.noah.superagent.ai.service;
 
 import com.noah.superagent.common.dto.response.SpeechRecognitionResponse;
-import java.util.function.Consumer;
+
+import java.io.InputStream;
 
 /**
  * 语音识别服务接口
- * 基于阿里云百炼Paraformer实时语音识别
+ * 基于阿里云百炼SenseVoice录音文件识别
  *
  * @author 任相鹏
  * @since 1.0.0
@@ -13,27 +14,21 @@ import java.util.function.Consumer;
 public interface SpeechRecognitionService {
 
     /**
-     * 开始语音识别会话
+     * 识别录音文件流
      * 
-     * @param sessionId 会话ID
-     * @param resultCallback 实时识别结果回调
-     * @return 是否成功开始会话
+     * @param audioStream 录音文件输入流
+     * @param filename 文件名（包含扩展名）
+     * @param language 语言提示（可选，如：zh、en等）
+     * @return 识别结果
      */
-    boolean startRecognitionSession(String sessionId, Consumer<SpeechRecognitionResponse> resultCallback);
+    SpeechRecognitionResponse recognizeAudioStream(InputStream audioStream, String filename, String language);
 
     /**
-     * 发送音频数据进行识别
+     * 通过文件URL识别录音文件
      * 
-     * @param sessionId 会话ID
-     * @param audioData 音频数据（二进制）
-     * @return 是否成功发送
+     * @param audioFileUrl 录音文件的公网访问URL
+     * @param language 语言提示（可选，如：zh、en等）
+     * @return 识别结果
      */
-    boolean sendAudioData(String sessionId, byte[] audioData);
-
-    /**
-     * 结束语音识别会话
-     * 
-     * @param sessionId 会话ID
-     */
-    void endRecognitionSession(String sessionId);
+    SpeechRecognitionResponse recognizeAudioUrl(String audioFileUrl, String language);
 }

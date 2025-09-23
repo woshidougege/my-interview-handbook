@@ -48,27 +48,37 @@ const nextConfig = {
   },
   
   // 静态导出配置（用于nginx部署）
-  output: 'export',
-  distDir: 'out',
-  trailingSlash: true,
-  assetPrefix: '/test',
-  basePath: '/test',
+  // 注意：开发环境下禁用静态导出以支持API代理
+  ...(process.env.NODE_ENV === 'production' && {
+    output: 'export',
+    distDir: 'out',
+    trailingSlash: true,
+  }),
   
   // HTTP代理配置
   experimental: {
     proxyTimeout: 300000, // 5分钟超时
   },
   
-  // API代理配置 - 静态导出时禁用
-  // async rewrites() {
-  //   const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent';
-  //   return process.env.NODE_ENV === 'development' ? [
-  //     {
-  //       source: '/api/:path*',
-  //       destination: `${backendUrl}/api/v1/:path*`,
-  //     },
-  //   ] : [];
-  // },
+  // API代理配置 - 开发环境下启用，生产环境由nginx处理
+  async rewrites() {
+    if (process.env.NODE_ENV === 'development') {
+      const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8081/super-agent';
+      return [
+        // API接口代理
+        {
+          source: '/super-agent/api/v1/:path*',
+          destination: `${backendUrl}/api/v1/:path*`,
+        },
+        // SSO接口代理
+        {
+          source: '/super-agent/sso/:path*',
+          destination: `${backendUrl}/sso/:path*`,
+        },
+      ];
+    }
+    return [];
+  },
   
   // 环境变量
   env: {

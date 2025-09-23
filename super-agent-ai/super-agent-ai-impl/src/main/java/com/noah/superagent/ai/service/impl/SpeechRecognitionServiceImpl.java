@@ -1,29 +1,37 @@
 package com.noah.superagent.ai.service.impl;
 
-import com.alibaba.dashscope.audio.asr.recognition.Recognition;
-import com.alibaba.dashscope.audio.asr.recognition.RecognitionParam;
-import com.alibaba.dashscope.audio.asr.recognition.RecognitionResult;
-import com.alibaba.dashscope.audio.asr.recognition.timestamp.Sentence;
-import com.alibaba.dashscope.common.ResultCallback;
-import java.nio.ByteBuffer;
+import com.alibaba.dashscope.audio.asr.transcription.Transcription;
+import com.alibaba.dashscope.audio.asr.transcription.TranscriptionParam;
+import com.alibaba.dashscope.audio.asr.transcription.TranscriptionResult;
+import com.alibaba.dashscope.audio.asr.transcription.TranscriptionTaskResult;
+import com.alibaba.dashscope.audio.asr.transcription.TranscriptionQueryParam;
 import com.noah.superagent.ai.service.SpeechRecognitionService;
 import com.noah.superagent.common.config.AiProperties;
 import com.noah.superagent.common.dto.response.SpeechRecognitionResponse;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import java.io.InputStream;
 
 import javax.annotation.PostConstruct;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
+import java.util.UUID;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 /**
  * 语音识别服务实现类
- * 基于阿里云百炼Paraformer实时语音识别
+ * 基于阿里云百炼SenseVoice录音文件识别
  *
  * @author 任相鹏
  * @since 1.0.0
@@ -36,9 +44,17 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
     private final AiProperties aiProperties;
     
     /**
-     * 存储活跃的识别会话
+     * 临时录音文件目录
      */
-    private final Map<String, RecognitionSession> activeSessions = new ConcurrentHashMap<>();
+    private static final String TEMP_UPLOAD_DIR = "temp/uploads";
+    
+    /**
+     * 支持的音频格式
+     */
+    private static final List<String> SUPPORTED_FORMATS = Arrays.asList(
+            "aac", "amr", "avi", "flac", "flv", "m4a", "mkv", "mov", 
+            "mp3", "mp4", "mpeg", "ogg", "opus", "wav", "webm", "wma", "wmv"
+    );
 
     @PostConstruct
     public void init() {
@@ -58,267 +74,288 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             System.setProperty("dashscope.api.key", apiKey);
             log.info("设置系统属性 dashscope.api.key 成功");
             log.info("验证系统属性值: {}", System.getProperty("dashscope.api.key") != null ? "已设置" : "未设置");
-            log.info("语音识别服务初始化完成 - 模型: {}", 
-                    dashscopeConfig.getSpeechRecognition().getModel());
+            log.info("语音识别服务初始化完成 - 模型: sensevoice-v1");
+            
+            // 确保上传目录存在
+            createUploadDirectory();
         } catch (Exception e) {
             log.error("语音识别服务初始化失败", e);
         }
     }
 
-    @Override
-    public boolean startRecognitionSession(String sessionId, Consumer<SpeechRecognitionResponse> resultCallback) {
-        log.info("开始语音识别会话: {}", sessionId);
-        
+    /**
+     * 创建上传目录
+     */
+    private void createUploadDirectory() {
         try {
-            AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
-            AiProperties.SpeechRecognitionConfig speechConfig = dashscopeConfig.getSpeechRecognition();
-            
-            // 确保API key已设置（检查@PostConstruct是否被调用）
-            String apiKey = dashscopeConfig.getApiKey();
-            log.info("当前API key值: {}", apiKey != null ? "sk-****" + apiKey.substring(Math.max(0, apiKey.length() - 6)) : "null");
-            log.info("当前系统属性 dashscope.api.key: {}", System.getProperty("dashscope.api.key") != null ? "已设置" : "未设置");
-            
-            if (!StringUtils.hasText(apiKey)) {
-                log.error("API key为空，无法启动语音识别会话: {}", sessionId);
-                return false;
+            Path uploadPath = Paths.get(TEMP_UPLOAD_DIR);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+                log.info("创建上传目录: {}", uploadPath.toAbsolutePath());
             }
-            
-            // 强制设置系统属性（防止@PostConstruct未被调用或系统属性被清除）
-            System.setProperty("dashscope.api.key", apiKey);
-            log.info("已设置系统属性 dashscope.api.key，值: {}", System.getProperty("dashscope.api.key") != null ? "设置成功" : "设置失败");
-            
-            // 构建识别参数（根据官方文档）
-            RecognitionParam param = RecognitionParam.builder()
-                    .model(speechConfig.getModel())
-                    .format(speechConfig.getAudioFormat())
-                    .sampleRate(speechConfig.getSampleRate())
-                    .build();
-
-            // 创建识别实例
-            Recognition recognition = new Recognition();
-            
-            // 创建回调处理器（根据官方文档）
-            ResultCallback<RecognitionResult> callback = new ResultCallback<>() {
-                @Override
-                public void onEvent(RecognitionResult result) {
-                    handleRecognitionResult(sessionId, result, resultCallback);
-                }
-
-                @Override
-                public void onError(Exception e) {
-                    handleRecognitionError(sessionId, e, resultCallback);
-                }
-
-                @Override
-                public void onComplete() {
-                    handleRecognitionComplete(sessionId, resultCallback);
-                }
-            };
-            
-            // 使用官方源码推荐的基于回调的流式调用方式
-            // 先启动识别流，然后通过sendAudioFrame发送数据
-            recognition.call(param, callback);
-            
-            // 创建会话记录
-            RecognitionSession session = new RecognitionSession(recognition, resultCallback);
-            activeSessions.put(sessionId, session);
-            
-            // 发送会话开始状态
-            SpeechRecognitionResponse startResponse = SpeechRecognitionResponse.builder()
-                    .sessionId(sessionId)
-                    .status(SpeechRecognitionResponse.RecognitionStatus.SESSION_STARTED)
-                    .text("")
-                    .isFinal(false)
-                    .build();
-            
-            resultCallback.accept(startResponse);
-            
-            log.info("语音识别会话启动成功: {}", sessionId);
-            return true;
-            
-        } catch (Exception e) {
-            log.error("启动语音识别会话失败: {}", sessionId, e);
-            return false;
+        } catch (IOException e) {
+            log.error("创建上传目录失败", e);
         }
     }
 
     @Override
-    public boolean sendAudioData(String sessionId, byte[] audioData) {
-        RecognitionSession session = activeSessions.get(sessionId);
-        if (session == null) {
-            log.warn("会话不存在，无法发送音频数据: {}", sessionId);
-            return false;
-        }
-
-        try {
-            // 将byte[]转换为ByteBuffer
-            ByteBuffer audioBuffer = ByteBuffer.wrap(audioData);
-            // 发送音频数据到识别服务
-            session.getRecognition().sendAudioFrame(audioBuffer);
-            log.debug("发送音频数据成功: {} bytes, 会话: {}", audioData.length, sessionId);
-            return true;
-        } catch (Exception e) {
-            log.error("发送音频数据失败，会话: {}", sessionId, e);
-            return false;
-        }
-    }
-
-    @Override
-    public void endRecognitionSession(String sessionId) {
-        log.info("结束语音识别会话: {}", sessionId);
+    public SpeechRecognitionResponse recognizeAudioStream(InputStream audioStream, String filename, String language) {
+        log.info("开始识别录音文件: {}, 语言: {}", filename, language);
         
-        RecognitionSession session = activeSessions.get(sessionId);
-        if (session == null) {
-            log.warn("会话不存在: {}", sessionId);
-            return;
-        }
-
-        try {
-            // 停止识别
-            session.getRecognition().stop();
-            
-            // 发送会话结束状态
-            SpeechRecognitionResponse endResponse = SpeechRecognitionResponse.builder()
-                    .sessionId(sessionId)
-                    .status(SpeechRecognitionResponse.RecognitionStatus.SESSION_ENDED)
-                    .text("")
+        // 检查API Key配置
+        AiProperties.AlibabaDashscopeConfig dashscopeConfig = aiProperties.getAlibabaDashscope();
+        String apiKey = dashscopeConfig.getApiKey();
+        if (!StringUtils.hasText(apiKey)) {
+            log.error("阿里云百炼API Key未配置");
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("API Key未配置")
                     .isFinal(true)
                     .build();
-            
-            session.getResultCallback().accept(endResponse);
-            
-            // 清理会话
-            activeSessions.remove(sessionId);
-            
-            log.info("语音识别会话结束成功: {}", sessionId);
-        } catch (Exception e) {
-            log.error("结束语音识别会话失败: {}", sessionId, e);
         }
-    }
 
-
-    /**
-     * 处理识别结果
-     */
-    private void handleRecognitionResult(String sessionId, RecognitionResult result, 
-                                       Consumer<SpeechRecognitionResponse> callback) {
-        try {
-            SpeechRecognitionResponse response = convertToResponse(sessionId, result);
-            callback.accept(response);
-            
-            if (log.isDebugEnabled()) {
-                log.debug("识别结果 - 会话: {}, 文本: {}, 最终结果: {}", 
-                        sessionId, response.getText(), response.getIsFinal());
-            }
-        } catch (Exception e) {
-            log.error("处理识别结果失败，会话: {}", sessionId, e);
+        // 验证文件格式
+        if (filename == null || !isValidAudioFormat(filename)) {
+            log.error("不支持的音频格式: {}", filename);
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("不支持的音频格式，支持的格式: " + String.join(", ", SUPPORTED_FORMATS))
+                    .isFinal(true)
+                    .build();
         }
-    }
 
-    /**
-     * 处理识别错误
-     */
-    private void handleRecognitionError(String sessionId, Exception error, 
-                                      Consumer<SpeechRecognitionResponse> callback) {
-        log.error("语音识别错误，会话: {}", sessionId, error);
-        
-        SpeechRecognitionResponse errorResponse = SpeechRecognitionResponse.builder()
-                .sessionId(sessionId)
-                .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
-                .errorMessage(error.getMessage())
-                .isFinal(true)
-                .build();
-        
-        callback.accept(errorResponse);
-        
-        // 清理失败的会话
-        activeSessions.remove(sessionId);
-    }
+        // 保存临时文件
+        String tempFilePath = saveTemporaryFile(audioStream, filename);
+        if (tempFilePath == null) {
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("保存临时文件失败")
+                    .isFinal(true)
+                    .build();
+        }
 
-    /**
-     * 处理识别完成
-     */
-    private void handleRecognitionComplete(String sessionId, Consumer<SpeechRecognitionResponse> callback) {
-        log.info("语音识别完成，会话: {}", sessionId);
-        
-        SpeechRecognitionResponse completeResponse = SpeechRecognitionResponse.builder()
-                .sessionId(sessionId)
-                .status(SpeechRecognitionResponse.RecognitionStatus.COMPLETED)
-                .text("")
-                .isFinal(true)
-                .build();
-        
-        callback.accept(completeResponse);
-        
-        // 清理完成的会话
-        activeSessions.remove(sessionId);
-    }
-
-    /**
-     * 转换DashScope结果为统一响应格式（根据官方源码API）
-     */
-    private SpeechRecognitionResponse convertToResponse(String sessionId, RecognitionResult result) {
         try {
-            // 根据官方源码，使用正确的API调用方式
-            Sentence sentence = result.getSentence();
-            String recognizedText = sentence != null ? sentence.getText() : "";
-            boolean isFinal = result.isSentenceEnd(); // 官方API：判断句子是否结束
-            
-            // 构建句子信息（如果需要详细信息）
-            SpeechRecognitionResponse.SentenceInfo sentenceInfo = null;
-            if (sentence != null) {
-                sentenceInfo = SpeechRecognitionResponse.SentenceInfo.builder()
-                        .beginTime(sentence.getBeginTime())
-                        .endTime(sentence.getEndTime())
-                        .text(sentence.getText())
-                        .isSentenceEnd(isFinal)
+            // TODO: 实际项目中需要将文件上传到公网可访问的URL（如OSS）
+            // 这里暂时用本地文件路径示例
+            String publicUrl = convertToPublicUrl(tempFilePath);
+            if (publicUrl == null) {
+                return SpeechRecognitionResponse.builder()
+                        .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                        .errorMessage("无法生成公网访问URL，请配置文件上传服务")
+                        .isFinal(true)
                         .build();
             }
-
-            log.debug("识别结果 - 会话: {}, 文本: {}, 最终结果: {}", sessionId, recognizedText, isFinal);
-
-            var responseBuilder = SpeechRecognitionResponse.builder()
-                    .sessionId(sessionId)
-                    .status(isFinal ? 
-                            SpeechRecognitionResponse.RecognitionStatus.COMPLETED :
-                            SpeechRecognitionResponse.RecognitionStatus.RECOGNIZING)
-                    .text(recognizedText)
-                    .isFinal(isFinal)
-                    .requestId(result.getRequestId());
             
-            // 添加句子信息
-            if (sentenceInfo != null) {
-                responseBuilder.sentences(List.of(sentenceInfo));
+            // 调用百炼识别服务
+            return recognizeAudioUrl(publicUrl, language);
+            
+        } finally {
+            // 清理临时文件
+            cleanupTemporaryFile(tempFilePath);
+        }
+    }
+
+    @Override
+    public SpeechRecognitionResponse recognizeAudioUrl(String audioFileUrl, String language) {
+        log.info("通过URL识别录音文件: {}, 语言: {}", audioFileUrl, language);
+        
+        try {
+            // 确保API Key已设置
+            System.setProperty("dashscope.api.key", aiProperties.getAlibabaDashscope().getApiKey());
+            
+            // 构建识别参数
+            TranscriptionParam param;
+            if (StringUtils.hasText(language)) {
+                param = TranscriptionParam.builder()
+                        .model("sensevoice-v1")
+                        .fileUrls(Arrays.asList(audioFileUrl))
+                        .parameter("language_hints", new String[]{language})
+                        .build();
+            } else {
+                param = TranscriptionParam.builder()
+                        .model("sensevoice-v1")
+                        .fileUrls(Arrays.asList(audioFileUrl))
+                        .build();
             }
             
-            return responseBuilder.build();
-                    
-        } catch (Exception e) {
-            log.error("解析识别结果时出现异常: {}", e.getMessage(), e);
+            // 创建转录实例
+            Transcription transcription = new Transcription();
             
-            // 返回错误响应
+            // 异步提交任务
+            log.info("提交语音识别任务...");
+            TranscriptionResult result = transcription.asyncCall(param);
+            
+            if (result == null) {
+                throw new RuntimeException("提交识别任务失败");
+            }
+            
+            log.info("识别任务已提交，任务ID: {}", result.getTaskId());
+            
+            // 同步等待任务完成
+            log.info("等待识别任务完成...");
+            TranscriptionQueryParam queryParam = TranscriptionQueryParam.FromTranscriptionParam(param, result.getTaskId());
+            result = transcription.wait(queryParam);
+            
+            // 处理识别结果
+            return parseTranscriptionResult(result);
+            
+        } catch (Exception e) {
+            log.error("语音识别失败", e);
             return SpeechRecognitionResponse.builder()
-                    .sessionId(sessionId)
                     .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
-                    .text("解析失败: " + e.getMessage())
+                    .errorMessage("识别失败: " + e.getMessage())
+                    .isFinal(true)
+                    .build();
+        }
+    }
+
+
+    /**
+     * 验证音频文件格式
+     */
+    private boolean isValidAudioFormat(String filename) {
+        if (filename == null) return false;
+        
+        String extension = getFileExtension(filename).toLowerCase();
+        return SUPPORTED_FORMATS.contains(extension);
+    }
+    
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) {
+            return "";
+        }
+        return filename.substring(filename.lastIndexOf(".") + 1);
+    }
+    
+    /**
+     * 保存临时文件
+     */
+    private String saveTemporaryFile(InputStream audioStream, String filename) {
+        try {
+            if (filename == null) {
+                filename = "audio.webm";
+            }
+            
+            // 生成唯一的文件名
+            String uuid = UUID.randomUUID().toString();
+            String extension = getFileExtension(filename);
+            String tempFileName = "audio_" + uuid + "." + extension;
+            
+            Path tempFilePath = Paths.get(TEMP_UPLOAD_DIR, tempFileName);
+            
+            // 保存文件
+            Files.copy(audioStream, tempFilePath);
+            
+            log.info("临时文件保存成功: {}", tempFilePath.toAbsolutePath());
+            return tempFilePath.toString();
+            
+        } catch (IOException e) {
+            log.error("保存临时文件失败", e);
+            return null;
+        }
+    }
+    
+    /**
+     * 转换为公网可访问的URL
+     * TODO: 实际项目中需要上传到OSS等云存储服务
+     */
+    private String convertToPublicUrl(String localFilePath) {
+        // 目前返回null，表示需要实现文件上传服务
+        // 在实际项目中，这里应该：
+        // 1. 将文件上传到阿里云OSS等云存储
+        // 2. 返回公网可访问的URL
+        log.warn("需要实现文件上传到公网可访问的URL，当前返回null");
+        return null;
+    }
+    
+    /**
+     * 清理临时文件
+     */
+    private void cleanupTemporaryFile(String filePath) {
+        if (filePath == null) return;
+        
+        try {
+            Files.deleteIfExists(Paths.get(filePath));
+            log.debug("清理临时文件: {}", filePath);
+        } catch (IOException e) {
+            log.warn("清理临时文件失败: {}", filePath, e);
+        }
+    }
+    
+    /**
+     * 解析转录结果
+     */
+    private SpeechRecognitionResponse parseTranscriptionResult(TranscriptionResult result) {
+        try {
+            if (result.getResults() == null || result.getResults().isEmpty()) {
+                return SpeechRecognitionResponse.builder()
+                        .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                        .errorMessage("未获取到识别结果")
+                        .isFinal(true)
+                        .build();
+            }
+            
+            TranscriptionTaskResult taskResult = result.getResults().get(0);
+            String transcriptionUrl = taskResult.getTranscriptionUrl();
+            
+            if (!StringUtils.hasText(transcriptionUrl)) {
+                return SpeechRecognitionResponse.builder()
+                        .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                        .errorMessage("未获取到转录结果URL")
+                        .isFinal(true)
+                        .build();
+            }
+            
+            // 获取转录结果内容
+            String recognizedText = fetchTranscriptionContent(transcriptionUrl);
+            
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.COMPLETED)
+                    .text(recognizedText)
                     .isFinal(true)
                     .requestId(result.getRequestId())
                     .build();
+                    
+        } catch (Exception e) {
+            log.error("解析转录结果失败", e);
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("解析结果失败: " + e.getMessage())
+                    .isFinal(true)
+                    .build();
         }
     }
-
+    
     /**
-     * 识别会话信息
+     * 获取转录结果内容
      */
-    @Getter
-    private static class RecognitionSession {
-        private final Recognition recognition;
-        private final Consumer<SpeechRecognitionResponse> resultCallback;
-
-        public RecognitionSession(Recognition recognition, Consumer<SpeechRecognitionResponse> resultCallback) {
-            this.recognition = recognition;
-            this.resultCallback = resultCallback;
+    private String fetchTranscriptionContent(String transcriptionUrl) throws Exception {
+        HttpURLConnection connection = (HttpURLConnection) new URL(transcriptionUrl).openConnection();
+        connection.setRequestMethod("GET");
+        connection.connect();
+        
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+            StringBuilder content = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line);
+            }
+            
+            // 解析JSON结果，提取识别文本
+            Gson gson = new Gson();
+            JsonObject jsonResult = gson.fromJson(content.toString(), JsonObject.class);
+            
+            // 根据百炼SenseVoice的返回格式提取文本
+            if (jsonResult.has("output") && jsonResult.getAsJsonObject("output").has("text")) {
+                return jsonResult.getAsJsonObject("output").get("text").getAsString();
+            } else {
+                // 如果格式不符合预期，返回原始内容
+                log.warn("转录结果格式不符合预期，返回原始内容");
+                return content.toString();
+            }
         }
-
     }
 }

@@ -48,8 +48,8 @@ const AiChatPage: React.FC = () => {
   
   // 语音输入状态
   const [isRecording, setIsRecording] = useState(false);
-  const [voiceConnectionStatus, setVoiceConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
-  const [voicePreview, setVoicePreview] = useState<string>(''); // 语音识别实时预览
+  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
+  const [voiceMessage, setVoiceMessage] = useState<string>('');
   
   // 流式内容状态  
   const streamContentRef = useRef('');
@@ -59,7 +59,6 @@ const AiChatPage: React.FC = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const speechServiceRef = useRef<any>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   // 滚动到底部
   const scrollToBottom = () => {
@@ -433,10 +432,46 @@ const AiChatPage: React.FC = () => {
     }
   };
 
+  // 获取语音按钮图标
+  const getVoiceIcon = () => {
+    if (isRecording) {
+      return <AudioMutedOutlined />;
+    }
+    return <AudioOutlined />;
+  };
+
+  // 获取语音按钮提示文字
+  const getVoiceTooltip = () => {
+    switch (voiceStatus) {
+      case 'recording':
+        return '点击停止录音';
+      case 'processing':
+        return '正在识别中...';
+      case 'error':
+        return voiceMessage || '语音功能不可用';
+      default:
+        return '点击开始语音输入';
+    }
+  };
+
+  // 获取语音按钮文字
+  const getVoiceButtonText = () => {
+    switch (voiceStatus) {
+      case 'recording':
+        return '停止录音';
+      case 'processing':
+        return '识别中...';
+      case 'error':
+        return '不可用';
+      default:
+        return '语音输入';
+    }
+  };
+
   // 切换语音录音状态
   const toggleVoiceRecording = async () => {
     if (isRecording) {
-      stopVoiceRecording();
+      await stopVoiceRecording();
     } else {
       await startVoiceRecording();
     }
@@ -444,70 +479,74 @@ const AiChatPage: React.FC = () => {
 
   // 开始语音录音
   const startVoiceRecording = async () => {
+    if (!speechServiceRef.current) {
+      message.error('语音服务未初始化');
+      return;
+    }
+
     try {
-      setVoiceConnectionStatus('connecting');
+      setVoiceStatus('recording');
+      setVoiceMessage('正在录音中...');
       
-      // 连接WebSocket
-      await speechServiceRef.current?.connect();
-      
-      // 请求麦克风权限并开始录音
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
-
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const arrayBuffer = reader.result as ArrayBuffer;
-            speechServiceRef.current?.sendAudioData(arrayBuffer);
-          };
-          reader.readAsArrayBuffer(event.data);
-        }
-      };
-
-      mediaRecorderRef.current.start(100); // 每100ms发送一次数据
-      setIsRecording(true);
-
-      // 启动语音识别会话
-      speechServiceRef.current?.start();
-
-      message.success('开始语音输入');
+      const success = await speechServiceRef.current.startRecording();
+      if (success) {
+        setIsRecording(true);
+        message.success('开始语音输入，再次点击结束录音');
+      } else {
+        setVoiceStatus('error');
+        setVoiceMessage('无法启动录音');
+        message.error('无法启动语音输入，请检查麦克风权限');
+      }
     } catch (error: any) {
       console.error('启动语音录音失败:', error);
+      setVoiceStatus('error');
+      setVoiceMessage('启动录音失败');
       message.error(`无法启动语音输入: ${error.message}`);
-      setVoiceConnectionStatus('error');
     }
   };
 
-  // 停止语音录音
-  const stopVoiceRecording = () => {
+  // 停止语音录音并识别
+  const stopVoiceRecording = async () => {
+    if (!speechServiceRef.current || !isRecording) {
+      return;
+    }
+
     try {
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
-        const tracks = mediaRecorderRef.current.stream.getTracks();
-        tracks.forEach(track => track.stop());
+      setVoiceStatus('processing');
+      setVoiceMessage('录音完成，正在识别...');
+      setIsRecording(false);
+      
+      // 获取录音文件
+      const audioBlob = await speechServiceRef.current.stopRecording();
+      if (!audioBlob) {
+        throw new Error('未获取到录音文件');
       }
 
-      speechServiceRef.current?.stop();
-      setIsRecording(false);
-      setVoicePreview(''); // 清除语音预览
+      // 上传并识别
+      const result = await speechServiceRef.current.recognizeAudio(audioBlob, 'zh');
       
-      message.info('语音输入已结束');
-    } catch (error) {
-      console.error('停止语音录音失败:', error);
-      message.error('停止语音输入失败');
-      setVoicePreview(''); // 出错时也清除预览
+      if (result.success && result.text) {
+        // 将识别结果添加到输入框
+        setInputValue(prev => prev + result.text + ' ');
+        setVoiceStatus('idle');
+        setVoiceMessage('');
+        message.success(`语音识别成功：${result.text}`);
+        
+        // 自动聚焦到输入框
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      } else {
+        setVoiceStatus('error');
+        setVoiceMessage(result.error || '识别失败');
+        message.error(`语音识别失败: ${result.error || '未知错误'}`);
+      }
+      
+    } catch (error: any) {
+      console.error('语音识别失败:', error);
+      setVoiceStatus('error');
+      setVoiceMessage('识别失败');
+      message.error(`语音识别失败: ${error.message}`);
     }
   };
 
@@ -547,50 +586,25 @@ const AiChatPage: React.FC = () => {
   useEffect(() => {
     const initSpeechService = async () => {
       try {
-        const { SpeechRecognitionService } = await import('@/services/speechRecognitionService');
-        speechServiceRef.current = new SpeechRecognitionService();
+        const { SimpleSpeechService } = await import('@/services/simpleSpeechService');
+        
+        // 检查浏览器支持
+        if (!SimpleSpeechService.isSupported()) {
+          console.warn('浏览器不支持语音录音功能');
+          setVoiceStatus('error');
+          setVoiceMessage('浏览器不支持语音录音');
+          return;
+        }
 
-        // 设置事件监听
-        speechServiceRef.current.on('connectionOpen', () => {
-          setVoiceConnectionStatus('connected');
-        });
-
-        speechServiceRef.current.on('connectionClose', () => {
-          setVoiceConnectionStatus('disconnected');
-          setIsRecording(false);
-        });
-
-        speechServiceRef.current.on('connectionError', (error: string) => {
-          setVoiceConnectionStatus('error');
-          setIsRecording(false);
-          message.error(`语音识别连接失败: ${error}`);
-        });
-
-        speechServiceRef.current.on('recognition', (result: any) => {
-          if (result.text) {
-            if (result.isFinal) {
-              // 最终结果，追加到输入框并清除预览
-              setInputValue(prev => {
-                const newValue = prev + result.text + ' ';
-                return newValue;
-              });
-              setVoicePreview('');
-              message.success(`语音识别：${result.text}`);
-            } else {
-              // 临时结果，显示实时预览
-              setVoicePreview(result.text);
-              console.log('实时识别结果:', result.text);
-            }
-          }
-        });
-
-        speechServiceRef.current.on('error', (error: string) => {
-          message.error(`语音识别错误: ${error}`);
-          setIsRecording(false);
-        });
+        speechServiceRef.current = new SimpleSpeechService();
+        setVoiceStatus('idle');
+        setVoiceMessage('');
+        console.log('语音服务初始化成功');
 
       } catch (error) {
         console.error('语音识别服务初始化失败:', error);
+        setVoiceStatus('error');
+        setVoiceMessage('语音服务初始化失败');
       }
     };
 
@@ -599,10 +613,7 @@ const AiChatPage: React.FC = () => {
     return () => {
       // 清理资源
       if (speechServiceRef.current) {
-        speechServiceRef.current.disconnect();
-      }
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
+        speechServiceRef.current.cleanup();
       }
     };
   }, []);
@@ -996,12 +1007,12 @@ const AiChatPage: React.FC = () => {
 
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }} className="input-controls">
                     {/* 语音输入按钮 */}
-                    <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
+                    <Tooltip title={getVoiceTooltip()}>
                       <Button
                         type={isRecording ? "primary" : "default"}
-                        icon={isRecording ? <AudioMutedOutlined /> : <AudioOutlined />}
+                        icon={getVoiceIcon()}
                         onClick={toggleVoiceRecording}
-                        disabled={loading || voiceConnectionStatus === 'connecting'}
+                        disabled={loading || voiceStatus === 'processing' || voiceStatus === 'error'}
                         style={{
                           height: '40px',
                           width: '40px',
@@ -1010,11 +1021,11 @@ const AiChatPage: React.FC = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: isRecording ? '#ff4d4f' : undefined,
-                          borderColor: isRecording ? '#ff4d4f' : undefined,
-                          color: isRecording ? '#fff' : undefined
+                          backgroundColor: isRecording ? '#ff4d4f' : voiceStatus === 'processing' ? '#1890ff' : undefined,
+                          borderColor: isRecording ? '#ff4d4f' : voiceStatus === 'processing' ? '#1890ff' : undefined,
+                          color: (isRecording || voiceStatus === 'processing') ? '#fff' : undefined
                         }}
-                        loading={voiceConnectionStatus === 'connecting'}
+                        loading={voiceStatus === 'processing'}
                         className="voice-btn"
                       />
                     </Tooltip>
@@ -1048,31 +1059,21 @@ const AiChatPage: React.FC = () => {
                     </Space.Compact>
                   </div>
                   
-                  {/* 语音识别实时预览 */}
-                  {isRecording && voicePreview && (
+                  {/* 语音状态提示 */}
+                  {(voiceStatus === 'recording' || voiceStatus === 'processing' || (voiceStatus === 'error' && voiceMessage)) && (
                     <div style={{
                       marginTop: '8px',
                       padding: '8px 12px',
-                      background: '#fff7e6',
-                      border: '1px solid #ffd666',
+                      background: voiceStatus === 'error' ? '#fff1f0' : voiceStatus === 'processing' ? '#e6f7ff' : '#fff7e6',
+                      border: `1px solid ${voiceStatus === 'error' ? '#ffccc7' : voiceStatus === 'processing' ? '#91d5ff' : '#ffd666'}`,
                       borderRadius: '6px',
                       fontSize: '14px',
-                      color: '#d48806'
+                      color: voiceStatus === 'error' ? '#cf1322' : voiceStatus === 'processing' ? '#1890ff' : '#d48806',
+                      textAlign: 'center'
                     }}>
-                      🎤 正在识别：{voicePreview}
-                    </div>
-                  )}
-                  
-                  {/* 录音状态提示 */}
-                  {isRecording && !voicePreview && (
-                    <div style={{
-                      marginTop: '8px',
-                      textAlign: 'center',
-                      color: '#ff4d4f',
-                      fontSize: '14px',
-                      fontWeight: 'bold'
-                    }}>
-                      🎤 正在录音中，请开始说话...
+                      {voiceStatus === 'recording' && '🎤 正在录音中，再次点击结束录音...'}
+                      {voiceStatus === 'processing' && '🔄 录音完成，正在识别中...'}
+                      {voiceStatus === 'error' && voiceMessage && `❌ ${voiceMessage}`}
                     </div>
                   )}
                 </div>
@@ -1131,23 +1132,23 @@ const AiChatPage: React.FC = () => {
                       marginTop: '12px'
                     }} className="welcome-input-controls">
                       {/* 语音输入按钮 */}
-                      <Tooltip title={isRecording ? '点击停止语音输入' : voiceConnectionStatus === 'connected' ? '点击开始语音输入' : '语音服务连接中...'}>
+                      <Tooltip title={getVoiceTooltip()}>
                         <Button
                           type={isRecording ? "primary" : "default"}
                           size="large"
-                          icon={isRecording ? <AudioMutedOutlined /> : <AudioOutlined />}
+                          icon={getVoiceIcon()}
                           onClick={toggleVoiceRecording}
-                          disabled={loading || voiceConnectionStatus === 'connecting'}
+                          disabled={loading || voiceStatus === 'processing' || voiceStatus === 'error'}
                           style={{
                             borderRadius: '8px',
-                            backgroundColor: isRecording ? '#ff4d4f' : undefined,
-                            borderColor: isRecording ? '#ff4d4f' : undefined,
-                            color: isRecording ? '#fff' : undefined
+                            backgroundColor: isRecording ? '#ff4d4f' : voiceStatus === 'processing' ? '#1890ff' : undefined,
+                            borderColor: isRecording ? '#ff4d4f' : voiceStatus === 'processing' ? '#1890ff' : undefined,
+                            color: (isRecording || voiceStatus === 'processing') ? '#fff' : undefined
                           }}
-                          loading={voiceConnectionStatus === 'connecting'}
+                          loading={voiceStatus === 'processing'}
                           className="welcome-voice-btn"
                         >
-                          {isRecording ? '停止录音' : '语音输入'}
+                          {getVoiceButtonText()}
                         </Button>
                       </Tooltip>
 
@@ -1168,32 +1169,22 @@ const AiChatPage: React.FC = () => {
                       </Button>
                     </div>
                     
-                    {/* 语音识别实时预览 */}
-                    {isRecording && voicePreview && (
+                    {/* 语音状态提示 */}
+                    {(voiceStatus === 'recording' || voiceStatus === 'processing' || (voiceStatus === 'error' && voiceMessage)) && (
                       <div style={{
                         marginTop: '12px',
                         padding: '12px',
-                        background: '#fff7e6',
-                        border: '1px solid #ffd666',
+                        background: voiceStatus === 'error' ? '#fff1f0' : voiceStatus === 'processing' ? '#e6f7ff' : '#fff7e6',
+                        border: `1px solid ${voiceStatus === 'error' ? '#ffccc7' : voiceStatus === 'processing' ? '#91d5ff' : '#ffd666'}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        color: '#d48806',
-                        textAlign: 'center'
-                      }}>
-                        🎤 正在识别：{voicePreview}
-                      </div>
-                    )}
-                    
-                    {/* 录音状态提示 */}
-                    {isRecording && !voicePreview && (
-                      <div style={{
-                        marginTop: '12px',
+                        color: voiceStatus === 'error' ? '#cf1322' : voiceStatus === 'processing' ? '#1890ff' : '#d48806',
                         textAlign: 'center',
-                        color: '#ff4d4f',
-                        fontSize: '15px',
                         fontWeight: 'bold'
                       }}>
-                        🎤 正在录音中，请开始说话...
+                        {voiceStatus === 'recording' && '🎤 正在录音中，再次点击结束录音...'}
+                        {voiceStatus === 'processing' && '🔄 录音完成，正在识别中...'}
+                        {voiceStatus === 'error' && voiceMessage && `❌ ${voiceMessage}`}
                       </div>
                     )}
                   </div>
