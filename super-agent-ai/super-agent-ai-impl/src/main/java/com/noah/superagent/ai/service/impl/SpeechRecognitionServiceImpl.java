@@ -4,6 +4,9 @@ import com.alibaba.dashscope.audio.asr.translation.TranslationRecognizerParam;
 import com.alibaba.dashscope.audio.asr.translation.TranslationRecognizerRealtime;
 import com.alibaba.dashscope.audio.asr.translation.results.TranscriptionResult;
 import com.alibaba.dashscope.audio.asr.translation.results.TranslationRecognizerResultPack;
+import com.alibaba.dashscope.audio.asr.transcription.Transcription;
+import com.alibaba.dashscope.audio.asr.transcription.TranscriptionParam;
+import com.alibaba.dashscope.audio.asr.transcription.TranscriptionQueryParam;
 import com.noah.superagent.ai.service.SpeechRecognitionService;
 import com.noah.superagent.common.config.AiProperties;
 import com.noah.superagent.common.config.SpeechRecognitionProperties;
@@ -19,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +34,7 @@ import org.apache.tika.Tika;
 
 /**
  * 语音识别服务实现类
- * 基于阿里云百炼Gummy实时语音识别API
+ * 支持阿里云百炼Gummy实时语音识别API和Fun-ASR录音文件识别API
  * 
  * 注意：临时文件不会自动删除，需要定期手动清理temp/uploads目录
  *
@@ -49,6 +53,13 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
      * 临时文件目录
      */
     private static final String TEMP_UPLOAD_DIR = "temp/uploads";
+    
+    /**
+     * 公网文件发布相关常量
+     */
+    private static final String PUBLIC_DOMAIN = "https://unparrying-elizbeth-chylophyllous.ngrok-free.app";
+    private static final String PUBLIC_DIR = "temp/public";
+    private static final String URL_PREFIX = "/files";
     
     /**
      * Apache Tika实例，用于检测文件真实格式
@@ -123,52 +134,20 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                     .build();
         }
 
-        // 保存临时文件
-        String tempFilePath = saveTemporaryFile(audioStream, filename);
-        if (tempFilePath == null) {
-            return SpeechRecognitionResponse.builder()
-                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
-                    .errorMessage("保存临时文件失败")
-                    .isFinal(true)
-                    .build();
-        }
-
         try {
             // 确保API Key已设置
             System.setProperty("dashscope.api.key", apiKey);
             
-            // 检测真实的音频格式
-            String realFormat = detectAudioFormat(tempFilePath);
-            String fileExtension = getFileExtension(filename);
+            // 检查使用的模型类型
+            String model = speechProperties.getModel();
+            log.info("使用语音识别模型: {}", model);
             
-            if (realFormat == null) {
-                // 如果无法检测，回退到文件扩展名
-                realFormat = fileExtension;
-                log.warn("无法检测音频文件真实格式，使用文件扩展名: {}", realFormat);
+            if (model.startsWith("fun-asr")) {
+                // 使用Fun-ASR模型（需要公网URL）
+                return recognizeWithFunAsr(audioStream, filename, language);
             } else {
-                log.info("检测到音频文件真实格式: {} (文件名扩展名: {})", realFormat, fileExtension);
-            }
-            
-            // 首先尝试使用检测到的格式
-            try {
-                return recognizeAudioFile(tempFilePath, realFormat, language);
-            } catch (Exception e) {
-                log.warn("使用检测格式 {} 失败: {}", realFormat, e.getMessage());
-                
-                // 智能回退策略
-                List<String> fallbackFormats = getFallbackFormats(realFormat, fileExtension);
-                
-                for (String fallbackFormat : fallbackFormats) {
-                    log.warn("尝试回退格式: {}", fallbackFormat);
-                    try {
-                        return recognizeAudioFile(tempFilePath, fallbackFormat, language);
-                    } catch (Exception fallbackException) {
-                        log.warn("回退格式 {} 也失败: {}", fallbackFormat, fallbackException.getMessage());
-                    }
-                }
-                
-                log.error("所有格式都失败，抛出原始异常");
-                throw e; // 所有回退都失败，抛出原始异常
+                // 使用传统的Gummy模型（本地文件）
+                return recognizeWithGummy(audioStream, filename, language);
             }
             
         } catch (Exception e) {
@@ -182,9 +161,91 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
     }
 
     /**
+     * 使用Fun-ASR模型识别音频文件（通过公网URL）
+     */
+    private SpeechRecognitionResponse recognizeWithFunAsr(InputStream audioStream, String filename, String language) {
+        log.info("使用Fun-ASR模型识别音频文件: {}", filename);
+        
+        try {
+            // 1. 发布文件到公网
+            String publicUrl = publishFileToPublic(audioStream, filename);
+            log.info("文件已发布到公网: {}", publicUrl);
+            
+            // 2. 使用Fun-ASR API识别
+            TranscriptionParam param = TranscriptionParam.builder()
+                    .model(speechProperties.getModel())
+                    .fileUrls(java.util.Arrays.asList(publicUrl))
+                    .build();
+            
+            Transcription transcription = new Transcription();
+            
+            // 异步提交任务
+            com.alibaba.dashscope.audio.asr.transcription.TranscriptionResult result = transcription.asyncCall(param);
+            log.info("Fun-ASR任务提交成功，任务ID: {}", result.getTaskId());
+            
+            // 同步等待结果
+            com.alibaba.dashscope.audio.asr.transcription.TranscriptionResult finalResult = transcription.wait(
+                    TranscriptionQueryParam.FromTranscriptionParam(param, result.getTaskId())
+            );
+            log.info("Fun-ASR识别完成，状态: {}", finalResult.getTaskStatus());
+            
+            // 解析结果
+            return parseFunAsrResult(finalResult);
+            
+        } catch (Exception e) {
+            log.error("Fun-ASR识别失败", e);
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("Fun-ASR识别失败: " + e.getMessage())
+                    .isFinal(true)
+                    .build();
+        }
+    }
+    
+    /**
+     * 使用Gummy实时语音识别API识别音频文件（本地文件）
+     */
+    private SpeechRecognitionResponse recognizeWithGummy(InputStream audioStream, String filename, String language) {
+        log.info("使用Gummy模型识别音频文件: {}", filename);
+        
+        // 保存临时文件
+        String tempFilePath = saveTemporaryFile(audioStream, filename);
+        if (tempFilePath == null) {
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("保存临时文件失败")
+                    .isFinal(true)
+                    .build();
+        }
+
+        try {
+            // 检测真实的音频格式
+            String realFormat = detectAudioFormat(tempFilePath);
+            String fileExtension = getFileExtension(filename);
+            
+            if (realFormat == null) {
+                realFormat = fileExtension;
+                log.warn("无法检测音频文件真实格式，使用文件扩展名: {}", realFormat);
+            } else {
+                log.info("检测到音频文件真实格式: {} (文件名扩展名: {})", realFormat, fileExtension);
+            }
+            
+            return recognizeGummyFile(tempFilePath, realFormat, language);
+            
+        } catch (Exception e) {
+            log.error("Gummy识别失败", e);
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("Gummy识别失败: " + e.getMessage())
+                    .isFinal(true)
+                    .build();
+        }
+    }
+    
+    /**
      * 使用Gummy实时语音识别API识别音频文件
      */
-    private SpeechRecognitionResponse recognizeAudioFile(String filePath, String format, String language) {
+    private SpeechRecognitionResponse recognizeGummyFile(String filePath, String format, String language) {
         log.info("使用Gummy API识别音频文件: {}, 格式: {}, 语言: {}", filePath, format, language);
         
         TranslationRecognizerRealtime translator = null;
@@ -496,6 +557,145 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         
         log.info("为格式 {} (扩展名: {}) 生成回退策略: {}", detectedFormat, fileExtension, fallbacks);
         return fallbacks;
+    }
+    
+    /**
+     * 解析Fun-ASR识别结果
+     */
+    private SpeechRecognitionResponse parseFunAsrResult(com.alibaba.dashscope.audio.asr.transcription.TranscriptionResult result) {
+        if (result == null) {
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("Fun-ASR识别结果为空")
+                    .isFinal(true)
+                    .build();
+        }
+        
+        try {
+            log.info("Fun-ASR任务状态: {}", result.getTaskStatus());
+            
+            // 检查任务状态
+            if (!"SUCCEEDED".equals(result.getTaskStatus())) {
+                String errorMsg = "Fun-ASR任务失败，状态: " + result.getTaskStatus();
+                log.error(errorMsg);
+                return SpeechRecognitionResponse.builder()
+                        .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                        .errorMessage(errorMsg)
+                        .isFinal(true)
+                        .build();
+            }
+            
+            // 从输出中提取识别文本
+            Object output = result.getOutput();
+            if (output == null) {
+                log.warn("Fun-ASR输出为空");
+                return SpeechRecognitionResponse.builder()
+                        .status(SpeechRecognitionResponse.RecognitionStatus.COMPLETED)
+                        .text("未识别到语音内容")
+                        .isFinal(true)
+                        .build();
+            }
+            
+            // 输出转换为字符串并提取文本
+            String outputStr = output.toString();
+            log.info("Fun-ASR原始输出: {}", outputStr);
+            
+            // 这里可以根据实际输出格式进行解析
+            // Fun-ASR的输出通常包含识别的文本内容
+            String recognizedText = extractTextFromFunAsrOutput(outputStr);
+            
+            if (recognizedText == null || recognizedText.trim().isEmpty()) {
+                return SpeechRecognitionResponse.builder()
+                        .status(SpeechRecognitionResponse.RecognitionStatus.COMPLETED)
+                        .text("未识别到语音内容")
+                        .isFinal(true)
+                        .build();
+            }
+            
+            log.info("Fun-ASR识别成功: {}", recognizedText);
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.COMPLETED)
+                    .text(recognizedText.trim())
+                    .isFinal(true)
+                    .build();
+                    
+        } catch (Exception e) {
+            log.error("解析Fun-ASR结果失败", e);
+            return SpeechRecognitionResponse.builder()
+                    .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                    .errorMessage("解析识别结果失败: " + e.getMessage())
+                    .isFinal(true)
+                    .build();
+        }
+    }
+    
+    /**
+     * 从Fun-ASR输出中提取文本内容
+     */
+    private String extractTextFromFunAsrOutput(String output) {
+        try {
+            // Fun-ASR的输出是JSON格式，需要解析
+            // 这里做简单的文本提取，可以根据实际格式优化
+            if (output.contains("\"text\"")) {
+                // 提取JSON中的text字段
+                int textStart = output.indexOf("\"text\"");
+                if (textStart >= 0) {
+                    int colonIndex = output.indexOf(":", textStart);
+                    if (colonIndex >= 0) {
+                        int quoteStart = output.indexOf("\"", colonIndex);
+                        if (quoteStart >= 0) {
+                            int quoteEnd = output.indexOf("\"", quoteStart + 1);
+                            if (quoteEnd >= 0) {
+                                return output.substring(quoteStart + 1, quoteEnd);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 如果没有找到text字段，返回处理后的原始输出
+            return output.replaceAll("[\\[\\]{}\"\\\\]", "").trim();
+            
+        } catch (Exception e) {
+            log.warn("提取Fun-ASR文本内容失败，返回原始输出: {}", e.getMessage());
+            return output;
+        }
+    }
+    
+    /**
+     * 发布文件到公网目录
+     */
+    private String publishFileToPublic(InputStream inputStream, String filename) {
+        try {
+            // 确保公网目录存在
+            Path publicDir = Paths.get(PUBLIC_DIR);
+            if (!Files.exists(publicDir)) {
+                Files.createDirectories(publicDir);
+                log.info("创建公网目录: {}", publicDir.toAbsolutePath());
+            }
+            
+            // 生成唯一文件名
+            String extension = getFileExtension(filename);
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            String uuid = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+            String uniqueFilename = String.format("audio_%s_%s.%s", timestamp, uuid, extension);
+            
+            // 保存文件
+            Path targetPath = publicDir.resolve(uniqueFilename);
+            try (InputStream in = inputStream) {
+                Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+            
+            // 生成公网URL
+            String publicUrl = PUBLIC_DOMAIN + URL_PREFIX + "/" + uniqueFilename;
+            
+            log.info("文件发布成功 - 本地路径: {}, 公网URL: {}", targetPath, publicUrl);
+            return publicUrl;
+            
+        } catch (IOException e) {
+            log.error("发布文件到公网失败: {}", filename, e);
+            throw new RuntimeException("发布文件失败: " + e.getMessage(), e);
+        }
     }
     
 }

@@ -1,7 +1,7 @@
 super-agent:
   speech-recognition:
-    # 语音识别模型
-    model: gummy-realtime-v1
+    # 语音识别模型 - 使用fun-asr模型
+    model: fun-asr
     
     # 默认采样率（Hz）
     default-sample-rate: 16000

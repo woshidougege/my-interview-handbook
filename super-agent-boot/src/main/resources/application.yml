@@ -33,6 +33,13 @@ spring:
     file: ${PID_FILE_PATH:pid/super-agent.pid}
     fail-on-write-error: true
   
+  # 静态文件配置 - 支持临时文件发布
+  web:
+    resources:
+      static-locations: file:temp/public/
+  mvc:
+    static-path-pattern: /files/**
+  
   # 配置文件导入（按功能模块拆分）
   config:
     import:
