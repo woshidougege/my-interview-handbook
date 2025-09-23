@@ -1,89 +1,15 @@
-# CORS跨域配置
-super-agent:
-  cors:
-    # 是否启用CORS跨域支持
-    # 开发环境建议: true（前后端分离开发）
-    # 生产环境建议: false（nginx代理，同域访问）
-    enabled: ${CORS_ENABLED:true}
-    
-    # 允许的源地址列表（精确匹配，仅在enabled=true时生效）
-    # 生产环境: 必须配置具体的域名
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
-    
-    # 允许的源地址模式列表（模式匹配，支持通配符）
-    # 优先级高于 allowed-origins，支持与 allow-credentials=true 同时使用
-    # 测试环境默认: 允许所有IP和端口的HTTP/HTTPS访问
-    # 生产环境示例: https://*.yourdomain.com:*
-    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://*:*,https://*:*}
-    
-    # 允许的HTTP方法
-    allowed-methods:
-      - GET
-      - POST
-      - PUT
-      - DELETE
-      - PATCH
-      - OPTIONS
-    
-    # 允许的请求头
-    allowed-headers:
-      - "*"
-    
-    # 是否允许携带认证信息（如Cookie、Authorization头等）
-    # 测试环境默认允许携带认证信息，支持完整的认证流程
-    # 生产环境根据需要配置
-    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
-    
-    # 预检请求的缓存时间（秒）
-    max-age: ${CORS_MAX_AGE:3600}
+# ========== CORS跨域配置主文件 ==========
+# 通过环境变量 CORS_ENV 来切换CORS配置：test 或 prod（默认test）
+# 
+# 使用方式：
+# 1. 启动时指定：java -jar app.jar --spring.profiles.include=cors-test
+# 2. 环境变量：export CORS_ENV=test 或 export CORS_ENV=prod
 
----
+spring:
+  profiles:
+    # 默认使用测试环境CORS配置
+    include: cors-${CORS_ENV:test}
 
-# 开发环境配置示例（在IDE或开发环境中设置环境变量）
-# CORS_ENABLED=true
-# CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-# CORS_ALLOW_CREDENTIALS=false
-
-# 测试环境配置示例（默认配置，允许所有IP和端口访问且支持认证）
-# 默认已启用，无需额外配置
-# CORS_ENABLED=true
-# CORS_ALLOWED_ORIGIN_PATTERNS=http://*:*,https://*:*
-# CORS_ALLOW_CREDENTIALS=true
-
-# 自定义测试环境配置（限制特定端口）
-# CORS_ENABLED=true
-# CORS_ALLOWED_ORIGIN_PATTERNS=http://*:3000,https://*:3000,http://*:8080,https://*:8080
-# CORS_ALLOW_CREDENTIALS=true
-
-# 精确控制配置（指定具体来源）
-# CORS_ENABLED=true  
-# CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://192.168.1.100:3000
-# CORS_ALLOW_CREDENTIALS=true
-
-# 生产环境配置示例（默认值，严格控制）
-# CORS_ENABLED=false
-# 其他配置项使用默认值即可
-
-# === 测试环境部署配置（默认已启用） ===
-#
-# 默认配置（无需设置环境变量）：
-# - 自动启用CORS跨域支持
-# - 允许所有IP和端口访问 (http://*:*, https://*:*)
-# - 支持携带Cookie和认证信息
-#
-# 如需自定义配置，可通过以下方式：
-#
-# 限制特定端口访问：
-# java -jar app.jar -DCORS_ALLOWED_ORIGIN_PATTERNS="http://*:3000,https://*:3000,http://*:8080"
-#
-# Docker环境变量（自定义配置）：
-# environment:
-#   - CORS_ENABLED=true
-#   - CORS_ALLOWED_ORIGIN_PATTERNS=http://*:*,https://*:*
-#   - CORS_ALLOW_CREDENTIALS=true
-#
-# Kubernetes ConfigMap：
-# data:
-#   CORS_ENABLED: "true"
-#   CORS_ALLOWED_ORIGIN_PATTERNS: "http://*:*,https://*:*"
-#   CORS_ALLOW_CREDENTIALS: "true"
+# CORS配置由单独的profile文件提供：
+# - application-cors-test.yml (测试环境配置)
+# - application-cors-prod.yml (生产环境配置)

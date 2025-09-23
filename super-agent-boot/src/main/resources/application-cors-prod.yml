@@ -1,0 +1,10 @@
+# ========== 生产环境CORS配置 ==========
+# 默认只允许本地访问，可通过环境变量自定义允许的来源
+
+super-agent:
+  cors:
+    # 生产环境：使用可配置的严格模式
+    mode: prod
+    # 允许的访问源列表，默认只允许本地，可通过环境变量覆盖
+    # 示例：https://your-domain.com,https://app.your-domain.com
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
