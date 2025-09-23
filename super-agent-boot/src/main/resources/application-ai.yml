@@ -26,7 +26,7 @@ super-agent:
         
       # 语音识别配置
       speech-recognition:
-        model: ${AI_SPEECH_RECOGNITION_MODEL:paraformer-realtime-v2}
+        model: ${AI_SPEECH_RECOGNITION_MODEL:gummy-realtime-v1}
         sample-rate: ${AI_SPEECH_RECOGNITION_SAMPLE_RATE:16000}
         audio-format: ${AI_SPEECH_RECOGNITION_FORMAT:wav}
         language-hints: ${AI_SPEECH_RECOGNITION_LANGUAGE:zh}

@@ -131,12 +131,22 @@ public class SpeechRecognitionController {
                         .body(ApiResponse.error("文件大小不能超过100MB"));
             }
             
+            // 记录开始时间和使用的模型
+            long startTime = System.currentTimeMillis();
+            String model = speechProperties.getModel();
+            log.info("语音识别开始 - 使用模型: {}, 开始时间: {}", model, startTime);
+            
             // 调用识别服务
             SpeechRecognitionResponse result = speechRecognitionService.recognizeAudioStream(
                     audioFile.getInputStream(),
                     audioFile.getOriginalFilename(),
                     language
             );
+            
+            // 记录结束时间和耗时
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+            log.info("语音识别完成 - 使用模型: {}, 耗时: {}ms", model, duration);
             
             if (result.getStatus() == SpeechRecognitionResponse.RecognitionStatus.COMPLETED) {
                 log.info("语音识别成功: {}", result.getText());
