@@ -97,12 +97,11 @@ public class A2ACommunicationController {
     @PostMapping("/stream-message")
     @Operation(summary = "流式发送消息到A2A平台", description = "将用户消息流式发送到上游智平台的协同规划智能体")
     @Parameters({
-        @Parameter(name = "contextId", description = "上下文ID", in = ParameterIn.QUERY),
-        @Parameter(name = "message", description = "用户消息", in = ParameterIn.QUERY)
+        @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
     })
     public StreamingResponseBody streamMessageToA2APlatform(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
-            @SaToken String satoken) {
+            @Parameter(hidden = true) @SaToken String satoken) {
         log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
         
         // 所有参数都由后端生成
@@ -158,9 +157,12 @@ public class A2ACommunicationController {
      */
     @PostMapping("/stream-message-sse")
     @Operation(summary = "流式发送消息到A2A平台（SSE格式）", description = "将用户消息流式发送到上游智平台的协同规划智能体，使用SSE格式返回")
+    @Parameters({
+        @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
+    })
     public ResponseEntity<StreamingResponseBody> streamMessageToA2APlatformWithSSE(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request, 
-            @SaToken String satoken) {
+            @Parameter(hidden = true) @SaToken String satoken) {
         log.info("接收SSE格式流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
         
         // 所有参数都由后端生成
@@ -317,9 +319,12 @@ public class A2ACommunicationController {
      */
     @PostMapping("/stream-message-async")
     @Operation(summary = "异步流式发送消息到A2A平台", description = "异步将用户消息流式发送到上游智平台的协同规划智能体")
+    @Parameters({
+        @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER, required = false)
+    })
     public CompletableFuture<ResponseEntity<StreamingResponseBody>> streamMessageToA2APlatformAsync(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
-            @SaToken String satoken) {
+            @Parameter(hidden = true) @SaToken String satoken) {
         log.info("接收异步流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
         
         // 使用AI对话专用线程池执行异步流式任务
