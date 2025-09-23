@@ -102,6 +102,8 @@
                 <exclude>com.noah:super-agent-service-impl</exclude>
                 <exclude>com.noah:super-agent-web</exclude>
                 <exclude>com.noah:super-agent-scheduler</exclude>
+                <exclude>com.noah:super-agent-ai-api</exclude>
+                <exclude>com.noah:super-agent-ai-impl</exclude>
             </excludes>
         </dependencySet>
 
@@ -116,6 +118,8 @@
                 <include>com.noah:super-agent-service-impl</include>
                 <include>com.noah:super-agent-web</include>
                 <include>com.noah:super-agent-scheduler</include>
+                <include>com.noah:super-agent-ai-api</include>
+                <include>com.noah:super-agent-ai-impl</include>
             </includes>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
         </dependencySet>
