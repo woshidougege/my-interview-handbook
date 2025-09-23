@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RequestCallback;
 import org.springframework.web.client.ResponseExtractor;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.*;
@@ -82,7 +84,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
         log.info("发送消息到A2A平台 - 用户ID: {}, 消息: {}, 会话ID: {}", userId, message, sessionId);
         
         try {
-            // 构建请求URL
+            // 构建请求URL，添加satoken参数
             String url = String.format("%s/kunlun/a2a/api/message", a2aPlatformBaseUrl);
             
             // 构建请求体
@@ -118,7 +120,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
         
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // 构建请求URL
+                // 构建请求URL，添加satoken参数
                 String url = String.format("%s/kunlun/a2a/api/message", a2aPlatformBaseUrl);
                 
                 // 构建请求体
@@ -159,9 +161,18 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
      */
     private InputStream executeStreamRequest(String abilityCode, String entityCode, String userId, String requestBody) {
         try {
-            // 构建请求URL
-            String url = String.format("%s/kunlun/a2a/api/%s/entity/%s/userid/%s",
-                    a2aPlatformBaseUrl, abilityCode, entityCode, userId);
+            // 获取当前请求中的satoken
+            String satoken = getCurrentSatoken();
+            
+            // 构建请求URL，添加satoken参数
+            String url;
+            if (satoken != null && !satoken.isEmpty()) {
+                url = String.format("%s/kunlun/a2a/api/%s/entity/%s/userid/%s/satoken/%s",
+                        a2aPlatformBaseUrl, abilityCode, entityCode, userId, satoken);
+            } else {
+                url = String.format("%s/kunlun/a2a/api/%s/entity/%s/userid/%s",
+                        a2aPlatformBaseUrl, abilityCode, entityCode, userId);
+            }
             log.info("发送到A2A平台的完整请求URL: {}", url);
             log.info("发送到A2A平台的完整请求体: {}", requestBody);
             
@@ -443,8 +454,15 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             };
 
             // 构建并验证URL
-            String url = String.format("%s/kunlun/a2a/api/%s/entity/%s/userid/%s",
-                    a2aPlatformBaseUrl, abilityCode, entityCode, userId);
+            String url;
+            String satoken = getCurrentSatoken();
+            if (satoken != null && !satoken.isEmpty()) {
+                url = String.format("%s/kunlun/a2a/api/%s/entity/%s/userid/%s/satoken/%s",
+                        a2aPlatformBaseUrl, abilityCode, entityCode, userId, satoken);
+            } else {
+                url = String.format("%s/kunlun/a2a/api/%s/entity/%s/userid/%s",
+                        a2aPlatformBaseUrl, abilityCode, entityCode, userId);
+            }
                     
             if (a2aPlatformBaseUrl == null || a2aPlatformBaseUrl.trim().isEmpty()) {
                 log.error("A2A平台基础URL未配置");
@@ -688,6 +706,30 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
                     (errorTime - startTime), userId, contextId);
             throw new IOException("无法从A2A平台获取响应流");
         }
+    }
+    
+    /**
+     * 从当前请求中获取satoken
+     * @return satoken值，如果不存在则返回null
+     */
+    private String getCurrentSatoken() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attributes != null) {
+                javax.servlet.http.HttpServletRequest request = attributes.getRequest();
+                javax.servlet.http.Cookie[] cookies = request.getCookies();
+                if (cookies != null) {
+                    for (javax.servlet.http.Cookie cookie : cookies) {
+                        if ("satoken".equals(cookie.getName())) {
+                            return cookie.getValue();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取satoken时发生异常: {}", e.getMessage());
+        }
+        return null;
     }
     
     /**
