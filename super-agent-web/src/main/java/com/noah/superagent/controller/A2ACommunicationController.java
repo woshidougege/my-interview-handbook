@@ -3,6 +3,7 @@ package com.noah.superagent.controller;
 import com.noah.superagent.common.config.KunlunProperties;
 import com.noah.superagent.common.dto.request.A2AMessageRequest;
 import com.noah.superagent.common.dto.request.A2ASupplementInfoRequest;
+import com.noah.superagent.common.dto.request.Attachment;
 import com.noah.superagent.common.dto.response.ApiResponse;
 import com.noah.superagent.common.util.SSEventFormatter;
 import com.noah.superagent.service.A2ACommunicationService;
@@ -14,6 +15,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
+
+import java.util.List;
 import java.util.concurrent.Executor;
 
 import org.springframework.web.bind.annotation.PostMapping;
@@ -74,7 +77,9 @@ public class A2ACommunicationController {
     public StreamingResponseBody streamMessageToA2APlatform(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
             @Parameter(hidden = true) @SaToken String satoken) {
-        log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
+        log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}, 附件数量: {}", 
+                request.getUserId(), request.getMessage(), 
+                request.getAttachments() != null ? request.getAttachments().size() : 0);
 
         // 所有参数都由后端生成
         String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
@@ -86,7 +91,7 @@ public class A2ACommunicationController {
         // 修改contextId从请求中获取，如果请求中没有则使用默认值
         String contextId = request.getContextId() != null ? request.getContextId() : "";
 
-        return createStreamingResponse(abilityCode, entityCode, userId, message, taskId, contextId, "JSON-RPC", satoken);
+        return createStreamingResponse(abilityCode, entityCode, userId, message, taskId, contextId, "JSON-RPC", satoken, request.getAttachments());
     }
     
     /**
@@ -156,7 +161,7 @@ public class A2ACommunicationController {
             try {
                 // 使用与streamMessageToA2APlatform相同的方式调用服务
                 inputStream = a2aCommunicationService.sendJsonRpcMessageToA2APlatform(
-                        abilityCode, entityCode, userId, message, taskId, contextId, satoken);
+                        abilityCode, entityCode, userId, message, taskId, contextId, satoken,request.getAttachments());
                 
                 if (inputStream != null) {
                     log.info("成功获取A2A平台输入流，开始流式传输数据");
@@ -318,7 +323,7 @@ public class A2ACommunicationController {
                 InputStream inputStream = null;
                 try {
                     inputStream = a2aCommunicationService.sendJsonRpcMessageToA2APlatform(
-                            abilityCode, entityCode, userId, message, taskId, contextId, satoken);
+                            abilityCode, entityCode, userId, message, taskId, contextId, satoken,request.getAttachments());
 
                     if (inputStream != null) {
                         log.info("成功获取A2A平台输入流，开始流式传输数据");
@@ -444,16 +449,17 @@ public class A2ACommunicationController {
      * @param contextId 上下文ID
      * @param responseType 响应类型（用于日志）
      * @param satoken 认证令牌
+     * @param attachments 附件列表
      * @return StreamingResponseBody 流式响应体
      */
     private StreamingResponseBody createStreamingResponse(String abilityCode, String entityCode, String userId, 
-            String message, String taskId, String contextId, String responseType, String satoken) {
+            String message, String taskId, String contextId, String responseType, String satoken, List<Attachment> attachments) {
         return outputStream -> {
             long startTime = System.currentTimeMillis();
             log.info("开始处理{}格式流式响应 - 用户ID: {}, 消息: {}", responseType, userId, message);
 
             try (InputStream inputStream = a2aCommunicationService.sendJsonRpcMessageToA2APlatform(
-                    abilityCode, entityCode, userId, message, taskId, contextId, satoken)) {
+                    abilityCode, entityCode, userId, message, taskId, contextId, satoken, attachments)) {
 
                 if (inputStream != null) {
                     log.info("成功获取A2A平台输入流，开始流式传输数据");

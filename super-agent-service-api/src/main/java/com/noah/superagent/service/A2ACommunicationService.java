@@ -1,21 +1,20 @@
 package com.noah.superagent.service;
 
+import com.noah.superagent.common.dto.request.Attachment;
 import com.noah.superagent.common.dto.response.ApiResponse;
-import com.noah.superagent.common.config.A2APlatformConfig;
 
 import java.io.InputStream;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * A2A通信服务接口
- * 用于与上游智平台进行Agent-to-Agent通信
+ * 用于处理与上游智平台的Agent-to-Agent通信
  */
 public interface A2ACommunicationService {
+    
 
-
-
+    
     /**
      * 发送JSON-RPC格式消息到A2A平台
      * 
@@ -25,11 +24,13 @@ public interface A2ACommunicationService {
      * @param message 消息内容
      * @param taskId 任务ID
      * @param contextId 上下文ID
+     * @param satoken 认证令牌
+     * @param attachments 附件列表
      * @return InputStream 输入流
      */
     InputStream sendJsonRpcMessageToA2APlatform(
-            String abilityCode, String entityCode, String userId, 
-            String message, String taskId, String contextId,String satoken);
+            String abilityCode, String entityCode, String userId,
+            String message, String taskId, String contextId, String satoken, List<Attachment> attachments);
     
     /**
      * 处理补充信息

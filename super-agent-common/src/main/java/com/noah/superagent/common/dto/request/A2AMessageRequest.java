@@ -3,8 +3,10 @@ package com.noah.superagent.common.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.util.List;
+
 /**
- * A2A消息请求DTO
+ * A2A消息请求
  */
 @Data
 @Schema(description = "A2A消息请求")
@@ -21,4 +23,7 @@ public class A2AMessageRequest {
 
     @Schema(description = "上下文ID", example = "contextId_161312")
     private String contextId;
+    
+    @Schema(description = "附件列表")
+    private List<Attachment> attachments;
 }
