@@ -51,11 +51,36 @@ MAIN_CLASS="com.noah.superagent.SuperAgentApplication"
 SCRIPT_PATH=$(cd "$(dirname "$0")"; pwd)
 # 应用根目录 (bin目录的上级目录)
 APP_HOME=$(cd "$SCRIPT_PATH/.."; pwd)
-# 解析简单参数（第二参数开启URL打印）
+# 解析命令行参数
 CMD="$1"
 EXTRA="$2"
-if [ "$EXTRA" = "urls" ] || [ "$EXTRA" = "--urls" ]; then
-    export URLS=on
+DEBUG_PORT_PARAM="$3"
+
+# 解析参数组合
+DEBUG_MODE=false
+SHOW_URLS=false
+
+# 检查第二、第三参数
+for arg in "$EXTRA" "$DEBUG_PORT_PARAM" "$4"; do
+    case "$arg" in
+        urls|--urls)
+            SHOW_URLS=true
+            export URLS=on
+            ;;
+        debug|--debug)
+            DEBUG_MODE=true
+            ;;
+        [0-9]*)
+            if [ "$DEBUG_MODE" = true ] && [ -z "$CUSTOM_DEBUG_PORT" ]; then
+                CUSTOM_DEBUG_PORT="$arg"
+            fi
+            ;;
+    esac
+done
+
+# 如果没有显式设置，默认关闭URL打印
+if [ "$SHOW_URLS" = false ]; then
+    export URLS=off
 fi
 # 配置文件目录
 CONF_DIR="$APP_HOME/conf"
@@ -296,23 +321,43 @@ start() {
     # 打印配置摘要
     print_config_summary
 
-    # 让日志框架(logback)来处理文件写入和控制台输出
-    # 不再使用 tee 重定向
-    START_CMD="$JAVA_CMD $JVM_OPTS -cp $CLASSPATH $MAIN_CLASS $SPRING_OPTS"
+    # 构建启动命令
+    local java_opts="$JVM_OPTS"
+    local start_mode="前台启动"
+    
+    # 检查是否启用调试模式
+    if [ "$DEBUG_MODE" = true ]; then
+        local debug_port="${CUSTOM_DEBUG_PORT:-5005}"
+        local debug_opts="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:$debug_port"
+        java_opts="$java_opts $debug_opts"
+        start_mode="前台启动 + 远程调试"
+        
+        echo -e "${PURPLE}🐛 调试模式已启用${NC}"
+        echo -e "${CYAN}🔌 调试端口:${NC} ${YELLOW}$debug_port${NC}"
+        echo -e "${CYAN}🔧 IDEA连接:${NC} ${GREEN}localhost:$debug_port${NC}"
+        echo ""
+    fi
+
+    START_CMD="$JAVA_CMD $java_opts -cp $CLASSPATH $MAIN_CLASS $SPRING_OPTS"
 
     echo ""
-    echo -e "${GREEN}🚀 启动中，日志将由Log4j2管理...${NC}"
+    echo -e "${GREEN}🚀 $start_mode 中，日志将由Log4j2管理...${NC}"
     echo -e "   ${CYAN}- 控制台将显示彩色日志${NC}"
     echo -e "   ${CYAN}- 总日志文件:${NC} ${BLUE}$ALL_LOG_FILE${NC} ${YELLOW}(包含所有级别)${NC}"
     echo -e "   ${CYAN}- 信息日志文件:${NC} ${BLUE}$INFO_LOG_FILE${NC}"
     echo -e "   ${CYAN}- 错误日志文件:${NC} ${BLUE}$ERROR_LOG_FILE${NC}"
-    echo -e "${BG_BLUE}${WHITE} 📋 按 Ctrl+C 可停止应用 ${NC}"
+    
+    if [ "$DEBUG_MODE" = true ]; then
+        echo -e "${BG_PURPLE}${WHITE} 🐛 调试模式 - 按 Ctrl+C 可停止应用 ${NC}"
+    else
+        echo -e "${BG_BLUE}${WHITE} 📋 按 Ctrl+C 可停止应用 ${NC}"
+    fi
     echo -e "${CYAN}--------------------------------------------------------------------------------${NC}"
     
     # 启动持续提示显示
     show_persistent_prompt
     
-    # 直接执行，让logback同时输出到控制台和文件
+    # 直接执行
     $START_CMD
 }
 
@@ -374,15 +419,19 @@ status() {
 
 # 重启应用（后台模式）
 restart() {
-    echo -e "${BLUE}🔄 重启 ${BOLD}$APP_NAME${NC}${BLUE}...${NC}"
+    local restart_mode="重启"
+    if [ "$DEBUG_MODE" = true ]; then
+        restart_mode="重启 + 调试模式"
+    fi
+    
+    echo -e "${BLUE}🔄 $restart_mode ${BOLD}$APP_NAME${NC}${BLUE}...${NC}"
     stop
     sleep 2
-    # 后台启动
+    # 后台启动（会自动检测DEBUG_MODE变量）
     if daemon; then
         echo -e "${GREEN}✅ 应用已重启，正在显示实时日志...${NC}"
-        echo -e "${YELLOW}⏳ 等待3秒让应用完全启动...${NC}"
-        sleep 3
-        # 启动完成后立即显示实时日志
+        echo -e "${CYAN}📋 使用 tail -F 等待日志文件生成并实时显示${NC}"
+        # 启动完成后立即显示实时日志，无需等待
         logs
     else
         echo -e "${RED}❌ 重启失败${NC}"
@@ -434,16 +483,16 @@ logs() {
             ;;
     esac
     
-    if [ ! -f "$target_log_file" ]; then
-        echo -e "${RED}❌ 日志文件不存在:${NC} ${BLUE}$target_log_file${NC}"
-        echo -e "${YELLOW}💡 提示: 如果应用刚启动，请稍等片刻后再试${NC}"
-        exit 1
-    fi
-    
     echo -e "${CYAN}📋 正在查看${YELLOW}${log_desc}${CYAN} ${YELLOW}(按 Ctrl+C 退出)${NC}"
     echo -e "${CYAN}📄 文件路径:${NC} ${BLUE}$target_log_file${NC}"
+    
+    if [ ! -f "$target_log_file" ]; then
+        echo -e "${YELLOW}⏳ 日志文件不存在，等待文件生成...${NC}"
+    fi
+    
     echo -e "${CYAN}--------------------------------------------------------------------------------${NC}"
-    tail -f "$target_log_file"
+    # 使用 tail -F 会等待文件生成并跟踪文件，即使文件被重命名也会继续跟踪
+    tail -F "$target_log_file" 2>/dev/null
 }
 
 
@@ -466,8 +515,20 @@ debug() {
     
     echo -e "${PURPLE}🐛 远程调试模式启动 ${BOLD}$APP_NAME${NC} ${PURPLE}...${NC}"
     echo -e "${CYAN}🔌 调试端口:${NC} ${YELLOW}$DEBUG_PORT${NC}"
-    echo -e "${CYAN}🔧 IDE连接:${NC} ${GREEN}localhost:$DEBUG_PORT${NC}"
-    echo -e "${CYAN}📋 日志将同时显示在控制台，文件由Logback管理:${NC} ${BLUE}$LOG_FILE${NC}"
+    echo -e "${CYAN}🔧 IDE连接地址:${NC} ${GREEN}localhost:$DEBUG_PORT${NC}"
+    echo ""
+    echo -e "${BOLD}${YELLOW}📖 IntelliJ IDEA 远程调试配置步骤:${NC}"
+    echo -e "   ${CYAN}1.${NC} 在 IDEA 中点击 ${GREEN}Run${NC} → ${GREEN}Edit Configurations${NC}"
+    echo -e "   ${CYAN}2.${NC} 点击 ${GREEN}+${NC} 按钮，选择 ${GREEN}Remote JVM Debug${NC}"
+    echo -e "   ${CYAN}3.${NC} 设置配置项："
+    echo -e "      ${YELLOW}Host:${NC} localhost"
+    echo -e "      ${YELLOW}Port:${NC} $DEBUG_PORT"
+    echo -e "      ${YELLOW}Use module classpath:${NC} 选择你的项目模块"
+    echo -e "   ${CYAN}4.${NC} 点击 ${GREEN}OK${NC} 保存配置"
+    echo -e "   ${CYAN}5.${NC} 设置断点后，点击 ${GREEN}Debug${NC} 按钮连接"
+    echo ""
+    echo -e "${CYAN}💡 提示:${NC} 应用启动后，在 IDEA 中点击 Debug 图标连接远程调试"
+    echo -e "${CYAN}📋 日志将同时显示在控制台:${NC} ${BLUE}$ALL_LOG_FILE${NC}"
     echo -e "${BG_PURPLE}${WHITE} 📋 按 Ctrl+C 可停止应用 ${NC}"
 
     # 添加调试参数
@@ -498,12 +559,29 @@ daemon() {
     prepare_startup
     print_config_summary
 
-    echo -e "${GREEN}🚀 后台启动中...${NC}"
+    # 构建启动命令
+    local java_opts="$JVM_OPTS"
+    local start_mode="后台启动"
+    
+    # 检查是否启用调试模式
+    if [ "$DEBUG_MODE" = true ]; then
+        local debug_port="${CUSTOM_DEBUG_PORT:-5005}"
+        local debug_opts="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:$debug_port"
+        java_opts="$java_opts $debug_opts"
+        start_mode="后台启动 + 远程调试"
+        
+        echo -e "${PURPLE}🐛 调试模式已启用${NC}"
+        echo -e "${CYAN}🔌 调试端口:${NC} ${YELLOW}$debug_port${NC}"
+        echo -e "${CYAN}🔧 IDEA连接:${NC} ${GREEN}localhost:$debug_port${NC}"
+        echo ""
+    fi
+
+    echo -e "${GREEN}🚀 $start_mode 中...${NC}"
     echo -e "${CYAN}📋 使用Spring Boot内置PID管理${NC}"
     echo -e "${CYAN}📄 PID文件:${NC} ${BLUE}$PID_FILE${NC}"
     
     # 让Spring Boot自己管理PID文件，不再手动写入
-    nohup $JAVA_CMD $JVM_OPTS -cp "$CLASSPATH" $MAIN_CLASS $SPRING_OPTS > /dev/null 2>&1 &
+    nohup $JAVA_CMD $java_opts -cp "$CLASSPATH" $MAIN_CLASS $SPRING_OPTS > /dev/null 2>&1 &
     local java_pid=$!
     
     # 等待Spring Boot创建PID文件和应用启动
@@ -558,15 +636,17 @@ display_menu() {
     
     local options=(
         "🚀 前台启动 (start)"
+        "🐛 前台启动+调试 (start debug)"
         "🌙 后台启动 (daemon)" 
+        "🐛 后台启动+调试 (daemon debug)"
         "🛑 停止应用 (stop)"
         "🔄 重启应用 (restart)"
+        "🐛 重启应用+调试 (restart debug)"
         "📋 查看状态 (status)"
         "📝 查看总日志 (logs)"
         "⚠️  查看错误日志 (logs error)"
         "💡 查看警告日志 (logs warn)" 
         "ℹ️  查看信息日志 (logs info)"
-        "🐛 调试模式 (debug)"
         "🧹 清理进程 (cleanup)"
         "🌐 前台启动+URL显示"
         "🌙 后台启动+URL显示"
@@ -599,15 +679,29 @@ execute_menu_option() {
     case $choice in
         1)
             echo -e "${GREEN}正在执行: 前台启动...${NC}"
+            DEBUG_MODE=false
             start
             return 1  # 退出菜单
             ;;
         2)
-            echo -e "${GREEN}正在执行: 后台启动...${NC}"
-            daemon
+            echo -e "${GREEN}正在执行: 前台启动+调试...${NC}"
+            DEBUG_MODE=true
+            start
             return 1  # 退出菜单
             ;;
         3)
+            echo -e "${GREEN}正在执行: 后台启动...${NC}"
+            DEBUG_MODE=false
+            daemon
+            return 1  # 退出菜单
+            ;;
+        4)
+            echo -e "${GREEN}正在执行: 后台启动+调试...${NC}"
+            DEBUG_MODE=true
+            daemon
+            return 1  # 退出菜单
+            ;;
+        5)
             echo -e "${GREEN}正在执行: 停止应用...${NC}"
             stop
             echo ""
@@ -615,12 +709,19 @@ execute_menu_option() {
             read -n 1 -s
             return 0  # 返回菜单
             ;;
-        4)
+        6)
             echo -e "${GREEN}正在执行: 重启应用...${NC}"
+            DEBUG_MODE=false
             restart
             return 1  # 退出菜单
             ;;
-        5)
+        7)
+            echo -e "${GREEN}正在执行: 重启应用+调试...${NC}"
+            DEBUG_MODE=true
+            restart
+            return 1  # 退出菜单
+            ;;
+        8)
             echo -e "${GREEN}正在执行: 查看状态...${NC}"
             status
             echo ""
@@ -628,32 +729,27 @@ execute_menu_option() {
             read -n 1 -s
             return 0  # 返回菜单
             ;;
-        6)
+        9)
             echo -e "${GREEN}正在执行: 查看总日志...${NC}"
             logs "" all
             return 1  # 退出菜单
             ;;
-        7)
+        10)
             echo -e "${GREEN}正在执行: 查看错误日志...${NC}"
             logs "" error
             return 1  # 退出菜单
             ;;
-        8)
+        11)
             echo -e "${GREEN}正在执行: 查看警告日志...${NC}"
             logs "" warn
             return 1  # 退出菜单
             ;;
-        9)
+        12)
             echo -e "${GREEN}正在执行: 查看信息日志...${NC}"
             logs "" info
             return 1  # 退出菜单
             ;;
-        10)
-            echo -e "${GREEN}正在执行: 调试模式...${NC}"
-            debug
-            return 1  # 退出菜单
-            ;;
-        11)
+        13)
             echo -e "${GREEN}正在执行: 清理进程...${NC}"
             cleanup_old_prompts
             echo -e "${GREEN}✅ 已清理所有提示进程${NC}"
@@ -662,19 +758,21 @@ execute_menu_option() {
             read -n 1 -s
             return 0  # 返回菜单
             ;;
-        12)
+        14)
             echo -e "${GREEN}正在执行: 前台启动+URL显示...${NC}"
+            DEBUG_MODE=false
             export URLS=on
             start
             return 1  # 退出菜单
             ;;
-        13)
+        15)
             echo -e "${GREEN}正在执行: 后台启动+URL显示...${NC}"
+            DEBUG_MODE=false
             export URLS=on
             daemon
             return 1  # 退出菜单
             ;;
-        14)
+        16)
             echo -e "${PURPLE}👋 再见！${NC}"
             exit 0
             ;;
@@ -702,7 +800,7 @@ interactive_menu() {
     trap cleanup_terminal EXIT INT TERM
     
     local selected=1
-    local max_options=14
+    local max_options=16
     local menu_start_line
     
     while true; do
@@ -793,20 +891,18 @@ interactive_menu() {
                 echo -e "${PURPLE}👋 再见！${NC}"
                 exit 0
                 ;;
-            '1')  # 数字1，可能是10、11、12、13、14
+            '1')  # 数字1，可能是10-16
                 read -n 1 -t 0.2 key2 2>/dev/null
                 local choice_num="1"
-                if [ "$key2" = "0" ]; then
-                    choice_num="10"
-                elif [ "$key2" = "1" ]; then
-                    choice_num="11"
-                elif [ "$key2" = "2" ]; then
-                    choice_num="12"
-                elif [ "$key2" = "3" ]; then
-                    choice_num="13"
-                elif [ "$key2" = "4" ]; then
-                    choice_num="14"
-                fi
+                case "$key2" in
+                    '0') choice_num="10" ;;
+                    '1') choice_num="11" ;;
+                    '2') choice_num="12" ;;
+                    '3') choice_num="13" ;;
+                    '4') choice_num="14" ;;
+                    '5') choice_num="15" ;;
+                    '6') choice_num="16" ;;
+                esac
                 
                 if [ "$choice_num" -le "$max_options" ] && [ "$choice_num" -ge "1" ]; then
                     cleanup_terminal
@@ -868,29 +964,35 @@ case "$1" in
         echo -e "${GREEN}✅ 已清理所有提示进程${NC}"
         ;;
     *)
-        echo -e "${BOLD}${BLUE}用法:${NC} ${GREEN}$0${NC} ${YELLOW}{start|daemon|stop|restart|status|logs|debug|cleanup|-i}${NC} ${CYAN}[urls] [debug_port]${NC}"
+        echo -e "${BOLD}${BLUE}用法:${NC} ${GREEN}$0${NC} ${YELLOW}{start|daemon|stop|restart|status|logs|debug|cleanup|-i}${NC} ${CYAN}[debug] [urls] [port]${NC}"
         echo ""
         echo -e "${BOLD}${CYAN}命令说明:${NC}"
         echo -e "  ${GREEN}start${NC}        - 前台启动应用（显示日志，Ctrl+C停止）"
+        echo -e "  ${GREEN}start debug${NC}  - 前台启动 + 远程调试模式"
         echo -e "  ${GREEN}daemon${NC}       - 后台启动应用（守护进程模式）"
+        echo -e "  ${GREEN}daemon debug${NC} - 后台启动 + 远程调试模式"
         echo -e "  ${GREEN}stop${NC}         - 停止应用"
-        echo -e "  ${GREEN}restart${NC}      - 重启应用"
+        echo -e "  ${GREEN}restart${NC}      - 重启应用（后台模式）"
+        echo -e "  ${GREEN}restart debug${NC}- 重启应用 + 远程调试模式"
         echo -e "  ${GREEN}status${NC}       - 查看运行状态"
         echo -e "  ${GREEN}logs${NC}         - 实时查看日志 [all|info|warn|error|debug]"
-        echo -e "  ${GREEN}debug${NC}        - 远程调试模式（前台运行，开启JVM调试端口，默认5005）"
+        echo -e "  ${GREEN}debug${NC}        - 独立的远程调试模式（兼容旧版本）"
         echo -e "  ${GREEN}cleanup${NC}      - 清理残留的提示进程"
         echo -e "  ${GREEN}-i${NC}/${GREEN}interactive${NC} - 📱 ${BOLD}交互式菜单模式${NC} ${YELLOW}(推荐)${NC}"
         echo ""
         echo -e "${BOLD}${CYAN}可选参数:${NC}"
-        echo -e "  ${YELLOW}urls${NC}         - 启动时打印 Docs/OpenAPI/Actuator/Druid 访问地址"
+        echo -e "  ${YELLOW}debug${NC}        - 启用远程调试模式（默认端口5005）"
+        echo -e "  ${YELLOW}urls${NC}         - 启动时打印组件访问地址"
+        echo -e "  ${YELLOW}[port]${NC}       - 自定义调试端口号（仅在debug模式下有效）"
         echo ""
         echo -e "${BOLD}${CYAN}示例:${NC}"
         echo -e "  ${GREEN}$0 -i${NC}               ${PURPLE}# 🎯 交互式菜单（推荐使用）${NC}"
-        echo -e "  ${GREEN}$0 start urls${NC}       ${PURPLE}# 前台启动并打印组件URL${NC}"
-        echo -e "  ${GREEN}$0 daemon urls${NC}      ${PURPLE}# 后台启动并打印组件URL${NC}"
-        echo -e "  ${GREEN}$0 logs${NC}             ${PURPLE}# 查看总日志${NC}"
+        echo -e "  ${GREEN}$0 start${NC}            ${PURPLE}# 前台启动${NC}"
+        echo -e "  ${GREEN}$0 start debug${NC}      ${PURPLE}# 前台启动 + 调试模式（端口5005）${NC}"
+        echo -e "  ${GREEN}$0 start debug urls${NC}  ${PURPLE}# 前台启动 + 调试 + URL显示${NC}"
+        echo -e "  ${GREEN}$0 daemon debug 8888${NC} ${PURPLE}# 后台启动 + 调试（端口8888）${NC}"
+        echo -e "  ${GREEN}$0 restart debug${NC}    ${PURPLE}# 重启应用 + 调试模式${NC}"
         echo -e "  ${GREEN}$0 logs error${NC}       ${PURPLE}# 查看错误日志${NC}"
-        echo -e "  ${GREEN}$0 debug urls 5005${NC}  ${PURPLE}# 调试模式并打印组件URL${NC}"
         echo -e "  ${GREEN}$0 cleanup${NC}          ${PURPLE}# 手动清理提示进程${NC}"
         echo ""
         echo -e "${BOLD}${YELLOW}💡 提示: 使用 ${GREEN}$0 -i${NC} ${YELLOW}进入交互式菜单，体验更好！${NC}"
