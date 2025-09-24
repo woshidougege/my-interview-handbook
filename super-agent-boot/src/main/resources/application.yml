@@ -113,5 +113,5 @@ kunlun:
   # 文档库配置
   file-repository:
     upload-path: ${FILE_REPOSITORY_UPLOAD_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/twin/FileRepository/stream/put}
-    list-object-names-path: ${FILE_REPOSITORY_LIST_OBJECT_NAMES_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/{abilityCode}/twin/FileRepository/entity/{entityCode}/service/listObjectNames}
-    get-object-url-path: ${FILE_REPOSITORY_GET_OBJECT_URL_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/{abilityCode}/twin/FileRepository/entity/{entityCode}/service/getObjectURL}
+    list-object-names-path: ${FILE_REPOSITORY_LIST_OBJECT_NAMES_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/{abilityCode}/twin/FileRepository/entity/{userEntityCode}/service/listObjectNames}
+    get-object-url-path: ${FILE_REPOSITORY_GET_OBJECT_URL_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/{abilityCode}/twin/FileRepository/entity/{userEntityCode}/service/getObjectURL}

@@ -496,16 +496,23 @@ export const resourceUsageApi = {
 export const fileRepositoryApi = {
   // 文件上传
   uploadFile: (file: File, contextId: string, taskId?: string): Promise<AxiosResponse<ApiResponse<any>>> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (contextId) {
-      formData.append('contextId', contextId);
-    } else {
+    // 参数验证
+    if (!file) {
+      return Promise.reject(new Error('文件不能为空'));
+    }
+    
+    if (!contextId) {
       return Promise.reject(new Error('上下文ID不能为空'));
     }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('contextId', contextId);
+    
     if (taskId) {
       formData.append('taskId', taskId);
     }
+    
     return api.post(API_ENDPOINTS.FILE_REPOSITORY.UPLOAD, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -515,22 +522,25 @@ export const fileRepositoryApi = {
   
   // 获取文件列表
   listFiles: (contextId?: string, taskId?: string, recursive: boolean = false): Promise<AxiosResponse<ApiResponse<any>>> => {
-    let directory = "";
+    const params: Record<string, any> = { recursive };
+    
     if (contextId) {
-      directory = contextId;
-      if (taskId) {
-        directory += "/" + taskId;
-      }
-      directory += "/";
+      params.contextId = contextId;
     }
     
-    return api.get(API_ENDPOINTS.FILE_REPOSITORY.LIST, { 
-      params: { directory, recursive } 
-    });
+    if (taskId) {
+      params.taskId = taskId;
+    }
+    
+    return api.get(API_ENDPOINTS.FILE_REPOSITORY.LIST, { params });
   },
   
   // 获取文件URL
   getFileUrl: (filename: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    if (!filename) {
+      return Promise.reject(new Error('文件名不能为空'));
+    }
+    
     return api.post(API_ENDPOINTS.FILE_REPOSITORY.GET_URL, { filename });
   },
 };
