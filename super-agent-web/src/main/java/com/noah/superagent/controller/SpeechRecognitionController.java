@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -112,12 +113,24 @@ public class SpeechRecognitionController {
                 ),
                 example = "auto"
             )
-            @RequestParam(value = "language", required = false, defaultValue = "auto") String language) {
+            @RequestParam(value = "language", required = false, defaultValue = "auto") String language,
+            
+            @Parameter(
+                description = "语音识别模型，可选值：gummy-realtime-v1(本地文件识别), fun-asr(公网URL识别)。如果不指定则使用配置文件中的默认模型。",
+                required = false,
+                schema = @Schema(
+                    type = "string",
+                    allowableValues = {"gummy-realtime-v1", "fun-asr"}
+                ),
+                example = "gummy-realtime-v1"
+            )
+            @RequestParam(value = "model", required = false) String model) {
         
-        log.info("接收到语音识别请求: 文件名={}, 大小={}KB, 语言={}", 
+        log.info("接收到语音识别请求: 文件名={}, 大小={}KB, 语言={}, 模型={}", 
                 audioFile.getOriginalFilename(), 
                 audioFile.getSize() / 1024, 
-                language);
+                language,
+                StringUtils.hasText(model) ? model : "使用配置文件默认");
         
         try {
             // 验证文件
@@ -133,20 +146,21 @@ public class SpeechRecognitionController {
             
             // 记录开始时间和使用的模型
             long startTime = System.currentTimeMillis();
-            String model = speechProperties.getModel();
-            log.info("语音识别开始 - 使用模型: {}, 开始时间: {}", model, startTime);
+            String actualModel = StringUtils.hasText(model) ? model : speechProperties.getModel();
+            log.info("语音识别开始 - 使用模型: {}, 开始时间: {}", actualModel, startTime);
             
             // 调用识别服务
             SpeechRecognitionResponse result = speechRecognitionService.recognizeAudioStream(
                     audioFile.getInputStream(),
                     audioFile.getOriginalFilename(),
-                    language
+                    language,
+                    model  // 传入model参数，null表示使用配置文件默认
             );
             
             // 记录结束时间和耗时
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            log.info("语音识别完成 - 使用模型: {}, 耗时: {}ms", model, duration);
+            log.info("语音识别完成 - 使用模型: {}, 耗时: {}ms", actualModel, duration);
             
             if (result.getStatus() == SpeechRecognitionResponse.RecognitionStatus.COMPLETED) {
                 log.info("语音识别成功: {}", result.getText());

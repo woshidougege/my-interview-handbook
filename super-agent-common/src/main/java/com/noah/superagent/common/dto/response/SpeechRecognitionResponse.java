@@ -59,6 +59,11 @@ public class SpeechRecognitionResponse {
     private String requestId;
 
     /**
+     * 录音文件ID（雪花算法生成）
+     */
+    private String fileId;
+
+    /**
      * 识别状态枚举
      */
     public enum RecognitionStatus {

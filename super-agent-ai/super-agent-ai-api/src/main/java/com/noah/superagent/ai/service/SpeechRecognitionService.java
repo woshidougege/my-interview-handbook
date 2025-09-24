@@ -19,9 +19,10 @@ public interface SpeechRecognitionService {
      * @param audioStream 录音文件输入流
      * @param filename 文件名（包含扩展名）
      * @param language 语言提示（可选，如：zh、en等）
+     * @param model 指定使用的模型（可选），null表示使用配置文件默认模型
      * @return 识别结果
      */
-    SpeechRecognitionResponse recognizeAudioStream(InputStream audioStream, String filename, String language);
+    SpeechRecognitionResponse recognizeAudioStream(InputStream audioStream, String filename, String language, String model);
 
 
 }
