@@ -251,43 +251,9 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                 }
             }
             
-            // 首先尝试使用检测到的格式
-            try {
-                log.info("尝试使用主要格式进行识别: {}", realFormat);
-                return recognizeGummyFile(tempFilePath, realFormat, language, model);
-            } catch (Exception e) {
-                String errorMsg = e.getMessage();
-                log.warn("使用检测格式 {} 失败: {}", realFormat, errorMsg);
-                
-                // 如果是NO_VALID_AUDIO_ERROR，说明格式不兼容，需要尝试其他格式
-                if (errorMsg != null && errorMsg.contains("NO_VALID_AUDIO_ERROR")) {
-                    log.warn("检测到格式不兼容错误，启动智能回退策略");
-                }
-                
-                // 智能回退策略
-                List<String> fallbackFormats = getFallbackFormats(realFormat, fileExtension);
-                
-                if (fallbackFormats.isEmpty()) {
-                    log.error("没有可用的回退格式，识别失败");
-                    throw e;
-                }
-                
-                log.info("开始尝试 {} 个回退格式: {}", fallbackFormats.size(), fallbackFormats);
-                
-                for (String fallbackFormat : fallbackFormats) {
-                    log.warn("尝试回退格式: {}", fallbackFormat);
-                    try {
-                        SpeechRecognitionResponse result = recognizeGummyFile(tempFilePath, fallbackFormat, language, model);
-                        log.info("回退格式 {} 识别成功！", fallbackFormat);
-                        return result;
-                    } catch (Exception fallbackException) {
-                        log.warn("回退格式 {} 也失败: {}", fallbackFormat, fallbackException.getMessage());
-                    }
-                }
-                
-                log.error("所有格式都失败（主格式: {}，回退格式: {}），抛出原始异常", realFormat, fallbackFormats);
-                throw e; // 所有回退都失败，抛出原始异常
-            }
+            // 使用检测到的格式进行识别（只请求一次）
+            log.info("使用格式 {} 进行语音识别", realFormat);
+            return recognizeGummyFile(tempFilePath, realFormat, language, model);
             
         } catch (Exception e) {
             log.error("Gummy识别失败", e);
