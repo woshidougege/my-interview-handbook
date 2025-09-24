@@ -24,12 +24,8 @@ super-agent:
 
           只返回标题文本。
         
-      # 语音识别配置
+      # 语音识别配置 - 使用本地FunASR
       speech-recognition:
-        model: ${AI_SPEECH_RECOGNITION_MODEL:gummy-realtime-v1}
-        sample-rate: ${AI_SPEECH_RECOGNITION_SAMPLE_RATE:16000}
-        audio-format: ${AI_SPEECH_RECOGNITION_FORMAT:wav}
-        language-hints: ${AI_SPEECH_RECOGNITION_LANGUAGE:zh}
-        enable-punctuation: ${AI_SPEECH_RECOGNITION_PUNCTUATION:true}
-        enable-itn: ${AI_SPEECH_RECOGNITION_ITN:true}
-        heartbeat: ${AI_SPEECH_RECOGNITION_HEARTBEAT:true}
+        funasr:
+          server-url: ${FUNASR_SERVER_URL:http://localhost:5000}
+          timeout: 120
