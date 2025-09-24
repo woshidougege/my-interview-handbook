@@ -43,7 +43,7 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     private final KunlunProperties kunlunProperties;
 
     @Override
-    public FileUploadResponse uploadFile(String entityCode, String directory, MultipartFile file) {
+    public FileUploadResponse uploadFile(String userEntityCode ,String directory, MultipartFile file) {
         CloseableHttpClient httpClient = null;
         CloseableHttpResponse response = null;
 
@@ -67,24 +67,10 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
             // 设置请求头
             httpPost.setHeader("Accept", "*/*");
 
-            // 验证entityCode是否为空
-            if (entityCode == null || entityCode.trim().isEmpty()) {
-                log.warn("entityCode不能为空，使用默认值: default_entity");
-                entityCode = "default_entity";
-            }
-
-            // 新增：校验entityCode格式
-            if (!isValidEntityCode(entityCode)) {
-                log.warn("entityCode格式不合法: {}", entityCode);
-                FileUploadResponse errorResponse = new FileUploadResponse();
-                errorResponse.setName("upload_failed");
-                errorResponse.setUrl("");
-                return errorResponse;
-            }
 
             // 构建params参数
             Map<String, String> paramsMap = new HashMap<>();
-            paramsMap.put("entityCode", entityCode);
+            paramsMap.put("entityCode", userEntityCode);
             paramsMap.put("directory", directory != null ? directory : "");
 
             ObjectMapper objectMapper = new ObjectMapper();
@@ -127,17 +113,23 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
                 }
             }
 
-            log.warn("文件上传接口调用失败，返回码: {}", codeObj);
+            // 获取原始错误信息
+            String errorMessage = (String) responseMap.get("message");
+            if (errorMessage == null || errorMessage.isEmpty()) {
+                errorMessage = "文件上传接口调用失败";
+            }
+            
+            log.warn("文件上传接口调用失败，返回码: {}，错误信息: {}", codeObj, errorMessage);
             FileUploadResponse errorResponse = new FileUploadResponse();
             errorResponse.setName("upload_failed");
-            errorResponse.setUrl("");
+            errorResponse.setUrl(errorMessage); // 将原始错误信息传递回去
             return errorResponse;
 
         } catch (Exception e) {
             log.error("调用文件上传接口时发生异常", e);
             FileUploadResponse errorResponse = new FileUploadResponse();
             errorResponse.setName("upload_failed");
-            errorResponse.setUrl("");
+            errorResponse.setUrl("调用文件上传接口时发生异常: " + e.getMessage());
             return errorResponse;
         } finally {
             // 关闭资源
@@ -155,7 +147,7 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     }
 
     @Override
-    public List<String> listObjectNames(String entityCode, String directory, boolean recursive) {
+    public List<String> listObjectNames( String directory, boolean recursive) {
         try {
             // 构建请求URL - 使用配置项
             String url = kunlunProperties.getFileRepository().getListObjectNamesPath()
@@ -228,7 +220,7 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     }
 
     @Override
-    public String getObjectURL(String entityCode, String filename) {
+    public String getObjectURL(String filename) {
         try {
             // 构建请求URL - 使用配置项
             String url =kunlunProperties.getFileRepository().getGetObjectUrlPath()
