@@ -16,6 +16,7 @@ import com.noah.superagent.common.dto.response.SpeechRecognitionResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.mime.MediaType;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import java.io.File;
@@ -35,7 +36,7 @@ import org.apache.tika.Tika;
 /**
  * 语音识别服务实现类
  * 支持阿里云百炼Gummy实时语音识别API和Fun-ASR录音文件识别API
- * 
+ * <p>
  * 注意：临时文件不会自动删除，需要定期手动清理temp/uploads目录
  *
  * @author 任相鹏
@@ -345,7 +346,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         
         // 检查是否有错误
         if (result.getError() != null) {
-            log.error("识别出错: {}", result.getError());
+            log.error("识别出错: {}", result.getError().getMessage());
             return SpeechRecognitionResponse.builder()
                     .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
                     .errorMessage("识别失败: " + result.getError().getMessage())
@@ -357,18 +358,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             log.info("识别请求ID: {}", result.getRequestId());
             
             // 从转录结果中获取文本
-            StringBuilder textBuilder = new StringBuilder();
-            ArrayList<TranscriptionResult> transcriptionResults = result.getTranscriptionResultList();
-            
-            if (transcriptionResults != null && !transcriptionResults.isEmpty()) {
-                for (TranscriptionResult transcriptionResult : transcriptionResults) {
-                    if (transcriptionResult.getText() != null) {
-                        textBuilder.append(transcriptionResult.getText());
-                    }
-                }
-            }
-            
-            String text = textBuilder.toString().trim();
+            String text = getText(result);
             log.info("识别结果: {}", text);
             
             // 生成录音文件ID
@@ -398,6 +388,22 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                     .isFinal(true)
                     .build();
         }
+    }
+
+    @NotNull
+    private static String getText(TranslationRecognizerResultPack result) {
+        StringBuilder textBuilder = new StringBuilder();
+        ArrayList<TranscriptionResult> transcriptionResults = result.getTranscriptionResultList();
+
+        if (transcriptionResults != null && !transcriptionResults.isEmpty()) {
+            for (TranscriptionResult transcriptionResult : transcriptionResults) {
+                if (transcriptionResult.getText() != null) {
+                    textBuilder.append(transcriptionResult.getText());
+                }
+            }
+        }
+
+        return textBuilder.toString().trim();
     }
 
     /**
@@ -505,7 +511,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             }
             
         } catch (Exception e) {
-            log.error("检测音频格式失败: {}", filePath, e);
+            log.error("检测音频格式失败: {} - {}", filePath, e.getMessage());
             return null;
         }
     }
@@ -523,13 +529,23 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         String type = mediaType.getType();
         String subtype = mediaType.getSubtype();
         
-        // 只处理音频类型
-        if (!"audio".equals(type)) {
-            log.debug("非音频类型: {}", mediaType);
+        // 处理音频类型和特殊的容器格式
+        if ("audio".equals(type)) {
+            // 标准音频类型处理 - 根据子类型映射到我们支持的格式
+            return mapAudioSubtypeToFormat(subtype, mediaType);
+        } else if ("application".equals(type)) {
+            // 处理特殊的容器格式（如WebM）
+            return handleApplicationMediaType(subtype);
+        } else {
+            log.debug("不支持的媒体类型: {}", mediaType);
             return null;
         }
-        
-        // 根据子类型映射到我们支持的格式
+    }
+    
+    /**
+     * 将音频子类型映射为支持的格式
+     */
+    private String mapAudioSubtypeToFormat(String subtype, MediaType mediaType) {
         switch (subtype.toLowerCase()) {
             case "wav":
             case "wave":
@@ -567,6 +583,32 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                 
             default:
                 log.debug("未映射的音频子类型: {} (完整类型: {})", subtype, mediaType);
+                return null;
+        }
+    }
+    
+    /**
+     * 处理application类型的媒体格式（主要是容器格式）
+     */
+    private String handleApplicationMediaType(String subtype) {
+        switch (subtype.toLowerCase()) {
+            case "x-matroska":
+                // WebM格式（Matroska容器），通常包含Opus音频
+                log.info("检测到WebM/Matroska容器格式，映射为opus格式");
+                return "opus";
+                
+            case "ogg":
+                // OGG容器格式，通常包含Opus或Vorbis音频
+                log.info("检测到OGG容器格式，映射为opus格式");
+                return "opus";
+                
+            case "octet-stream":
+                // 二进制流，需要进一步判断（暂时返回null让后续处理）
+                log.debug("检测到二进制流，无法确定具体格式");
+                return null;
+                
+            default:
+                log.debug("未支持的application子类型: {}", subtype);
                 return null;
         }
     }
