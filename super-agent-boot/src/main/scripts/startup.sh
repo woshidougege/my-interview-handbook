@@ -68,9 +68,15 @@ MODULES_DIR="$APP_HOME/modules"
 # Spring Boot会自动创建和管理PID文件，确保与应用生命周期同步
 # 使用独立的pid目录，与bin、logs、conf等目录同级
 PID_FILE="$APP_HOME/pid/${APP_NAME}.pid"
-# 日志文件 (由logback管理，这里只用于状态和tail命令)
-LOG_FILE="$APP_HOME/logs/${APP_NAME}-info.log"
-ERROR_LOG_FILE="$APP_HOME/logs/${APP_NAME}-error.log"
+# 日志文件 (由log4j2管理，这里只用于状态和tail命令)
+# 总日志文件 - 包含所有级别的日志，直接放在logs目录下
+ALL_LOG_FILE="$APP_HOME/logs/${APP_NAME}.log"
+INFO_LOG_FILE="$APP_HOME/logs/info/${APP_NAME}-info.log"
+WARN_LOG_FILE="$APP_HOME/logs/warn/${APP_NAME}-warn.log"
+ERROR_LOG_FILE="$APP_HOME/logs/error/${APP_NAME}-error.log"
+DEBUG_LOG_FILE="$APP_HOME/logs/debug/${APP_NAME}-debug.log"
+# 默认查看总日志
+LOG_FILE="$ALL_LOG_FILE"
 
 # === Java 和 JVM 配置 ===
 # Java命令路径 (如果不在PATH中，请指定绝对路径)
@@ -128,8 +134,12 @@ check_java() {
 
 # 准备启动环境：构建CLASSPATH、创建必要目录、开启ANSI颜色
 prepare_startup() {
-    # 创建必要的目录
+    # 创建必要的目录结构
     mkdir -p "$APP_HOME/logs"
+    mkdir -p "$APP_HOME/logs/info"
+    mkdir -p "$APP_HOME/logs/warn"
+    mkdir -p "$APP_HOME/logs/error"
+    mkdir -p "$APP_HOME/logs/debug"
     mkdir -p "$APP_HOME/pid"
     export SPRING_OUTPUT_ANSI_ENABLED=ALWAYS
     # 设置日志路径为绝对路径，确保无论在哪个目录启动都写入到项目根目录
@@ -291,10 +301,11 @@ start() {
     START_CMD="$JAVA_CMD $JVM_OPTS -cp $CLASSPATH $MAIN_CLASS $SPRING_OPTS"
 
     echo ""
-    echo -e "${GREEN}🚀 启动中，日志将由Logback管理...${NC}"
+    echo -e "${GREEN}🚀 启动中，日志将由Log4j2管理...${NC}"
     echo -e "   ${CYAN}- 控制台将显示彩色日志${NC}"
-    echo -e "   ${CYAN}- 文件日志将写入:${NC} ${BLUE}$LOG_FILE${NC}"
-    echo -e "   ${CYAN}- 错误日志将写入:${NC} ${BLUE}$ERROR_LOG_FILE${NC}"
+    echo -e "   ${CYAN}- 总日志文件:${NC} ${BLUE}$ALL_LOG_FILE${NC} ${YELLOW}(包含所有级别)${NC}"
+    echo -e "   ${CYAN}- 信息日志文件:${NC} ${BLUE}$INFO_LOG_FILE${NC}"
+    echo -e "   ${CYAN}- 错误日志文件:${NC} ${BLUE}$ERROR_LOG_FILE${NC}"
     echo -e "${BG_BLUE}${WHITE} 📋 按 Ctrl+C 可停止应用 ${NC}"
     echo -e "${CYAN}--------------------------------------------------------------------------------${NC}"
     
@@ -366,19 +377,73 @@ restart() {
     echo -e "${BLUE}🔄 重启 ${BOLD}$APP_NAME${NC}${BLUE}...${NC}"
     stop
     sleep 2
-    daemon
+    # 后台启动
+    if daemon; then
+        echo -e "${GREEN}✅ 应用已重启，正在显示实时日志...${NC}"
+        echo -e "${YELLOW}⏳ 等待3秒让应用完全启动...${NC}"
+        sleep 3
+        # 启动完成后立即显示实时日志
+        logs
+    else
+        echo -e "${RED}❌ 重启失败${NC}"
+        return 1
+    fi
 }
 
-# 日志查看函数
+# 日志查看函数 - 支持查看不同类型日志
 logs() {
-    if [ ! -f "$LOG_FILE" ]; then
-        echo -e "${RED}❌ 日志文件不存在:${NC} ${BLUE}$LOG_FILE${NC}"
+    local log_type="${2:-all}"  # 默认查看总日志
+    local target_log_file=""
+    local log_desc=""
+    
+    case "$log_type" in
+        all|total)
+            target_log_file="$ALL_LOG_FILE"
+            log_desc="总日志(所有级别)"
+            ;;
+        info)
+            target_log_file="$INFO_LOG_FILE"
+            log_desc="信息日志"
+            ;;
+        warn)
+            target_log_file="$WARN_LOG_FILE"
+            log_desc="警告日志"
+            ;;
+        error)
+            target_log_file="$ERROR_LOG_FILE"
+            log_desc="错误日志"
+            ;;
+        debug)
+            target_log_file="$DEBUG_LOG_FILE"
+            log_desc="调试日志"
+            ;;
+        *)
+            echo -e "${YELLOW}📋 可用的日志类型:${NC}"
+            echo -e "   ${GREEN}all${NC}/${GREEN}total${NC}  - 总日志(所有级别) ${BLUE}$ALL_LOG_FILE${NC}"
+            echo -e "   ${GREEN}info${NC}   - 信息日志 ${BLUE}$INFO_LOG_FILE${NC}"
+            echo -e "   ${GREEN}warn${NC}   - 警告日志 ${BLUE}$WARN_LOG_FILE${NC}"
+            echo -e "   ${GREEN}error${NC}  - 错误日志 ${BLUE}$ERROR_LOG_FILE${NC}"
+            echo -e "   ${GREEN}debug${NC}  - 调试日志 ${BLUE}$DEBUG_LOG_FILE${NC}"
+            echo ""
+            echo -e "${CYAN}使用方法:${NC} ${GREEN}$0 logs [log_type]${NC}"
+            echo -e "${CYAN}示例:${NC}"
+            echo -e "   ${GREEN}$0 logs${NC}        # 查看总日志"
+            echo -e "   ${GREEN}$0 logs all${NC}     # 查看总日志"
+            echo -e "   ${GREEN}$0 logs error${NC}   # 查看错误日志"
+            return 1
+            ;;
+    esac
+    
+    if [ ! -f "$target_log_file" ]; then
+        echo -e "${RED}❌ 日志文件不存在:${NC} ${BLUE}$target_log_file${NC}"
+        echo -e "${YELLOW}💡 提示: 如果应用刚启动，请稍等片刻后再试${NC}"
         exit 1
     fi
     
-    echo -e "${CYAN}📋 正在查看日志 ${YELLOW}(按 Ctrl+C 退出)${CYAN}:${NC} ${BLUE}$LOG_FILE${NC}"
+    echo -e "${CYAN}📋 正在查看${YELLOW}${log_desc}${CYAN} ${YELLOW}(按 Ctrl+C 退出)${NC}"
+    echo -e "${CYAN}📄 文件路径:${NC} ${BLUE}$target_log_file${NC}"
     echo -e "${CYAN}--------------------------------------------------------------------------------${NC}"
-    tail -f "$LOG_FILE"
+    tail -f "$target_log_file"
 }
 
 
@@ -497,7 +562,10 @@ display_menu() {
         "🛑 停止应用 (stop)"
         "🔄 重启应用 (restart)"
         "📋 查看状态 (status)"
-        "📝 查看日志 (logs)"
+        "📝 查看总日志 (logs)"
+        "⚠️  查看错误日志 (logs error)"
+        "💡 查看警告日志 (logs warn)" 
+        "ℹ️  查看信息日志 (logs info)"
         "🐛 调试模式 (debug)"
         "🧹 清理进程 (cleanup)"
         "🌐 前台启动+URL显示"
@@ -561,16 +629,31 @@ execute_menu_option() {
             return 0  # 返回菜单
             ;;
         6)
-            echo -e "${GREEN}正在执行: 查看日志...${NC}"
-            logs
+            echo -e "${GREEN}正在执行: 查看总日志...${NC}"
+            logs "" all
             return 1  # 退出菜单
             ;;
         7)
+            echo -e "${GREEN}正在执行: 查看错误日志...${NC}"
+            logs "" error
+            return 1  # 退出菜单
+            ;;
+        8)
+            echo -e "${GREEN}正在执行: 查看警告日志...${NC}"
+            logs "" warn
+            return 1  # 退出菜单
+            ;;
+        9)
+            echo -e "${GREEN}正在执行: 查看信息日志...${NC}"
+            logs "" info
+            return 1  # 退出菜单
+            ;;
+        10)
             echo -e "${GREEN}正在执行: 调试模式...${NC}"
             debug
             return 1  # 退出菜单
             ;;
-        8)
+        11)
             echo -e "${GREEN}正在执行: 清理进程...${NC}"
             cleanup_old_prompts
             echo -e "${GREEN}✅ 已清理所有提示进程${NC}"
@@ -579,19 +662,19 @@ execute_menu_option() {
             read -n 1 -s
             return 0  # 返回菜单
             ;;
-        9)
+        12)
             echo -e "${GREEN}正在执行: 前台启动+URL显示...${NC}"
             export URLS=on
             start
             return 1  # 退出菜单
             ;;
-        10)
+        13)
             echo -e "${GREEN}正在执行: 后台启动+URL显示...${NC}"
             export URLS=on
             daemon
             return 1  # 退出菜单
             ;;
-        11)
+        14)
             echo -e "${PURPLE}👋 再见！${NC}"
             exit 0
             ;;
@@ -619,7 +702,7 @@ interactive_menu() {
     trap cleanup_terminal EXIT INT TERM
     
     local selected=1
-    local max_options=11
+    local max_options=14
     local menu_start_line
     
     while true; do
@@ -710,13 +793,19 @@ interactive_menu() {
                 echo -e "${PURPLE}👋 再见！${NC}"
                 exit 0
                 ;;
-            '1')  # 数字1，可能是10或11
+            '1')  # 数字1，可能是10、11、12、13、14
                 read -n 1 -t 0.2 key2 2>/dev/null
                 local choice_num="1"
                 if [ "$key2" = "0" ]; then
                     choice_num="10"
                 elif [ "$key2" = "1" ]; then
                     choice_num="11"
+                elif [ "$key2" = "2" ]; then
+                    choice_num="12"
+                elif [ "$key2" = "3" ]; then
+                    choice_num="13"
+                elif [ "$key2" = "4" ]; then
+                    choice_num="14"
                 fi
                 
                 if [ "$choice_num" -le "$max_options" ] && [ "$choice_num" -ge "1" ]; then
@@ -787,7 +876,7 @@ case "$1" in
         echo -e "  ${GREEN}stop${NC}         - 停止应用"
         echo -e "  ${GREEN}restart${NC}      - 重启应用"
         echo -e "  ${GREEN}status${NC}       - 查看运行状态"
-        echo -e "  ${GREEN}logs${NC}         - 实时查看日志"
+        echo -e "  ${GREEN}logs${NC}         - 实时查看日志 [all|info|warn|error|debug]"
         echo -e "  ${GREEN}debug${NC}        - 远程调试模式（前台运行，开启JVM调试端口，默认5005）"
         echo -e "  ${GREEN}cleanup${NC}      - 清理残留的提示进程"
         echo -e "  ${GREEN}-i${NC}/${GREEN}interactive${NC} - 📱 ${BOLD}交互式菜单模式${NC} ${YELLOW}(推荐)${NC}"
@@ -799,6 +888,8 @@ case "$1" in
         echo -e "  ${GREEN}$0 -i${NC}               ${PURPLE}# 🎯 交互式菜单（推荐使用）${NC}"
         echo -e "  ${GREEN}$0 start urls${NC}       ${PURPLE}# 前台启动并打印组件URL${NC}"
         echo -e "  ${GREEN}$0 daemon urls${NC}      ${PURPLE}# 后台启动并打印组件URL${NC}"
+        echo -e "  ${GREEN}$0 logs${NC}             ${PURPLE}# 查看总日志${NC}"
+        echo -e "  ${GREEN}$0 logs error${NC}       ${PURPLE}# 查看错误日志${NC}"
         echo -e "  ${GREEN}$0 debug urls 5005${NC}  ${PURPLE}# 调试模式并打印组件URL${NC}"
         echo -e "  ${GREEN}$0 cleanup${NC}          ${PURPLE}# 手动清理提示进程${NC}"
         echo ""

@@ -27,10 +27,32 @@
             </PatternLayout>
         </Console>
 
+        <!-- 总日志文件Appender - 包含所有级别 -->
+        <RollingFile name="ALL_FILE" 
+                     fileName="${LOG_PATH}/${APP_NAME}.log"
+                     filePattern="${LOG_PATH}/${APP_NAME}.%d{yyyy-MM-dd}.%i.log.gz">
+            <!-- 记录所有级别 -->
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout>
+                <Pattern>${FILE_LOG_PATTERN}</Pattern>
+                <Charset>UTF-8</Charset>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="${MAX_FILE_SIZE}" />
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX_HISTORY}">
+                <Delete basePath="${LOG_PATH}" maxDepth="1">
+                    <IfFileName glob="${APP_NAME}.*.log.gz" />
+                    <IfAccumulatedFileSize exceeds="${TOTAL_SIZE_CAP}" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
         <!-- INFO级别日志文件Appender -->
         <RollingFile name="INFO_FILE" 
-                     fileName="${LOG_PATH}/${APP_NAME}-info.log"
-                     filePattern="${LOG_PATH}/${APP_NAME}-info.%d{yyyy-MM-dd}.%i.log.gz">
+                     fileName="${LOG_PATH}/info/${APP_NAME}-info.log"
+                     filePattern="${LOG_PATH}/info/${APP_NAME}-info.%d{yyyy-MM-dd}.%i.log.gz">
             <!-- 只记录INFO级别及以上 -->
             <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
             <PatternLayout>
@@ -42,8 +64,30 @@
                 <SizeBasedTriggeringPolicy size="${MAX_FILE_SIZE}" />
             </Policies>
             <DefaultRolloverStrategy max="${MAX_HISTORY}">
-                <Delete basePath="${LOG_PATH}" maxDepth="1">
+                <Delete basePath="${LOG_PATH}/info" maxDepth="1">
                     <IfFileName glob="${APP_NAME}-info.*.log.gz" />
+                    <IfAccumulatedFileSize exceeds="${TOTAL_SIZE_CAP}" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- WARN级别日志文件Appender -->
+        <RollingFile name="WARN_FILE" 
+                     fileName="${LOG_PATH}/warn/${APP_NAME}-warn.log"
+                     filePattern="${LOG_PATH}/warn/${APP_NAME}-warn.%d{yyyy-MM-dd}.%i.log.gz">
+            <!-- 只记录WARN级别 -->
+            <LevelRangeFilter minLevel="WARN" maxLevel="WARN" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout>
+                <Pattern>${FILE_LOG_PATTERN}</Pattern>
+                <Charset>UTF-8</Charset>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="${MAX_FILE_SIZE}" />
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX_HISTORY}">
+                <Delete basePath="${LOG_PATH}/warn" maxDepth="1">
+                    <IfFileName glob="${APP_NAME}-warn.*.log.gz" />
                     <IfAccumulatedFileSize exceeds="${TOTAL_SIZE_CAP}" />
                 </Delete>
             </DefaultRolloverStrategy>
@@ -51,8 +95,8 @@
 
         <!-- ERROR级别日志文件Appender -->
         <RollingFile name="ERROR_FILE" 
-                     fileName="${LOG_PATH}/${APP_NAME}-error.log"
-                     filePattern="${LOG_PATH}/${APP_NAME}-error.%d{yyyy-MM-dd}.%i.log.gz">
+                     fileName="${LOG_PATH}/error/${APP_NAME}-error.log"
+                     filePattern="${LOG_PATH}/error/${APP_NAME}-error.%d{yyyy-MM-dd}.%i.log.gz">
             <!-- 只记录ERROR级别 -->
             <LevelRangeFilter minLevel="ERROR" maxLevel="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
             <PatternLayout>
@@ -64,20 +108,54 @@
                 <SizeBasedTriggeringPolicy size="${MAX_FILE_SIZE}" />
             </Policies>
             <DefaultRolloverStrategy max="${MAX_HISTORY}">
-                <Delete basePath="${LOG_PATH}" maxDepth="1">
+                <Delete basePath="${LOG_PATH}/error" maxDepth="1">
                     <IfFileName glob="${APP_NAME}-error.*.log.gz" />
                     <IfAccumulatedFileSize exceeds="${TOTAL_SIZE_CAP}" />
                 </Delete>
             </DefaultRolloverStrategy>
         </RollingFile>
 
+        <!-- DEBUG级别日志文件Appender -->
+        <RollingFile name="DEBUG_FILE" 
+                     fileName="${LOG_PATH}/debug/${APP_NAME}-debug.log"
+                     filePattern="${LOG_PATH}/debug/${APP_NAME}-debug.%d{yyyy-MM-dd}.%i.log.gz">
+            <!-- 只记录DEBUG级别 -->
+            <LevelRangeFilter minLevel="DEBUG" maxLevel="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout>
+                <Pattern>${FILE_LOG_PATTERN}</Pattern>
+                <Charset>UTF-8</Charset>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="${MAX_FILE_SIZE}" />
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX_HISTORY}">
+                <Delete basePath="${LOG_PATH}/debug" maxDepth="1">
+                    <IfFileName glob="${APP_NAME}-debug.*.log.gz" />
+                    <IfAccumulatedFileSize exceeds="${TOTAL_SIZE_CAP}" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
         <!-- 异步Appender包装器 -->
+        <Async name="ASYNC_ALL_FILE" includeLocation="true">
+            <AppenderRef ref="ALL_FILE"/>
+        </Async>
+
         <Async name="ASYNC_INFO_FILE" includeLocation="true">
             <AppenderRef ref="INFO_FILE"/>
         </Async>
 
+        <Async name="ASYNC_WARN_FILE" includeLocation="true">
+            <AppenderRef ref="WARN_FILE"/>
+        </Async>
+
         <Async name="ASYNC_ERROR_FILE" includeLocation="true">
             <AppenderRef ref="ERROR_FILE"/>
+        </Async>
+
+        <Async name="ASYNC_DEBUG_FILE" includeLocation="true">
+            <AppenderRef ref="DEBUG_FILE"/>
         </Async>
     </Appenders>
 
@@ -86,22 +164,31 @@
         <!-- MyBatis Flex SQL日志 -->
         <Logger name="com.mybatisflex" level="${spring:logging.level.com.mybatisflex:-INFO}" additivity="false">
             <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_ALL_FILE"/>
             <AppenderRef ref="ASYNC_INFO_FILE"/>
+            <AppenderRef ref="ASYNC_WARN_FILE"/>
             <AppenderRef ref="ASYNC_ERROR_FILE"/>
+            <AppenderRef ref="ASYNC_DEBUG_FILE"/>
         </Logger>
 
         <!-- Druid SQL日志 -->
         <Logger name="druid.sql" level="${spring:logging.level.com.alibaba.druid:-INFO}" additivity="false">
             <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_ALL_FILE"/>
             <AppenderRef ref="ASYNC_INFO_FILE"/>
+            <AppenderRef ref="ASYNC_WARN_FILE"/>
             <AppenderRef ref="ASYNC_ERROR_FILE"/>
+            <AppenderRef ref="ASYNC_DEBUG_FILE"/>
         </Logger>
 
         <!-- 项目业务日志 -->
         <Logger name="com.noah.superagent" level="${spring:logging.level.com.noah.superagent:-INFO}" additivity="false">
             <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_ALL_FILE"/>
             <AppenderRef ref="ASYNC_INFO_FILE"/>
+            <AppenderRef ref="ASYNC_WARN_FILE"/>
             <AppenderRef ref="ASYNC_ERROR_FILE"/>
+            <AppenderRef ref="ASYNC_DEBUG_FILE"/>
         </Logger>
 
         <!-- Spring框架日志 -->
@@ -130,8 +217,11 @@
         <!-- Root Logger -->
         <Root level="${spring:logging.level.root:-INFO}">
             <AppenderRef ref="CONSOLE"/>
+            <AppenderRef ref="ASYNC_ALL_FILE"/>
             <AppenderRef ref="ASYNC_INFO_FILE"/>
+            <AppenderRef ref="ASYNC_WARN_FILE"/>
             <AppenderRef ref="ASYNC_ERROR_FILE"/>
+            <AppenderRef ref="ASYNC_DEBUG_FILE"/>
         </Root>
     </Loggers>
 </Configuration>
