@@ -122,14 +122,19 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                     .build();
         }
 
-        // 验证文件格式
-        if (!isValidAudioFormat(filename)) {
+        // 验证文件格式（对于前端Blob对象或无扩展名文件，跳过验证，通过内容检测）
+        if (!isValidAudioFormat(filename) && !isBlobOrNoExtension(filename)) {
             log.error("不支持的音频格式: {}", filename);
             return SpeechRecognitionResponse.builder()
                     .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
                     .errorMessage("不支持的音频格式，支持的格式: " + String.join(", ", speechProperties.getSupportedFormats()))
                     .isFinal(true)
                     .build();
+        }
+        
+        // 对于Blob文件或无扩展名文件，记录信息
+        if (isBlobOrNoExtension(filename)) {
+            log.info("检测到前端Blob对象或无扩展名文件: {}，将通过文件内容检测格式", filename);
         }
 
         try {
@@ -222,8 +227,27 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             if (realFormat == null) {
                 realFormat = fileExtension;
                 log.warn("无法检测音频文件真实格式，使用文件扩展名: {}", realFormat);
+                
+                // 如果是Blob文件且无法检测格式，返回错误
+                if (isBlobOrNoExtension(filename)) {
+                    return SpeechRecognitionResponse.builder()
+                            .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                            .errorMessage("无法识别音频文件格式，支持的格式: " + String.join(", ", speechProperties.getSupportedFormats()))
+                            .isFinal(true)
+                            .build();
+                }
             } else {
                 log.info("检测到音频文件真实格式: {} (文件名扩展名: {})", realFormat, fileExtension);
+                
+                // 验证检测到的格式是否支持
+                if (!speechProperties.getSupportedFormats().contains(realFormat.toLowerCase())) {
+                    log.error("检测到不支持的音频格式: {}", realFormat);
+                    return SpeechRecognitionResponse.builder()
+                            .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
+                            .errorMessage("不支持的音频格式: " + realFormat + "，支持的格式: " + String.join(", ", speechProperties.getSupportedFormats()))
+                            .isFinal(true)
+                            .build();
+                }
             }
             
             // 首先尝试使用检测到的格式
@@ -384,6 +408,22 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         
         String extension = getFileExtension(filename).toLowerCase();
         return speechProperties.getSupportedFormats().contains(extension);
+    }
+    
+    /**
+     * 判断是否是Blob对象或无扩展名文件
+     */
+    private boolean isBlobOrNoExtension(String filename) {
+        if (filename == null) return true;
+        
+        // 前端Blob对象默认文件名
+        if ("blob".equalsIgnoreCase(filename.trim())) {
+            return true;
+        }
+        
+        // 无扩展名或只有点号
+        String extension = getFileExtension(filename);
+        return extension.isEmpty() || ".".equals(extension);
     }
     
     /**
