@@ -491,5 +491,48 @@ export const resourceUsageApi = {
     return api.get(API_ENDPOINTS.RESOURCE_USAGE.HISTORY, { params });
   },
   };
+
+// ========== 文件仓库相关API ==========
+export const fileRepositoryApi = {
+  // 文件上传
+  uploadFile: (file: File, contextId: string, taskId?: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (contextId) {
+      formData.append('contextId', contextId);
+    } else {
+      return Promise.reject(new Error('上下文ID不能为空'));
+    }
+    if (taskId) {
+      formData.append('taskId', taskId);
+    }
+    return api.post(API_ENDPOINTS.FILE_REPOSITORY.UPLOAD, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   
+  // 获取文件列表
+  listFiles: (contextId?: string, taskId?: string, recursive: boolean = false): Promise<AxiosResponse<ApiResponse<any>>> => {
+    let directory = "";
+    if (contextId) {
+      directory = contextId;
+      if (taskId) {
+        directory += "/" + taskId;
+      }
+      directory += "/";
+    }
+    
+    return api.get(API_ENDPOINTS.FILE_REPOSITORY.LIST, { 
+      params: { directory, recursive } 
+    });
+  },
+  
+  // 获取文件URL
+  getFileUrl: (filename: string): Promise<AxiosResponse<ApiResponse<any>>> => {
+    return api.post(API_ENDPOINTS.FILE_REPOSITORY.GET_URL, { filename });
+  },
+};
+
 export default api;

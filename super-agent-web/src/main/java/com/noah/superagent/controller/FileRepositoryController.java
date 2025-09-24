@@ -34,14 +34,18 @@ public class FileRepositoryController {
      * 文件上传接口
      *
      * @param file 文件流
+     * @param contextId 上下文ID（必填）
+     * @param taskId 任务ID（可选）
      * @return 上传结果
      */
     @PostMapping(value = "/stream/put", consumes = "multipart/form-data")
     public ApiResponse<FileUploadResponse> uploadFile(
-            @RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "contextId") String contextId,
+            @RequestParam(value = "taskId", required = false) String taskId) throws IOException {
 
-        log.info("接收到文件上传请求: fileIsNull={}, fileIsEmpty={}"
-                , (file == null), (file == null ? "N/A" : file.isEmpty()));
+        log.info("接收到文件上传请求: fileIsNull={}, fileIsEmpty={}, contextId={}, taskId={}"
+                , (file == null), (file == null ? "N/A" : file.isEmpty()), contextId, taskId);
 
         // 如果文件不为空且非空文件，记录更多文件信息
         if (file != null && !file.isEmpty()) {
@@ -55,6 +59,11 @@ public class FileRepositoryController {
             return ApiResponse.error(400, "文件不能为空");
         }
 
+        // 检查contextId是否为空
+        if (contextId == null || contextId.isEmpty()) {
+            log.warn("上下文ID不能为空");
+            return ApiResponse.error(400, "上下文ID不能为空");
+        }
 
         String directory = "";
 
@@ -76,7 +85,15 @@ public class FileRepositoryController {
 
         // 构建用户实体编码
         String userEntityCode = "ENTITY_document_" + userId + "_" + phonenumber;
+        
+        // 构建目录结构: contextId/taskId/
+        directory = contextId;
+        if (taskId != null && !taskId.isEmpty()) {
+            directory += "/" + taskId;
+        }
+        directory += "/";
 
+        log.info("构建文件存储目录: {}", directory);
 
         // 调用服务层处理文件上传
         FileUploadResponse response = fileRepositoryService.uploadFile(userEntityCode, directory, file);
@@ -97,21 +114,27 @@ public class FileRepositoryController {
     /**
      * 列出指定目录下的文件名列表
      *
-     * @param directory  目录路径
+     * @param contextId  上下文ID（可选）
+     * @param taskId     任务ID（可选）
      * @param recursive  是否递归
      * @return 文件名列表
      */
     @GetMapping("/listObjectNames")
     public ApiResponse<List<String>> listObjectNames(
-            @RequestParam("directory") String directory,
+            @RequestParam(value = "contextId", required = false) String contextId,
+            @RequestParam(value = "taskId", required = false) String taskId,
             @RequestParam(value = "recursive", defaultValue = "false") boolean recursive) {
         
-        log.info("接收到文件列表请求: directory={}, recursive={}", directory, recursive);
+        log.info("接收到文件列表请求: contextId={}, taskId={}, recursive={}", contextId, taskId, recursive);
         
-        // 参数校验
-        if (directory == null) {
-            log.warn("目录参数不能为空");
-            return ApiResponse.error(400, "目录参数不能为空");
+        // 构建目录路径
+        String directory = "";
+        if (contextId != null && !contextId.isEmpty()) {
+            directory = contextId;
+            if (taskId != null && !taskId.isEmpty()) {
+                directory += "/" + taskId;
+            }
+            directory += "/";
         }
 
         List<String> fileNames = fileRepositoryService.listObjectNames(directory, recursive);

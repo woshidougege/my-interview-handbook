@@ -148,6 +148,15 @@ export const API_ENDPOINTS = {
     STATISTICS: 'resource-usage/statistics',
     HISTORY: 'resource-usage/history',
   },
+  
+  // ========== 文件仓库相关 ==========
+  // 后端: @RequestMapping("/api/v1/file-repository") -> 前端直接用: file-repository/*
+  FILE_REPOSITORY: {
+    BASE: 'file-repository',
+    UPLOAD: 'file-repository/stream/put',
+    LIST: 'file-repository/listObjectNames',
+    GET_URL: 'file-repository/getObjectURL',
+  },
 
   // ========== 向后兼容的旧API（无v1前缀） ==========
   // 这些API路径直接在/api下，没有v1版本
