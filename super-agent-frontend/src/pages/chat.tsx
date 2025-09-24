@@ -303,9 +303,13 @@ const ChatPage: React.FC = () => {
         timestamp: new Date().toISOString()
       };
 
-      // 更新消息列表
-      const newMessages = [...messages, userMessage];
-      setMessages(newMessages);
+      // 更新消息列表，确保按时间顺序排序
+      setMessages(prev => {
+        const newMessages = [...prev, userMessage].sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+        return newMessages;
+      });
       setInputValue('');
       
       // 滚动到底部
@@ -389,22 +393,52 @@ const ChatPage: React.FC = () => {
             // 检查消息ID是否已处理（去重）
             try {
               const jsonData = JSON.parse(chunk);
-              if (jsonData.id && processedMessageIds.has(jsonData.id)) {
-                console.log('跳过重复消息:', jsonData.id);
+              // 使用messageId作为唯一标识符进行去重
+              if (jsonData.result && 
+                  jsonData.result.status && 
+                  jsonData.result.status.message && 
+                  jsonData.result.status.message.messageId && 
+                  processedMessageIds.has(jsonData.result.status.message.messageId)) {
+                console.log('跳过重复消息:', jsonData.result.status.message.messageId);
                 return;
               }
               
               // 添加消息ID到已处理集合
-              if (jsonData.id) {
-                processedMessageIds.add(jsonData.id);
+              if (jsonData.result && 
+                  jsonData.result.status && 
+                  jsonData.result.status.message && 
+                  jsonData.result.status.message.messageId) {
+                processedMessageIds.add(jsonData.result.status.message.messageId);
               }
               
-              // 处理普通消息
-              if (jsonData.data && jsonData.data.parts && jsonData.data.parts[0]) {
-                const content = jsonData.data.parts[0].text || '';
-                if (content) {
-                  setCurrentStreamMessage(prev => prev + content);
+              // 处理普通消息 - 适配新的数据格式
+              let content = '';
+              if (jsonData.result && 
+                  jsonData.result.status && 
+                  jsonData.result.status.message && 
+                  jsonData.result.status.message.parts && 
+                  jsonData.result.status.message.parts.length > 0) {
+                
+                const parts = jsonData.result.status.message.parts;
+                // 遍历所有parts，提取内容
+                for (const part of parts) {
+                  // 处理data类型的part
+                  if (part.kind === 'data' && part.data) {
+                    // 处理LLM响应
+                    if (part.data.llm && part.data.llm.content) {
+                      content += part.data.llm.content;
+                    }
+                    // 可以在这里处理其他data类型
+                  }
+                  // 处理text类型的part
+                  else if (part.kind === 'text' && part.text) {
+                    content += part.text;
+                  }
                 }
+              }
+              
+              if (content) {
+                setCurrentStreamMessage(prev => prev + content);
               }
             } catch (e) {
               // 如果不是JSON格式，直接追加到当前流消息中
@@ -444,6 +478,28 @@ const ChatPage: React.FC = () => {
         setLoading(false);
         setIsStreaming(false);
         setCurrentStreamMessage('');
+      } else if (useA2A && useSSE) {
+        // 当使用A2A SSE时，将流式消息添加到消息列表中
+        if (currentStreamMessage) {
+          const assistantMessage: ChatMessage = {
+            id: `msg_${Date.now()}`,
+            role: 'assistant',
+            content: currentStreamMessage,
+            timestamp: new Date().toISOString()
+          };
+          
+          setMessages(prev => {
+            // 按时间戳排序所有消息
+            const newMessages = [...prev, assistantMessage].sort((a, b) => 
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+            return newMessages;
+          });
+        }
+        
+        setIsStreaming(false);
+        setCurrentStreamMessage('');
+        setLoading(false);
       }
     }
   };
@@ -604,16 +660,27 @@ const ChatPage: React.FC = () => {
             const message = item.status?.message || item.message;
             if (!message) return null;
             
-            // 合并所有parts的文本内容（仅处理文本类型）
+            // 合并所有parts的文本内容
             let content = '';
             const partsData: any[] = []; // 保存完整的parts数据供前端处理
             
             if (message.parts) {
               message.parts.forEach(part => {
                 partsData.push(part);
-                // 如果是文本类型，也添加到content中
-                if (typeof part === 'object' && part !== null && part.kind === 'text') {
-                  content += part.text || '';
+                // 处理不同类型的part
+                if (typeof part === 'object' && part !== null) {
+                  // 处理data类型的part
+                  if (part.kind === 'data' && part.data) {
+                    // 处理LLM响应
+                    if (part.data.llm && part.data.llm.content) {
+                      content += part.data.llm.content;
+                    }
+                    // 可以在这里处理其他data类型
+                  }
+                  // 处理text类型的part
+                  else if (part.kind === 'text' && part.text) {
+                    content += part.text;
+                  }
                 } else if (typeof part === 'string') {
                   content += part;
                 }
@@ -629,7 +696,14 @@ const ChatPage: React.FC = () => {
             };
           })
           .filter((msg): msg is ChatMessage => msg !== null) // 过滤掉null值
-          .reverse(); // 反转数组以正确的时间顺序展示消息
+          .sort((a, b) => {
+            const timeA = new Date(a.timestamp).getTime();
+            const timeB = new Date(b.timestamp).getTime();
+            // 处理无效日期的情况
+            if (isNaN(timeA)) return 1;
+            if (isNaN(timeB)) return -1;
+            return timeA - timeB;
+          }); // 按时间顺序排序，包含错误处理
       }
       
       const chatSession: ChatSession = {

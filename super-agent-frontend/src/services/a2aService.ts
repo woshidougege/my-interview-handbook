@@ -36,11 +36,19 @@ a2aApi.interceptors.response.use(
   }
 );
 
+export interface Attachment {
+  mimeType: string;
+  name: string;
+  originalName: string;
+  uri: string;
+}
+
 export interface A2AMessageRequest {
   userId: string;
   message: string;
   sessionId: string;
   contextId?: string;
+  attachments?: Attachment[];
 }
 
 export interface A2ASupplementInfoRequest {
@@ -170,41 +178,41 @@ export const sendJsonRpcMessage = (
         // 保留最后一个可能不完整的行在buffer中
         buffer = lines.pop() || '';
 
+        // 用于累积一个完整SSE事件的数据
+        let currentEvent: { id?: string; event?: string; data?: string } = {};
+        
         for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          // 只处理以 "data:" 开头的行
-          if (line.startsWith('data:')) {
-            const eventData = line.slice(5).trim(); // 移除 "data:" 前缀
-            // 如果是心跳消息 "ping" 或空数据，则忽略
-            if (eventData && eventData !== 'ping') {
-              try {
-                // 尝试解析JSON数据以检查messageId
-                const jsonData = JSON.parse(eventData);
-                if (jsonData.result && 
-                    jsonData.result.status && 
-                    jsonData.result.status.message && 
-                    jsonData.result.status.message.messageId) {
-                  const messageId = jsonData.result.status.message.messageId;
-                  
-                  // 如果消息已处理过，则跳过
-                  if (processedMessageIds.has(messageId)) {
-                    console.log('检测到重复消息，ID:', messageId, '已跳过');
-                    continue;
-                  }
-                  
-                  // 标记消息为已处理
-                  processedMessageIds.add(messageId);
-                  console.log('处理新消息，ID:', messageId);
-                }
-              } catch (e) {
-                // JSON解析失败，不影响数据传输
-                console.warn('JSON解析失败:', e);
+          const line = lines[i];
+          
+          // 处理空行，表示一个完整事件的结束
+          if (line === '') {
+            // 如果有累积的数据，则处理它
+            if (currentEvent.data) {
+              const eventData = currentEvent.data.trim();
+              // 如果是心跳消息 "ping" 或空数据，则忽略
+              if (eventData && eventData !== 'ping') {
+                onMessage(eventData);
               }
-              
-              onMessage(eventData);
+            }
+            // 重置当前事件
+            currentEvent = {};
+            continue;
+          }
+          
+          // 处理SSE字段
+          if (line.startsWith('id:')) {
+            currentEvent.id = line.slice(3).trim();
+          } else if (line.startsWith('event:')) {
+            currentEvent.event = line.slice(6).trim();
+          } else if (line.startsWith('data:')) {
+            // 累积data行（可能有多行data）
+            if (currentEvent.data) {
+              currentEvent.data += '\n' + line.slice(5).trim();
+            } else {
+              currentEvent.data = line.slice(5).trim();
             }
           }
-          // 忽略其他类型的SSE字段，如 id:, event:, retry:
+          // 忽略其他不支持的字段类型，如 retry:
         }
       }
 
@@ -367,19 +375,75 @@ export const streamMessage = (
       let buffer = '';
 
       function parseSSEData(data: string): void {
+        // 将新数据追加到缓冲区
         buffer += data;
+        
+        // 按行分割
         const lines = buffer.split('\n');
         // 保留最后一个可能不完整的行在buffer中
         buffer = lines.pop() || '';
 
+        // 用于累积一个完整SSE事件的数据
+        let currentEvent: { id?: string; event?: string; data?: string } = {};
+        
         for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (line.startsWith('data:')) {
-            const eventData = line.slice(5).trim();
-            if (eventData && eventData !== 'ping') {
-              onMessage(eventData);
+          const line = lines[i];
+          
+          // 处理空行，表示一个完整事件的结束
+          if (line === '') {
+            // 如果有累积的数据，则处理它
+            if (currentEvent.data) {
+              const eventData = currentEvent.data.trim();
+              // 如果是心跳消息 "ping" 或空数据，则忽略
+              if (eventData && eventData !== 'ping') {
+                try {
+                  // 尝试解析JSON数据以检查messageId
+                  const jsonData = JSON.parse(eventData);
+                  if (jsonData.result && 
+                      jsonData.result.status && 
+                      jsonData.result.status.message && 
+                      jsonData.result.status.message.messageId) {
+                    const messageId = jsonData.result.status.message.messageId;
+                    
+                    // 如果消息已处理过，则跳过
+                    if (processedMessageIds.has(messageId)) {
+                      console.log('检测到重复消息，ID:', messageId, '已跳过');
+                      // 重置当前事件
+                      currentEvent = {};
+                      continue;
+                    }
+                    
+                    // 标记消息为已处理
+                    processedMessageIds.add(messageId);
+                    console.log('处理新消息，ID:', messageId);
+                  }
+                } catch (e) {
+                  // JSON解析失败，不影响数据传输
+                  console.warn('JSON解析失败:', e);
+                }
+                
+                onMessage(eventData);
+              }
+            }
+            // 重置当前事件
+            currentEvent = {};
+            continue;
+          }
+          
+          // 处理SSE字段
+          if (line.startsWith('id:')) {
+            currentEvent.id = line.slice(3).trim();
+          } else if (line.startsWith('event:')) {
+            currentEvent.event = line.slice(6).trim();
+          } else if (line.startsWith('data:')) {
+            // 累积data行（可能有多行data）
+            if (currentEvent.data) {
+              currentEvent.data += '\n' + line.slice(5).trim();
+            } else {
+              currentEvent.data = line.slice(5).trim();
             }
           }
+          // 忽略其他不支持的字段类型，如 retry:
         }
       }
 
