@@ -59,6 +59,9 @@ const AiChatPage: React.FC = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const speechServiceRef = useRef<any>(null);
+  
+  // 🔧 添加请求取消控制
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // 滚动到底部
   const scrollToBottom = () => {
@@ -107,6 +110,11 @@ const AiChatPage: React.FC = () => {
     clearTypewriterState();
     setIsStreaming(false);
     setLoading(false);
+    
+    // 🔧 清理AbortController引用
+    if (abortControllerRef.current) {
+      abortControllerRef.current = null;
+    }
   };
 
   // 加载会话列表
@@ -247,9 +255,25 @@ const AiChatPage: React.FC = () => {
 
   // 流式聊天核心逻辑
   const startStreamChat = async (chatMessages: ChatMessage[]) => {
+    // 🔧 取消之前的请求（如果存在）
+    if (abortControllerRef.current) {
+      console.log('🚫 取消之前的流式请求');
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // 🔧 防重复调用保护
+    if (isStreaming) {
+      console.log('⚠️ 已有流式请求在进行中，忽略新请求');
+      return;
+    }
+    
     setLoading(true);
     setIsStreaming(true);
     clearTypewriterState();
+    
+    // 🔧 创建新的AbortController
+    abortControllerRef.current = new AbortController();
 
     try {
       const chatHistory = chatMessages.map(msg => ({
@@ -276,6 +300,8 @@ const AiChatPage: React.FC = () => {
         // 重要：确保支持流式响应
         mode: 'cors',
         credentials: 'same-origin',
+        // 🔧 添加请求取消支持
+        signal: abortControllerRef.current?.signal,
       });
 
       console.log('📡 响应状态:', response.status, response.statusText);
@@ -291,11 +317,22 @@ const AiChatPage: React.FC = () => {
       await handleStreamResponse(response);
 
     } catch (error) {
+      // 🔧 如果是请求被取消，不需要显示错误
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🚫 请求已被取消');
+        return; // 静默返回，不重置状态
+      }
+      
       console.error('流式聊天失败:', error);
       setLoading(false);
       setIsStreaming(false);
       clearTypewriterState();
       throw error;
+    } finally {
+      // 🔧 清理AbortController引用
+      if (abortControllerRef.current) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -343,7 +380,11 @@ const AiChatPage: React.FC = () => {
         console.log('📄 分割出', lines.length, '行数据，剩余缓冲:', buffer.length, '字符');
         
         for (const line of lines) {
+          // 🔧 不要立即trim，需要检查原始内容
+          const originalLine = line;
           const trimmedLine = line.trim();
+          
+          // 跳过空行
           if (!trimmedLine) continue;
           
           console.log('📝 处理行数据:', trimmedLine);
@@ -362,11 +403,17 @@ const AiChatPage: React.FC = () => {
             continue;
           }
           
-          // 🔥 直接处理文本内容，无JSON解析开销
+          // 🔥 处理流式传输开始标记
           if (!hasStarted) {
             hasStarted = true;
             setLoading(false); // 第一个数据到达时停止loading
             console.log('🚀 开始接收HTTP流式数据');
+            
+            // 🔧 如果第一行是单个空格（连接建立标记），忽略它
+            if (originalLine === ' ' || originalLine === ' \n') {
+              console.log('🔧 忽略连接建立标记');
+              continue;
+            }
           }
           
           console.log('📝 实时添加内容:', trimmedLine.length > 50 ? trimmedLine.substring(0, 50) + '...' : trimmedLine);
@@ -385,6 +432,11 @@ const AiChatPage: React.FC = () => {
   // 发送消息
   const sendMessage = async () => {
     if (!inputValue.trim() || loading || isStreaming) {
+      if (isStreaming) {
+        console.log('⚠️ 流式传输进行中，请等待完成后再发送新消息');
+        // 可以显示提示消息
+        message.warning('AI正在回复中，请等待完成后再发送新消息');
+      }
       return;
     }
 
@@ -621,6 +673,11 @@ const AiChatPage: React.FC = () => {
   useEffect(() => {
     return () => {
       clearTypewriterState();
+      // 🔧 组件卸载时取消所有进行中的请求
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
     };
   }, []);
 
@@ -635,6 +692,19 @@ const AiChatPage: React.FC = () => {
           @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
+          }
+          
+          @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+          }
+          
+          .streaming-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #1890ff;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
           }
           
           /* 移动端适配样式 */
@@ -1057,6 +1127,20 @@ const AiChatPage: React.FC = () => {
                         </span>
                       </Button>
                     </Space.Compact>
+                    {/* 🔧 流式传输状态指示器 */}
+                    {isStreaming && (
+                      <div style={{ 
+                        padding: '4px 8px', 
+                        fontSize: '12px', 
+                        color: '#1890ff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <span className="streaming-dot"></span>
+                        AI正在思考中...
+                      </div>
+                    )}
                   </div>
                   
                   {/* 语音状态提示 */}

@@ -16,8 +16,8 @@ server:
     threads:
       worker: ${SERVER_UNDERTOW_WORKER_THREADS:8}
       io: ${SERVER_UNDERTOW_IO_THREADS:4}
-    # 缓冲区配置
-    buffer-size: ${SERVER_UNDERTOW_BUFFER_SIZE:1024}
+    # 缓冲区配置（调整为更适合流式传输的大小）
+    buffer-size: ${SERVER_UNDERTOW_BUFFER_SIZE:16384}
     # 使用直接内存提升性能
     direct-buffers: ${SERVER_UNDERTOW_DIRECT_BUFFERS:true}
     # 最大HTTP POST请求大小

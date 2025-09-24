@@ -9,16 +9,18 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.http.ResponseEntity;
 
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * AI聊天控制器
@@ -61,116 +63,127 @@ public class ChatController {
     /**
      * 流式聊天接口 - HTTP Streaming版本（推荐）
      */
-    @PostMapping(value = "/stream", produces = MediaType.TEXT_PLAIN_VALUE)
+    @PostMapping(value = "/stream")
     @Operation(summary = "流式聊天", description = "与AI进行流式对话，使用HTTP streaming实时返回内容")
-    public void streamChatHttp(
+    public ResponseEntity<StreamingResponseBody> streamChatHttp(
             @Parameter(description = "聊天请求") 
             @Valid @RequestBody ChatRequest request,
-            HttpServletResponse response) throws IOException {
+            HttpServletResponse servletResponse) {
         
         log.info("🚀 HTTP Streaming - 接收流式聊天请求，消息数量: {}", 
                 request.getMessages() != null ? request.getMessages().size() : 0);
         
-        // 🔧 设置HTTP streaming响应头
-        response.setContentType("text/plain; charset=utf-8");
-        response.setHeader("Cache-Control", "no-cache");
-        response.setHeader("Connection", "keep-alive");
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("X-Accel-Buffering", "no"); // 禁用Nginx缓冲
+        // 打印完整的消息历史用于调试
+        log.info("=== 后端收到的消息历史调试 ===");
+        for (int i = 0; i < request.getMessages().size(); i++) {
+            MessageDto msg = request.getMessages().get(i);
+            log.info("消息 {}: [{}] {}", i+1, msg.getRole(), msg.getContent());
+        }
+        log.info("==========================");
         
-        // 获取输出流
-        ServletOutputStream outputStream = response.getOutputStream();
+        // 转换消息格式
+        List<AiService.ChatMessage> chatMessages = request.getMessages().stream()
+                .map(msg -> new AiService.ChatMessage(msg.getRole(), msg.getContent()))
+                .collect(Collectors.toList());
         
-        try {
-            // 打印完整的消息历史用于调试
-            log.info("=== 后端收到的消息历史调试 ===");
-            for (int i = 0; i < request.getMessages().size(); i++) {
-                MessageDto msg = request.getMessages().get(i);
-                log.info("消息 {}: [{}] {}", i+1, msg.getRole(), msg.getContent());
-            }
-            log.info("==========================");
-            
-            // 转换消息格式
-            List<AiService.ChatMessage> chatMessages = request.getMessages().stream()
-                    .map(msg -> new AiService.ChatMessage(msg.getRole(), msg.getContent()))
-                    .collect(Collectors.toList());
-            
-            // 🔧 关键修复：改回同步处理，保持HTTP连接上下文
-            // HTTP Streaming必须在同一个请求线程中处理，异步会导致连接断开
-            aiService.streamChat(chatMessages, 
-                // 🚀 流式数据回调 - 直接在HTTP线程中处理
-                (chunk) -> {
-                    try {
-                        // 🔧 只检查outputStream是否可用
-                        if (outputStream == null) {
-                            log.warn("⚠️ OutputStream为null，停止发送数据");
-                            return; // 优雅退出，不抛异常
+        // 🔧 创建StreamingResponseBody
+        StreamingResponseBody responseBody = outputStream -> {
+            try {
+                // 🔧 立即发送一个字节来建立流式连接
+                outputStream.write(" ".getBytes("UTF-8"));
+                outputStream.flush();
+                try { servletResponse.flushBuffer(); } catch (Exception ignore) {}
+                log.info("✅ 流式连接已建立");
+                
+                // 使用闩锁在当前线程阻塞，直到流式完成，避免提前关闭连接
+                CountDownLatch doneLatch = new CountDownLatch(1);
+
+                // 🚀 调用AI服务进行流式聊天
+                aiService.streamChat(chatMessages, 
+                    // 流式数据回调
+                    (chunk) -> {
+                        try {
+                            // 🔥 立即发送纯文本数据
+                            String dataToSend = chunk + "\n";
+                            outputStream.write(dataToSend.getBytes("UTF-8"));
+                            outputStream.flush(); // 立即刷新
+                            try { servletResponse.flushBuffer(); } catch (Exception ignore) {}
+                            
+                            log.info("✅ HTTP流式数据已发送: [{}] 长度={}", 
+                                    chunk.length() > 50 ? chunk.substring(0, 50) + "..." : chunk,
+                                    chunk.length());
+                            
+                        } catch (IOException e) {
+                            if (e.getMessage() != null && (e.getMessage().contains("Stream is closed") || 
+                                e.getMessage().contains("Connection reset") ||
+                                e.getMessage().contains("Broken pipe"))) {
+                                log.info("🔌 客户端主动断开连接（可能是用户取消或发送新请求）: {}", e.getMessage());
+                            } else {
+                                log.error("❌ HTTP流式数据发送失败", e);
+                            }
+                            // 抛出RuntimeException停止流式处理
+                            throw new RuntimeException("连接断开", e);
+                        } catch (Exception e) {
+                            log.error("❌ 流式数据处理异常", e);
+                            throw new RuntimeException("流式处理失败", e);
                         }
-                        
-                        // 生成唯一时间戳
-                        long currentTimeMillis = System.currentTimeMillis();
-                        long nanoTime = System.nanoTime();
-                        String uniqueTimestamp = currentTimeMillis + "." + String.format("%06d", nanoTime % 1_000_000);
-                        
-                        // 🔥 立即发送纯文本数据
-                        String dataToSend = chunk + "\n";
-                        outputStream.write(dataToSend.getBytes("UTF-8"));
-                        outputStream.flush(); // 立即刷新
-                        
-                        log.info("✅ HTTP流式数据已发送: [{}] 长度={} 时间戳={}", 
-                                chunk.length() > 50 ? chunk.substring(0, 50) + "..." : chunk,
-                                chunk.length(), uniqueTimestamp);
-                        
-                    } catch (IOException e) {
-                        if (e.getMessage() != null && e.getMessage().contains("Stream is closed")) {
-                            log.warn("🔌 客户端断开连接，停止发送数据: {}", e.getMessage());
-                        } else {
-                            log.error("❌ HTTP流式数据发送失败", e);
-                        }
-                        // 抛出RuntimeException停止流式处理
-                        throw new RuntimeException("连接断开", e);
-                    } catch (Exception e) {
-                        log.error("❌ 流式数据处理异常", e);
-                        throw new RuntimeException("流式处理失败", e);
-                    }
-                },
-                // 🏁 完成回调
-                () -> {
-                    try {
-                        // 🔧 发送结束标记
-                        if (outputStream != null) {
+                    },
+                    // 完成回调
+                    () -> {
+                        try {
+                            // 🔧 发送结束标记
                             outputStream.write("[DONE]\n".getBytes("UTF-8"));
                             outputStream.flush();
-                            outputStream.close();
+                            try { servletResponse.flushBuffer(); } catch (Exception ignore) {}
                             log.info("✅ HTTP流式聊天正常完成");
-                        } else {
-                            log.warn("⚠️ OutputStream为null，无法发送完成标记");
+                        } catch (IOException e) {
+                            if (e.getMessage() != null && e.getMessage().contains("Stream is closed")) {
+                                log.info("🔌 连接在完成时已断开: {}", e.getMessage());
+                            } else {
+                                log.error("❌ 完成HTTP流式聊天时发生异常", e);
+                            }
+                        } catch (Exception e) {
+                            log.error("❌ 完成流式聊天时发生异常", e);
+                        } finally {
+                            // 无论成功或失败都释放等待，避免阻塞
+                            doneLatch.countDown();
                         }
-                    } catch (IOException e) {
-                        if (e.getMessage() != null && e.getMessage().contains("Stream is closed")) {
-                            log.info("🔌 连接在完成时已断开: {}", e.getMessage());
-                        } else {
-                            log.error("❌ 完成HTTP流式聊天时发生异常", e);
-                        }
-                    } catch (Exception e) {
-                        log.error("❌ 完成流式聊天时发生异常", e);
                     }
+                );
+                // 阻塞当前响应线程，直到AI流结束或超时，避免连接被提前关闭
+                try {
+                    boolean finished = doneLatch.await(300, TimeUnit.SECONDS);
+                    if (!finished) {
+                        log.warn("⏰ 流式聊天等待超时，主动结束连接");
+                    }
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    log.warn("⚠️ 流式聊天线程被中断");
                 }
-            );
-            
-        } catch (Exception e) {
-            log.error("HTTP流式聊天处理失败", e);
-            try {
-                if (outputStream != null) {
-                    String errorMsg = "ERROR: 抱歉，AI服务暂时出现问题，请稍后再试。\n[DONE]\n";
+
+            } catch (Exception e) {
+                log.error("HTTP流式聊天处理失败", e);
+                
+                // 尝试发送错误信息
+                try {
+                    String errorMsg = "ERROR: " + e.getMessage() + "\n";
                     outputStream.write(errorMsg.getBytes("UTF-8"));
                     outputStream.flush();
-                    outputStream.close();
+                } catch (Exception writeError) {
+                    log.warn("发送错误信息失败", writeError);
                 }
-            } catch (IOException ex) {
-                log.error("发送错误消息失败", ex);
+                throw new RuntimeException("流式聊天失败", e);
             }
-        }
+        };
+        
+        // 🔧 返回ResponseEntity with StreamingResponseBody
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/plain; charset=utf-8")
+                .header("Cache-Control", "no-cache, no-transform")
+                .header("Connection", "keep-alive")
+                .header("X-Accel-Buffering", "no") // 禁用nginx缓冲
+                .header("Access-Control-Allow-Origin", "*")
+                .body(responseBody);
     }
 
     /**
