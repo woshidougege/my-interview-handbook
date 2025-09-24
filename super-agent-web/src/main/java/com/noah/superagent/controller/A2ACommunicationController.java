@@ -1,11 +1,16 @@
 package com.noah.superagent.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.noah.superagent.annotation.SaToken;
 import com.noah.superagent.common.config.KunlunProperties;
 import com.noah.superagent.common.dto.request.A2AMessageRequest;
 import com.noah.superagent.common.dto.request.A2ASupplementInfoRequest;
 import com.noah.superagent.common.dto.request.Attachment;
 import com.noah.superagent.common.dto.response.ApiResponse;
 import com.noah.superagent.common.util.SSEventFormatter;
+import com.noah.superagent.common.util.SecurityUtils;
 import com.noah.superagent.service.A2ACommunicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,29 +20,27 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
-
-import java.util.List;
-import java.util.concurrent.Executor;
-
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import com.noah.superagent.annotation.SaToken;
-import com.noah.superagent.common.util.SecurityUtils;
+
 import javax.validation.Valid;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * A2A通信控制器
  * 用于处理与上游智平台的Agent-to-Agent通信
- * 
+ * <p>
  * 主要功能包括：
  * 1. 发送消息到A2A平台（同步/异步/流式）
  * 2. 处理用户补充信息（同步/异步）
@@ -48,9 +51,9 @@ import java.util.concurrent.CompletableFuture;
 @RequestMapping("/api/v1/a2a")
 @Tag(name = "A2A通信接口", description = "与上游智平台进行Agent-to-Agent通信的接口")
 public class A2ACommunicationController {
-    
+
     private final A2ACommunicationService a2aCommunicationService;
-    
+
     private final Executor aiChatExecutionExecutor;
 
     private final KunlunProperties kunlunProperties;
@@ -65,20 +68,20 @@ public class A2ACommunicationController {
 
     /**
      * 流式发送消息到A2A平台（JSON-RPC格式）
-     * 
+     *
      * @param request A2A消息请求参数
      * @return StreamingResponseBody 流式响应体
      */
     @PostMapping("/stream-message")
     @Operation(summary = "流式发送消息到A2A平台", description = "将用户消息流式发送到上游智平台的协同规划智能体")
     @Parameters({
-        @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
+            @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
     })
     public StreamingResponseBody streamMessageToA2APlatform(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
             @Parameter(hidden = true) @SaToken String satoken) {
-        log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}, 附件数量: {}", 
-                request.getUserId(), request.getMessage(), 
+        log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}, 附件数量: {}",
+                request.getUserId(), request.getMessage(),
                 request.getAttachments() != null ? request.getAttachments().size() : 0);
 
         // 所有参数都由后端生成
@@ -93,55 +96,24 @@ public class A2ACommunicationController {
 
         return createStreamingResponse(abilityCode, entityCode, userId, message, taskId, contextId, "JSON-RPC", satoken, request.getAttachments());
     }
-    
-    /**
-     * 处理补充信息（同步）
-     * 
-     * @param request A2A补充信息请求参数
-     * @return ApiResponse<String> 响应结果
-     */
-    @PostMapping("/supplement-info")
-    @Operation(summary = "处理补充信息", description = "处理用户补充的信息并发送到A2A代理")
-    public ApiResponse<String> handleSupplementInfo(
-            @Parameter(description = "A2A补充信息请求参数") @Valid @RequestBody A2ASupplementInfoRequest request) {
-        log.info("接收处理补充信息请求 - 用户ID: {}, 任务ID: {}", request.getUserId(), request.getTaskId());
-        
-        return a2aCommunicationService.handleSupplementInfo(
-                request.getUserId(), request.getTaskId(), request.getUserInput(), request.getSessionId());
-    }
-    
-    /**
-     * 异步处理补充信息
-     * 
-     * @param request A2A补充信息请求参数
-     * @return CompletableFuture<ApiResponse<String>> 异步响应结果
-     */
-    @PostMapping("/supplement-info-async")
-    @Operation(summary = "异步处理补充信息", description = "异步处理用户补充的信息并发送到A2A代理")
-    public CompletableFuture<ApiResponse<String>> handleSupplementInfoAsync(
-            @Parameter(description = "A2A补充信息请求参数") @Valid @RequestBody A2ASupplementInfoRequest request) {
-        log.info("接收异步处理补充信息请求 - 用户ID: {}, 任务ID: {}", request.getUserId(), request.getTaskId());
-        
-        return a2aCommunicationService.handleSupplementInfoAsync(
-                request.getUserId(), request.getTaskId(), request.getUserInput(), request.getSessionId());
-    }
-    
+
+
     /**
      * 流式发送消息到A2A平台（SSE格式）
-     * 
+     *
      * @param request A2A消息请求参数
      * @return ResponseEntity<StreamingResponseBody> SSE格式响应
      */
     @PostMapping("/stream-message-sse")
     @Operation(summary = "流式发送消息到A2A平台（SSE格式）", description = "将用户消息流式发送到上游智平台的协同规划智能体，使用SSE格式返回")
     @Parameters({
-        @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
+            @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
     })
     public ResponseEntity<StreamingResponseBody> streamMessageToA2APlatformWithSSE(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
             @Parameter(hidden = true) @SaToken String satoken) {
         log.info("接收SSE格式流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
-        
+
         // 所有参数都由后端生成
         String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
         String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
@@ -151,63 +123,63 @@ public class A2ACommunicationController {
         String taskId = "task_" + System.currentTimeMillis();
         // 修改contextId从请求中获取，如果请求中没有则使用默认值
         String contextId = request.getContextId() != null ? request.getContextId() : "";
-        
+
         StreamingResponseBody responseBody = outputStream -> {
             long startTime = System.currentTimeMillis();
-            log.info("开始处理SSE格式流式响应 - 用户ID: {}, 消息: {}, 开始时间: {}", 
-                userId, message, startTime);
-            
+            log.info("开始处理SSE格式流式响应 - 用户ID: {}, 消息: {}, 开始时间: {}",
+                    userId, message, startTime);
+
             InputStream inputStream = null;
             try {
                 // 使用与streamMessageToA2APlatform相同的方式调用服务
                 inputStream = a2aCommunicationService.sendJsonRpcMessageToA2APlatform(
-                        abilityCode, entityCode, userId, message, taskId, contextId, satoken,request.getAttachments());
-                
+                        abilityCode, entityCode, userId, message, taskId, contextId, satoken, request.getAttachments());
+
                 if (inputStream != null) {
                     log.info("成功获取A2A平台输入流，开始流式传输数据");
-                    
+
                     // 直接流式传输数据，避免预读取所有数据
                     byte[] buffer = new byte[1024];
                     int bytesRead;
                     int totalBytes = 0;
                     int chunkCount = 0;
                     boolean hasReceivedData = false;
-                    
+
                     try {
                         while ((bytesRead = inputStream.read(buffer)) != -1) {
                             // 标记已收到数据
                             hasReceivedData = true;
-                            
+
                             try {
                                 outputStream.write(buffer, 0, bytesRead);
                                 outputStream.flush();
-                                
+
                                 totalBytes += bytesRead;
                                 chunkCount++;
-                                
+
                                 // 每10个数据块记录一次详细日志
                                 if (chunkCount % 10 == 0) {
                                     long currentTime = System.currentTimeMillis();
                                     log.debug("已传输数据块数量: {}, 总字节数: {}, 已用时间: {}ms",
                                             chunkCount, totalBytes, (currentTime - startTime));
                                 }
-                                
+
                                 // 让出CPU时间片，避免过度占用CPU
                                 Thread.yield();
                             } catch (IOException e) {
                                 // 客户端可能已经断开连接
                                 if (e.getMessage() != null && e.getMessage().contains("stream is closed")) {
-                                    log.info("客户端连接已断开，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}", 
-                                        userId, chunkCount, totalBytes);
+                                    log.info("客户端连接已断开，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}",
+                                            userId, chunkCount, totalBytes);
                                 } else {
-                                    log.warn("客户端连接已断开或发生IO异常，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}, 异常: {}", 
-                                        userId, chunkCount, totalBytes, e.getMessage());
+                                    log.warn("客户端连接已断开或发生IO异常，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}, 异常: {}",
+                                            userId, chunkCount, totalBytes, e.getMessage());
                                 }
                                 // 退出循环，不再尝试写入数据
                                 break;
                             }
                         }
-                        
+
                         // 如果没有读取到任何数据，记录警告信息并向客户端发送错误信息
                         if (!hasReceivedData) {
                             log.warn("从未A2A平台输入流中读取到任何数据，可能上游服务未返回有效数据");
@@ -217,19 +189,19 @@ public class A2ACommunicationController {
                                 log.warn("向已断开的客户端写入错误信息失败: {}", e.getMessage());
                             }
                         }
-                        
+
                         long endTime = System.currentTimeMillis();
-                        log.info("SSE格式流式传输完成 - 总数据块数: {}, 总字节数: {}, 总耗时: {}ms", 
+                        log.info("SSE格式流式传输完成 - 总数据块数: {}, 总字节数: {}, 总耗时: {}ms",
                                 chunkCount, totalBytes, (endTime - startTime));
                     } catch (IOException e) {
                         long errorTime = System.currentTimeMillis();
                         if (e.getMessage() != null && e.getMessage().contains("stream is closed")) {
-                            log.info("读取A2A平台响应数据时检测到流已关闭 - 耗时: {}ms，用户ID: {}", 
-                                (errorTime - startTime), userId);
+                            log.info("读取A2A平台响应数据时检测到流已关闭 - 耗时: {}ms，用户ID: {}",
+                                    (errorTime - startTime), userId);
                         } else {
                             log.error("读取A2A平台响应数据时发生异常 - 耗时: {}ms", (errorTime - startTime), e);
                         }
-                        
+
                         try {
                             writeErrorToStream(outputStream, SecurityUtils.sanitizeErrorMessage(e));
                         } catch (Exception writeException) {
@@ -277,7 +249,7 @@ public class A2ACommunicationController {
                 // 注意：outputStream 由 Spring Boot 框架自动管理，无需手动关闭
             }
         };
-        
+
         log.info("准备返回SSE格式流式响应给客户端");
         return ResponseEntity.ok()
                 .header("Content-Type", "text/event-stream;charset=UTF-8")
@@ -287,23 +259,23 @@ public class A2ACommunicationController {
                 .header("Access-Control-Allow-Origin", "*")
                 .body(responseBody);
     }
-    
+
     /**
      * 异步流式发送消息到A2A平台
-     * 
+     *
      * @param request A2A消息请求参数
-     * @return CompletableFuture<ResponseEntity<StreamingResponseBody>> 异步流式响应体
+     * @return CompletableFuture<ResponseEntity < StreamingResponseBody>> 异步流式响应体
      */
     @PostMapping("/stream-message-async")
     @Operation(summary = "异步流式发送消息到A2A平台", description = "异步将用户消息流式发送到上游智平台的协同规划智能体")
     @Parameters({
-        @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER, required = false)
+            @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER, required = false)
     })
     public CompletableFuture<ResponseEntity<StreamingResponseBody>> streamMessageToA2APlatformAsync(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
             @Parameter(hidden = true) @SaToken String satoken) {
         log.info("接收异步流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", request.getUserId(), request.getMessage());
-        
+
         // 使用AI对话专用线程池执行异步流式任务
         return CompletableFuture.supplyAsync(() -> {
             // 所有参数都由后端生成
@@ -323,53 +295,53 @@ public class A2ACommunicationController {
                 InputStream inputStream = null;
                 try {
                     inputStream = a2aCommunicationService.sendJsonRpcMessageToA2APlatform(
-                            abilityCode, entityCode, userId, message, taskId, contextId, satoken,request.getAttachments());
+                            abilityCode, entityCode, userId, message, taskId, contextId, satoken, request.getAttachments());
 
                     if (inputStream != null) {
                         log.info("成功获取A2A平台输入流，开始流式传输数据");
-                        
+
                         // 直接流式传输数据，避免预读取所有数据
                         byte[] buffer = new byte[1024];
                         int bytesRead;
                         int totalBytes = 0;
                         int chunkCount = 0;
                         boolean hasReceivedData = false;
-                        
+
                         try {
                             while ((bytesRead = inputStream.read(buffer)) != -1) {
                                 // 标记已收到数据
                                 hasReceivedData = true;
-                                
+
                                 try {
                                     outputStream.write(buffer, 0, bytesRead);
                                     outputStream.flush();
-                                    
+
                                     totalBytes += bytesRead;
                                     chunkCount++;
-                                    
+
                                     // 每10个数据块记录一次详细日志
                                     if (chunkCount % 10 == 0) {
                                         long currentTime = System.currentTimeMillis();
                                         log.debug("已传输数据块数量: {}, 总字节数: {}, 已用时间: {}ms",
                                                 chunkCount, totalBytes, (currentTime - startTime));
                                     }
-                                    
+
                                     // 让出CPU时间片，避免过度占用CPU
                                     Thread.yield();
                                 } catch (IOException e) {
                                     // 客户端可能已经断开连接
                                     if (e.getMessage() != null && e.getMessage().contains("stream is closed")) {
-                                        log.info("客户端连接已断开，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}", 
-                                            userId, chunkCount, totalBytes);
+                                        log.info("客户端连接已断开，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}",
+                                                userId, chunkCount, totalBytes);
                                     } else {
-                                        log.warn("客户端连接已断开或发生IO异常，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}, 异常: {}", 
-                                            userId, chunkCount, totalBytes, e.getMessage());
+                                        log.warn("客户端连接已断开或发生IO异常，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}, 异常: {}",
+                                                userId, chunkCount, totalBytes, e.getMessage());
                                     }
                                     // 退出循环，不再尝试写入数据
                                     break;
                                 }
                             }
-                            
+
                             // 如果没有读取到任何数据，记录警告信息并向客户端发送错误信息
                             if (!hasReceivedData) {
                                 log.warn("从未A2A平台输入流中读取到任何数据，可能上游服务未返回有效数据");
@@ -379,19 +351,19 @@ public class A2ACommunicationController {
                                     log.warn("向已断开的客户端写入错误信息失败: {}", e.getMessage());
                                 }
                             }
-                            
+
                             long endTime = System.currentTimeMillis();
                             log.info("异步流式传输完成 - 总数据块数: {}, 总字节数: {}, 总耗时: {}ms",
                                     chunkCount, totalBytes, (endTime - startTime));
                         } catch (IOException e) {
                             long errorTime = System.currentTimeMillis();
                             if (e.getMessage() != null && e.getMessage().contains("stream is closed")) {
-                                log.info("读取A2A平台响应数据时检测到流已关闭 - 耗时: {}ms，用户ID: {}", 
-                                    (errorTime - startTime), userId);
+                                log.info("读取A2A平台响应数据时检测到流已关闭 - 耗时: {}ms，用户ID: {}",
+                                        (errorTime - startTime), userId);
                             } else {
                                 log.error("读取A2A平台响应数据时发生异常 - 耗时: {}ms", (errorTime - startTime), e);
                             }
-                            
+
                             try {
                                 writeErrorToStream(outputStream, SecurityUtils.sanitizeErrorMessage(e));
                             } catch (Exception writeException) {
@@ -437,23 +409,23 @@ public class A2ACommunicationController {
         }, aiChatExecutionExecutor);
     }
 
-    
+
     /**
      * 创建统一的流式响应处理逻辑
-     * 
-     * @param abilityCode 能力中心编码
-     * @param entityCode 实体编码
-     * @param userId 用户ID
-     * @param message 消息内容
-     * @param taskId 任务ID
-     * @param contextId 上下文ID
+     *
+     * @param abilityCode  能力中心编码
+     * @param entityCode   实体编码
+     * @param userId       用户ID
+     * @param message      消息内容
+     * @param taskId       任务ID
+     * @param contextId    上下文ID
      * @param responseType 响应类型（用于日志）
-     * @param satoken 认证令牌
-     * @param attachments 附件列表
+     * @param satoken      认证令牌
+     * @param attachments  附件列表
      * @return StreamingResponseBody 流式响应体
      */
-    private StreamingResponseBody createStreamingResponse(String abilityCode, String entityCode, String userId, 
-            String message, String taskId, String contextId, String responseType, String satoken, List<Attachment> attachments) {
+    private StreamingResponseBody createStreamingResponse(String abilityCode, String entityCode, String userId,
+                                                          String message, String taskId, String contextId, String responseType, String satoken, List<Attachment> attachments) {
         return outputStream -> {
             long startTime = System.currentTimeMillis();
             log.info("开始处理{}格式流式响应 - 用户ID: {}, 消息: {}", responseType, userId, message);
@@ -577,12 +549,12 @@ public class A2ACommunicationController {
             // 确保输入流被关闭
         };
     }
-    
+
     /**
      * 向输出流发送SSE事件
-     * 
+     *
      * @param outputStream 输出流
-     * @param event SSE事件内容
+     * @param event        SSE事件内容
      * @throws IOException IO异常
      */
     private void sendSSEEvent(OutputStream outputStream, String event) throws IOException {
@@ -599,10 +571,10 @@ public class A2ACommunicationController {
             throw new IOException("输出流为空");
         }
     }
-    
+
     /**
      * 向输出流写入错误信息
-     * 
+     *
      * @param outputStream 输出流
      * @param errorMessage 错误信息
      */
@@ -617,4 +589,92 @@ public class A2ACommunicationController {
             log.debug("向客户端写入错误信息失败，可能客户端已断开连接", e);
         }
     }
+
+    /**
+     * 处理动态表单补充信息（同步）
+     * <p>
+     * 接收前端收集的动态表单数据，发送到上游智能体
+     * 使用现有的补充信息处理逻辑
+     *
+     * @param request 动态表单补充信息请求
+     * @return ApiResponse<String> 处理结果状态
+     */
+    @PostMapping("/supplement-info")
+    @Operation(summary = "补充信息", description = "处理前端收集的动态表单数据并发送到上游智能体")
+    public ApiResponse<String> handleDynamicFormSupplement(
+            @Parameter(description = "动态表单补充信息请求") @Valid @RequestBody A2ASupplementInfoRequest request) {
+
+        log.info("接收动态表单补充信息请求 - 用户ID: {}, 任务ID: {}, 表单字段数: {}, A2A实体编码: {}",
+                request.getUserId(), request.getTaskId(),
+                request.getFormData() != null ? request.getFormData().size() : 0,
+                request.getA2aProtocolProxyEntityCode());
+
+        try {
+            // 将表单数据转换为JSON字符串作为用户输入
+            String userInput = buildSupplementMessageFromForm(request.getFormData());
+
+            // 使用现有的补充信息处理方法
+            return a2aCommunicationService.handleSupplementInfo(
+                    request.getUserId(),
+                    request.getTaskId(),
+                    userInput,
+                    request.getContextId(),
+                    request.getA2aProtocolProxyEntityCode());
+
+        } catch (Exception e) {
+            log.error("处理动态表单补充信息失败", e);
+            return ApiResponse.error("发送补充信息失败: " + e.getMessage());
+        }
+    }
+
+
+    /**
+     * 构建来自表单数据的补充信息消息
+     *
+     * @param formData 表单数据
+     * @return JSON格式的补充信息
+     */
+    private String buildSupplementMessageFromForm(Map<String, Object> formData) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode root = mapper.createObjectNode();
+            root.put("type", "supplement_info");
+            root.put("timestamp", System.currentTimeMillis());
+
+            ObjectNode dataNode = mapper.createObjectNode();
+
+            formData.forEach((key, value) -> {
+                if (value == null) {
+                    dataNode.putNull(key);
+                } else if (value instanceof String) {
+                    dataNode.put(key, (String) value);
+                } else if (value instanceof Number) {
+                    dataNode.put(key, ((Number) value).doubleValue());
+                } else if (value instanceof Boolean) {
+                    dataNode.put(key, (Boolean) value);
+                } else if (value instanceof List) {
+                    ArrayNode arrayNode = mapper.createArrayNode();
+                    ((List<?>) value).forEach(item -> {
+                        if (item instanceof String) {
+                            arrayNode.add((String) item);
+                        } else {
+                            arrayNode.add(item.toString());
+                        }
+                    });
+                    dataNode.set(key, arrayNode);
+                } else {
+                    dataNode.put(key, value.toString());
+                }
+            });
+
+            root.set("form_data", dataNode);
+            return mapper.writeValueAsString(root);
+
+        } catch (Exception e) {
+            log.error("构建补充信息消息失败", e);
+            throw new RuntimeException("构建补充信息消息失败", e);
+        }
+    }
+
+
 }

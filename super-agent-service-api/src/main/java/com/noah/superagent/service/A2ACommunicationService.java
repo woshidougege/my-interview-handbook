@@ -41,16 +41,7 @@ public interface A2ACommunicationService {
      * @param sessionId 会话ID
      * @return ApiResponse 响应结果
      */
-    ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId);
+    ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId, String A2AProtocolProxy);
     
-    /**
-     * 异步处理补充信息
-     *
-     * @param userId    用户ID
-     * @param taskId    任务ID
-     * @param userInput 用户补充的信息
-     * @param sessionId 会话ID
-     * @return CompletableFuture<ApiResponse<String>> 异步响应结果
-     */
-    CompletableFuture<ApiResponse<String>> handleSupplementInfoAsync(String userId, String taskId, String userInput, String sessionId);
+
 }

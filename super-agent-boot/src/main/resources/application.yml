@@ -107,9 +107,6 @@ kunlun:
     # 补充信息接口
     supplement-info:
       url: ${KUNLUN_A2A_SUPPLEMENT_INFO_URL:http://192.168.1.66:8000/kunlun/a2a/api/{abilityCode}/entity/{entityCode}/userid/{userId}/satoken/{satoken}}
-    # A2AProtocolProxy实体编码（用于补充信息）
-    protocol-proxy:
-      entity-code: ${KUNLUN_A2A_PROTOCOL_PROXY_ENTITY_CODE:ENTITY_EXCEL_ANAYSIS}
   # 注册回调配置
   registration:
     callback-url: ${REGISTRATION_CALLBACK_URL:http://192.168.1.66:8000/kl-dt-gateway/user/generatePlanAgentAndDocs}
