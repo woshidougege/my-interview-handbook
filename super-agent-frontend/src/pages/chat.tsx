@@ -1,33 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Button, Input, message, Card, Avatar, Space, Typography, Spin, Dropdown, Menu, Modal, Upload, Tabs, Layout, List, Empty, Tooltip } from 'antd';
+import { SendOutlined, AudioOutlined, AudioMutedOutlined, DownOutlined, UploadOutlined, MessageOutlined, PlusOutlined, StarFilled, StarOutlined, EditOutlined, DeleteOutlined, ApiOutlined } from '@ant-design/icons';
+import type { UploadProps } from 'antd';
 import Head from 'next/head';
-import { 
-  Layout, 
-  Input, 
-  Button, 
-  Card, 
-  List, 
-  Avatar, 
-  Typography, 
-  Space, 
-  Spin, 
-  message,
-  Modal,
-  Tooltip,
-  Empty,
-  Switch
-} from 'antd';
-import { 
-  SendOutlined, 
-  PlusOutlined, 
-  StarOutlined, 
-  StarFilled,
-  EditOutlined,
-  DeleteOutlined,
-  MessageOutlined,
-  AudioOutlined,
-  AudioMutedOutlined,
-  ApiOutlined
-} from '@ant-design/icons';
 import AppLayout from '@/components/Layout/AppLayout';
 import { chatTaskApi, workspaceApi, userApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
@@ -284,8 +259,58 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // 发送消息
-  const sendMessage = async () => {
+  // 处理补充信息
+  const handleSupplementInfo = useCallback(async () => {
+    if (!supplementInfo || !inputValue.trim()) {
+      message.warning('请输入补充信息');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await a2aService.handleSupplementInfo({
+        userId: supplementInfo.userId,
+        taskId: supplementInfo.taskId,
+        userInput: inputValue.trim(),
+        sessionId: supplementInfo.sessionId
+      });
+
+      // 清除补充信息状态
+      setSupplementInfo(null);
+      setInputValue('');
+      
+      // 显示响应消息
+      if (response.data?.data) {
+        const assistantMessage: ChatMessage = {
+          id: `assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          role: 'assistant',
+          content: response.data.data,
+          // 使用当前时间作为时间戳，确保在补充信息之后
+          timestamp: new Date().toISOString()
+        };
+        
+        setMessages(prev => {
+          try {
+            const newMessages = [...prev, assistantMessage].sort((a, b) => 
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+            return newMessages;
+          } catch (sortError) {
+            console.error('补充信息消息排序时发生错误:', sortError);
+            return [...prev, assistantMessage];
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error('处理补充信息失败:', error);
+      message.error('处理补充信息失败: ' + (error.message || '未知错误'));
+    } finally {
+      setLoading(false);
+    }
+  }, [supplementInfo, inputValue, setSupplementInfo, setInputValue, setMessages]);
+
+  // 发送消息（使用useCallback优化）
+  const sendMessage = useCallback(async () => {
     if (!inputValue.trim() || loading) return;
     
     // 如果有待处理的补充信息，优先处理
@@ -294,31 +319,46 @@ const ChatPage: React.FC = () => {
       return;
     }
 
+    // 生成消息时间戳（在任何操作之前生成，确保时间顺序）
+    const messageTimestamp = new Date().toISOString();
+    
     try {
       // 创建用户消息
       const userMessage: ChatMessage = {
-        id: Date.now().toString(),
+        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         role: 'user',
         content: inputValue.trim(),
-        timestamp: new Date().toISOString()
+        timestamp: messageTimestamp
       };
 
       // 更新消息列表，确保按时间顺序排序
       setMessages(prev => {
-        const newMessages = [...prev, userMessage].sort((a, b) => 
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        );
-        return newMessages;
+        try {
+          const newMessages = [...prev, userMessage].sort((a, b) => 
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+          return newMessages;
+        } catch (sortError) {
+          console.error('消息排序时发生错误:', sortError);
+          return [...prev, userMessage]; // 如果排序失败，直接追加
+        }
       });
       setInputValue('');
       
       // 滚动到底部
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        try {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        } catch (scrollError) {
+          console.error('滚动到底部时发生错误:', scrollError);
+        }
       }, 100);
 
       // 使用A2A协议发送消息
       setLoading(true);
+      
+      // 为流式消息预生成时间戳，确保在用户消息之后
+      const aiMessageTimestamp = new Date(Date.now() + 100).toISOString();
       
       // 获取当前用户信息
       let currentUser = null;
@@ -394,21 +434,23 @@ const ChatPage: React.FC = () => {
             try {
               const jsonData = JSON.parse(chunk);
               // 使用messageId作为唯一标识符进行去重
-              if (jsonData.result && 
-                  jsonData.result.status && 
-                  jsonData.result.status.message && 
-                  jsonData.result.status.message.messageId && 
-                  processedMessageIds.has(jsonData.result.status.message.messageId)) {
-                console.log('跳过重复消息:', jsonData.result.status.message.messageId);
-                return;
-              }
-              
-              // 添加消息ID到已处理集合
+              let messageId = null;
               if (jsonData.result && 
                   jsonData.result.status && 
                   jsonData.result.status.message && 
                   jsonData.result.status.message.messageId) {
-                processedMessageIds.add(jsonData.result.status.message.messageId);
+                messageId = jsonData.result.status.message.messageId;
+              }
+              
+              // 如果有messageId且已处理过，则跳过
+              if (messageId && processedMessageIds.has(messageId)) {
+                console.log('跳过重复消息:', messageId);
+                return;
+              }
+              
+              // 添加消息ID到已处理集合
+              if (messageId) {
+                processedMessageIds.add(messageId);
               }
               
               // 处理普通消息 - 适配新的数据格式
@@ -422,17 +464,25 @@ const ChatPage: React.FC = () => {
                 const parts = jsonData.result.status.message.parts;
                 // 遍历所有parts，提取内容
                 for (const part of parts) {
-                  // 处理data类型的part
-                  if (part.kind === 'data' && part.data) {
-                    // 处理LLM响应
-                    if (part.data.llm && part.data.llm.content) {
-                      content += part.data.llm.content;
+                  try {
+                    // 处理data类型的part
+                    if (part.kind === 'data' && part.data) {
+                      // 处理LLM响应
+                      if (part.data.llm && part.data.llm.content) {
+                        content += part.data.llm.content;
+                      }
+                      // 处理表单请求
+                      else if (part.data.form) {
+                        // 可以在这里处理表单请求
+                        content += `[表单请求: ${part.data.form.name || '未知表单'}]`;
+                      }
                     }
-                    // 可以在这里处理其他data类型
-                  }
-                  // 处理text类型的part
-                  else if (part.kind === 'text' && part.text) {
-                    content += part.text;
+                    // 处理text类型的part
+                    else if (part.kind === 'text' && part.text) {
+                      content += part.text;
+                    }
+                  } catch (partError) {
+                    console.error('处理流式消息part时发生错误:', partError);
                   }
                 }
               }
@@ -463,88 +513,81 @@ const ChatPage: React.FC = () => {
       // 可以在需要时调用cancelRequest()来取消请求
     } catch (err: any) {
       console.error('发送消息失败:', err);
-      message.error('发送消息失败: ' + (err.message || '未知错误'));
       
-      // 显示错误信息
-      const errorMessage: ChatMessage = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: '抱歉，处理您的请求时出现错误: ' + (err.message || '未知错误'),
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      if (!useA2A || !useSSE) {
-        setLoading(false);
-        setIsStreaming(false);
-        setCurrentStreamMessage('');
-      } else if (useA2A && useSSE) {
-        // 当使用A2A SSE时，将流式消息添加到消息列表中
-        if (currentStreamMessage) {
-          const assistantMessage: ChatMessage = {
-            id: `msg_${Date.now()}`,
-            role: 'assistant',
-            content: currentStreamMessage,
-            timestamp: new Date().toISOString()
-          };
-          
-          setMessages(prev => {
-            // 按时间戳排序所有消息
-            const newMessages = [...prev, assistantMessage].sort((a, b) => 
+      try {
+        // 显示错误信息
+        const errorMessage: ChatMessage = {
+          id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          role: 'assistant',
+          content: '抱歉，处理您的请求时出现错误: ' + (err.message || '未知错误'),
+          // 使用当前时间作为时间戳
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => {
+          try {
+            const newMessages = [...prev, errorMessage].sort((a, b) => 
               new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
             );
             return newMessages;
+          } catch (sortError) {
+            console.error('错误消息排序时发生错误:', sortError);
+            return [...prev, errorMessage]; // 如果排序失败，直接追加
+          }
+        });
+      } catch (messageError) {
+        console.error('添加错误消息时发生错误:', messageError);
+      }
+    } finally {
+      // 由于useA2A和useSSE都是true，简化处理逻辑
+      try {
+        // 将流式消息添加到消息列表中
+        if (currentStreamMessage) {
+          const assistantMessage: ChatMessage = {
+            id: `assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            role: 'assistant',
+            content: currentStreamMessage,
+            // 使用预生成的时间戳，确保在用户消息之后
+            timestamp: aiMessageTimestamp
+          };
+          
+          setMessages(prev => {
+            try {
+              // 按时间戳排序所有消息
+              const newMessages = [...prev, assistantMessage].sort((a, b) => 
+                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+              );
+              return newMessages;
+            } catch (sortError) {
+              console.error('流式消息排序时发生错误:', sortError);
+              return [...prev, assistantMessage];
+            }
           });
         }
-        
-        setIsStreaming(false);
-        setCurrentStreamMessage('');
-        setLoading(false);
+      } catch (streamError) {
+        console.error('处理流式消息时发生错误:', streamError);
       }
-    }
-  };
-
-  // 处理补充信息
-  const handleSupplementInfo = async () => {
-    if (!supplementInfo || !inputValue.trim()) {
-      message.warning('请输入补充信息');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setIsStreaming(true);
       
-      // 发送补充信息到A2A平台
-      const response = await a2aService.handleSupplementInfo({
-        userId: userId,
-        taskId: supplementInfo.taskId || supplementInfo.id,
-        userInput: inputValue.trim(),
-        sessionId: supplementInfo.sessionId
-      });
-
-      if (response.data) {
-        // 显示A2A平台的响应
-        const aiMessage: ChatMessage = {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: response.data,
-          timestamp: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, aiMessage]);
-        
-        // 清除补充信息状态
-        setSupplementInfo(null);
-        setInputValue('');
-      }
-    } catch (err: any) {
-      console.error('处理补充信息失败:', err);
-      message.error('处理补充信息失败: ' + (err.message || '未知错误'));
-    } finally {
-      setLoading(false);
       setIsStreaming(false);
+      setCurrentStreamMessage('');
+      setLoading(false);
     }
-  };
+  }, [inputValue, loading, supplementInfo, currentSession, handleSupplementInfo, ensureWorkspace, createNewSession]);
+
+  // 添加调试函数来检查消息顺序
+  const debugMessageOrder = useCallback(() => {
+    console.log('=== 消息顺序调试 ===');
+    messages.forEach((msg, index) => {
+      console.log(`${index}: [${msg.role}] ${new Date(msg.timestamp).toLocaleString()} - ${msg.content.substring(0, 50)}...`);
+    });
+    console.log('==================');
+  }, [messages]);
+
+  // 当消息变化时调试
+  useEffect(() => {
+    if (messages.length > 0) {
+      debugMessageOrder();
+    }
+  }, [messages, debugMessageOrder]);
 
   // 处理回车发送
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -668,42 +711,44 @@ const ChatPage: React.FC = () => {
               message.parts.forEach(part => {
                 partsData.push(part);
                 // 处理不同类型的part
-                if (typeof part === 'object' && part !== null) {
-                  // 处理data类型的part
-                  if (part.kind === 'data' && part.data) {
-                    // 处理LLM响应
-                    if (part.data.llm && part.data.llm.content) {
-                      content += part.data.llm.content;
+                try {
+                  if (typeof part === 'object' && part !== null) {
+                    // 处理data类型的part
+                    if (part.kind === 'data' && part.data) {
+                      // 处理LLM响应
+                      if (part.data.llm && part.data.llm.content) {
+                        content += part.data.llm.content;
+                      }
+                      // 处理表单请求
+                      else if (part.data.form) {
+                        // 可以在这里处理表单请求
+                        content += `[表单请求: ${part.data.form.name || '未知表单'}]`;
+                      }
                     }
-                    // 可以在这里处理其他data类型
+                    // 处理text类型的part
+                    else if (part.kind === 'text' && part.text) {
+                      content += part.text;
+                    }
+                  } else if (typeof part === 'string') {
+                    content += part;
                   }
-                  // 处理text类型的part
-                  else if (part.kind === 'text' && part.text) {
-                    content += part.text;
-                  }
-                } else if (typeof part === 'string') {
-                  content += part;
+                } catch (partError) {
+                  console.error('处理消息part时发生错误:', partError);
                 }
               });
             }
             
             return {
-              id: message.messageId || Date.now().toString(),
+              id: message.messageId || `history_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
               role: message.role === 'user' ? 'user' : 'assistant',
               content: content,
-              parts: partsData, // 传递完整的parts数据
+              parts: partsData,
+              // 使用消息的时间戳，如果没有则使用任务更新时间，确保格式一致
               timestamp: item.status?.timestamp || taskDetail.updatedAt || new Date().toISOString()
             };
           })
           .filter((msg): msg is ChatMessage => msg !== null) // 过滤掉null值
-          .sort((a, b) => {
-            const timeA = new Date(a.timestamp).getTime();
-            const timeB = new Date(b.timestamp).getTime();
-            // 处理无效日期的情况
-            if (isNaN(timeA)) return 1;
-            if (isNaN(timeB)) return -1;
-            return timeA - timeB;
-          }); // 按时间顺序排序，包含错误处理
+          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()); // 按时间顺序排序
       }
       
       const chatSession: ChatSession = {
@@ -1059,74 +1104,7 @@ const ChatPage: React.FC = () => {
                   ) : (
                     <Space direction="vertical" size="large" style={{ width: '100%' }}>
                       {messages.map((message) => (
-                        <div
-                          key={message.id}
-                          style={{
-                            display: 'flex',
-                            justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
-                            width: '100%'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'flex-start', maxWidth: '70%' }}>
-                            {message.role === 'assistant' && (
-                              <Avatar 
-                                style={{ 
-                                  backgroundColor: '#1890ff', 
-                                  marginRight: '12px',
-                                  flexShrink: 0
-                                }}
-                              >
-                                AI
-                              </Avatar>
-                            )}
-                            
-                            <Card
-                              size="small"
-                              style={{
-                                backgroundColor: message.role === 'user' ? '#1890ff' : '#fff',
-                                color: message.role === 'user' ? '#fff' : '#333',
-                                borderRadius: '12px',
-                                maxWidth: '100%',
-                                wordBreak: 'break-word'
-                              }}
-                              styles={{ body: { padding: '12px 16px' } }}
-                            >
-                              <Paragraph 
-                                style={{ 
-                                  margin: 0, 
-                                  color: message.role === 'user' ? '#fff' : '#333',
-                                  fontSize: '14px',
-                                  lineHeight: '1.6'
-                                }}
-                              >
-                                {message.content}
-                              </Paragraph>
-                              <Text 
-                                style={{ 
-                                  fontSize: '12px', 
-                                  opacity: 0.7,
-                                  color: message.role === 'user' ? '#fff' : '#999',
-                                  display: 'block',
-                                  marginTop: '4px'
-                                }}
-                              >
-                                {new Date(message.timestamp).toLocaleTimeString()}
-                              </Text>
-                            </Card>
-                            
-                            {message.role === 'user' && (
-                              <Avatar 
-                                style={{ 
-                                  backgroundColor: '#52c41a', 
-                                  marginLeft: '12px',
-                                  flexShrink: 0
-                                }}
-                              >
-                                我
-                              </Avatar>
-                            )}
-                          </div>
-                        </div>
+                        <MessageItem key={message.id} message={message} />
                       ))}
                       
                       {/* 流式消息显示 */}
@@ -1162,8 +1140,26 @@ const ChatPage: React.FC = () => {
                                   backgroundColor: '#1890ff',
                                   marginLeft: '2px',
                                   animation: 'blink 1s infinite'
-                                }} />
+                                }}></span>
                               </Paragraph>
+                              <Text 
+                                style={{ 
+                                  fontSize: '12px', 
+                                  opacity: 0.7,
+                                  color: '#999',
+                                  display: 'block',
+                                  marginTop: '4px'
+                                }}
+                              >
+                                {new Date().toLocaleString('zh-CN', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit'
+                                })}
+                              </Text>
                             </Card>
                           </div>
                         </div>
@@ -1443,3 +1439,92 @@ const ChatPage: React.FC = () => {
 };
 
 export default ChatPage;
+
+// 消息项组件优化
+const MessageItem: React.FC<{ message: ChatMessage }> = React.memo(({ message }) => {
+  const timestamp = useMemo(() => {
+    try {
+      return new Date(message.timestamp).toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch (e) {
+      console.error('时间戳格式化错误:', e);
+      return message.timestamp;
+    }
+  }, [message.timestamp]);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
+        width: '100%'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', maxWidth: '70%' }}>
+        {message.role === 'assistant' && (
+          <Avatar 
+            style={{ 
+              backgroundColor: '#1890ff', 
+              marginRight: '12px',
+              flexShrink: 0
+            }}
+          >
+            AI
+          </Avatar>
+        )}
+        
+        <Card
+          size="small"
+          style={{
+            backgroundColor: message.role === 'user' ? '#1890ff' : '#fff',
+            color: message.role === 'user' ? '#fff' : '#333',
+            borderRadius: '12px',
+            maxWidth: '100%',
+            wordBreak: 'break-word'
+          }}
+          styles={{ body: { padding: '12px 16px' } }}
+        >
+          <Typography.Paragraph 
+            style={{ 
+              margin: 0, 
+              color: message.role === 'user' ? '#fff' : '#333',
+              fontSize: '14px',
+              lineHeight: '1.6'
+            }}
+          >
+            {message.content}
+          </Typography.Paragraph>
+          <Typography.Text 
+            style={{ 
+              fontSize: '12px', 
+              opacity: 0.7,
+              color: message.role === 'user' ? '#fff' : '#999',
+              display: 'block',
+              marginTop: '4px'
+            }}
+          >
+            {timestamp}
+          </Typography.Text>
+        </Card>
+        
+        {message.role === 'user' && (
+          <Avatar 
+            style={{ 
+              backgroundColor: '#52c41a', 
+              marginLeft: '12px',
+              flexShrink: 0
+            }}
+          >
+            我
+          </Avatar>
+        )}
+      </div>
+    </div>
+  );
+});
