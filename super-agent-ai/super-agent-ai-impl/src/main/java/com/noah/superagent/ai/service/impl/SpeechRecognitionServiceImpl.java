@@ -253,23 +253,39 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             
             // 首先尝试使用检测到的格式
             try {
+                log.info("尝试使用主要格式进行识别: {}", realFormat);
                 return recognizeGummyFile(tempFilePath, realFormat, language, model);
             } catch (Exception e) {
-                log.warn("使用检测格式 {} 失败: {}", realFormat, e.getMessage());
+                String errorMsg = e.getMessage();
+                log.warn("使用检测格式 {} 失败: {}", realFormat, errorMsg);
+                
+                // 如果是NO_VALID_AUDIO_ERROR，说明格式不兼容，需要尝试其他格式
+                if (errorMsg != null && errorMsg.contains("NO_VALID_AUDIO_ERROR")) {
+                    log.warn("检测到格式不兼容错误，启动智能回退策略");
+                }
                 
                 // 智能回退策略
                 List<String> fallbackFormats = getFallbackFormats(realFormat, fileExtension);
                 
+                if (fallbackFormats.isEmpty()) {
+                    log.error("没有可用的回退格式，识别失败");
+                    throw e;
+                }
+                
+                log.info("开始尝试 {} 个回退格式: {}", fallbackFormats.size(), fallbackFormats);
+                
                 for (String fallbackFormat : fallbackFormats) {
                     log.warn("尝试回退格式: {}", fallbackFormat);
                     try {
-                        return recognizeGummyFile(tempFilePath, fallbackFormat, language, model);
+                        SpeechRecognitionResponse result = recognizeGummyFile(tempFilePath, fallbackFormat, language, model);
+                        log.info("回退格式 {} 识别成功！", fallbackFormat);
+                        return result;
                     } catch (Exception fallbackException) {
                         log.warn("回退格式 {} 也失败: {}", fallbackFormat, fallbackException.getMessage());
                     }
                 }
                 
-                log.error("所有格式都失败，抛出原始异常");
+                log.error("所有格式都失败（主格式: {}，回退格式: {}），抛出原始异常", realFormat, fallbackFormats);
                 throw e; // 所有回退都失败，抛出原始异常
             }
             
@@ -594,8 +610,9 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         switch (subtype.toLowerCase()) {
             case "x-matroska":
                 // WebM格式（Matroska容器），通常包含Opus音频
-                log.info("检测到WebM/Matroska容器格式，映射为opus格式");
-                return "opus";
+                // 但Gummy API对WebM支持有限，优先尝试wav格式
+                log.info("检测到WebM/Matroska容器格式，为提高兼容性优先尝试wav格式");
+                return "wav";
                 
             case "ogg":
                 // OGG容器格式，通常包含Opus或Vorbis音频
@@ -639,13 +656,18 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                 break;
                 
             case "wav":
-                // WAV失败时，尝试PCM
+                // WAV失败时，先尝试PCM，然后尝试其他可能兼容的格式
                 if (!"pcm".equals(fileExtension)) fallbacks.add("pcm");
+                // 对于WebM转换来的WAV，还需要尝试音频编解码器可能支持的格式
+                if (!"opus".equals(fileExtension)) fallbacks.add("opus");
+                if (!"mp3".equals(fileExtension)) fallbacks.add("mp3");
                 break;
                 
             case "opus":
-                // Opus失败时，尝试OGG
-                if (!"ogg".equals(fileExtension)) fallbacks.add("ogg");
+                // Opus失败时，尝试更多兼容格式
+                if (!"wav".equals(fileExtension)) fallbacks.add("wav");
+                if (!"mp3".equals(fileExtension)) fallbacks.add("mp3");
+                if (!"aac".equals(fileExtension)) fallbacks.add("aac");
                 break;
         }
         
