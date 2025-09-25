@@ -9,9 +9,12 @@ import com.noah.superagent.common.dto.request.A2AMessageRequest;
 import com.noah.superagent.common.dto.request.A2ASupplementInfoRequest;
 import com.noah.superagent.common.dto.request.Attachment;
 import com.noah.superagent.common.dto.response.ApiResponse;
+import com.noah.superagent.common.dto.response.FileUploadResponse;
 import com.noah.superagent.common.util.SSEventFormatter;
 import com.noah.superagent.common.util.SecurityUtils;
+import com.noah.superagent.model.SSOUserInfo;
 import com.noah.superagent.service.A2ACommunicationService;
+import com.noah.superagent.service.FileRepositoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -20,10 +23,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import javax.validation.Valid;
@@ -32,10 +33,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.UUID;
+import java.io.File;
+import com.fasterxml.jackson.core.type.TypeReference;
+import org.springframework.http.MediaType;
+import java.util.HashMap;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 /**
  * A2A通信控制器
@@ -58,16 +69,21 @@ public class A2ACommunicationController {
 
     private final KunlunProperties kunlunProperties;
 
+    private final FileRepositoryService fileRepositoryService;
+
     public A2ACommunicationController(A2ACommunicationService a2aCommunicationService,
-                                      @Qualifier("ai-chat-execution-executor") Executor aiChatExecutionExecutor, KunlunProperties kunlunProperties) {
+                                      @Qualifier("ai-chat-execution-executor") Executor aiChatExecutionExecutor, 
+                                      KunlunProperties kunlunProperties,
+                                      FileRepositoryService fileRepositoryService) {
         this.a2aCommunicationService = a2aCommunicationService;
         this.aiChatExecutionExecutor = aiChatExecutionExecutor;
         this.kunlunProperties = kunlunProperties;
+        this.fileRepositoryService = fileRepositoryService;
     }
 
 
     /**
-     * 流式发送消息到A2A平台（JSON-RPC格式）
+     * 流式发送消息到A2A平台
      *
      * @param request A2A消息请求参数
      * @return StreamingResponseBody 流式响应体
@@ -591,40 +607,200 @@ public class A2ACommunicationController {
     }
 
     /**
-     * 处理动态表单补充信息（同步）
-     * <p>
-     * 接收前端收集的动态表单数据，发送到上游智能体
-     * 使用现有的补充信息处理逻辑
-     *
-     * @param request 动态表单补充信息请求
-     * @return ApiResponse<String> 处理结果状态
+     * 处理动态表单补充信息
+     * 支持文件上传，自动判断是否有文件
      */
-    @PostMapping("/supplement-info")
-    @Operation(summary = "补充信息", description = "处理前端收集的动态表单数据并发送到上游智能体")
+    @PostMapping(value = "/supplement-info", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    @Operation(summary = "补充信息", description = "处理前端收集的动态表单数据并发送到上游智能体，支持文件上传")
     public ApiResponse<String> handleDynamicFormSupplement(
-            @Parameter(description = "动态表单补充信息请求") @Valid @RequestBody A2ASupplementInfoRequest request) {
-
-        log.info("接收动态表单补充信息请求 - 用户ID: {}, 任务ID: {}, 表单字段数: {}, A2A实体编码: {}",
-                request.getUserId(), request.getTaskId(),
-                request.getFormData() != null ? request.getFormData().size() : 0,
-                request.getA2aProtocolProxyEntityCode());
+            @Parameter(description = "用户ID") @RequestParam(value = "userId", required = false) String userId,
+            @Parameter(description = "任务ID") @RequestParam(value = "taskId", required = false) String taskId,
+            @Parameter(description = "上下文ID") @RequestParam(value = "contextId", required = false) String contextId,
+            @Parameter(description = "A2A协议代理实体编码") @RequestParam(value = "a2aProtocolProxyEntityCode", required = false) String a2aProtocolProxyEntityCode,
+            @Parameter(description = "表单数据") @RequestParam Map<String, String> allParams,
+            @Parameter(description = "上传的文件") @RequestPart(value = "files", required = false) MultipartFile[] files) {
 
         try {
+            // 处理文件上传
+            Map<String, String> fileUrls = new HashMap<>();
+            if (files != null && files.length > 0) {
+                log.info("接收到 {} 个文件上传", files.length);
+                for (int i = 0; i < files.length; i++) {
+                    MultipartFile file = files[i];
+                    if (!file.isEmpty()) {
+                        String originalFilename = file.getOriginalFilename();
+                        String fileExtension = "";
+                        if (originalFilename != null && originalFilename.contains(".")) {
+                            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                        }
+                        String filename = UUID.randomUUID().toString() + fileExtension;
+                        String fileUrl = saveFile(file, filename);
+                        fileUrls.put("file_" + (i + 1), fileUrl);
+                        log.info("文件 {} 上传成功: {}", originalFilename, fileUrl);
+                    }
+                }
+            }
+
+            // 构建完整的formData
+            Map<String, Object> formData = new HashMap<>(allParams);
+            if (!fileUrls.isEmpty()) {
+                formData.put("uploadedFiles", fileUrls);
+                formData.put("fileCount", String.valueOf(fileUrls.size()));
+            }
+
+            // 使用JSON格式处理参数
+            String actualUserId = userId != null ? userId : allParams.get("userId");
+            String actualTaskId = taskId != null ? taskId : allParams.get("taskId");
+            String actualContextId = contextId != null ? contextId : allParams.get("contextId");
+            String actualEntityCode = a2aProtocolProxyEntityCode != null ? 
+                a2aProtocolProxyEntityCode : allParams.get("a2aProtocolProxyEntityCode");
+
+            // 验证必填参数
+            if (actualUserId == null || actualTaskId == null || 
+                actualContextId == null || actualEntityCode == null) {
+                return ApiResponse.error("缺少必填参数: userId, taskId, contextId, a2aProtocolProxyEntityCode");
+            }
+
+            log.info("处理补充信息请求 - 用户ID: {}, 任务ID: {}, 表单字段数: {}, 文件数: {}",
+                    actualUserId, actualTaskId, formData.size(), 
+                    fileUrls.size());
+
             // 将表单数据转换为JSON字符串作为用户输入
-            String userInput = buildSupplementMessageFromForm(request.getFormData());
+            String userInput = buildSupplementMessageFromForm(formData);
 
             // 使用现有的补充信息处理方法
             return a2aCommunicationService.handleSupplementInfo(
-                    request.getUserId(),
-                    request.getTaskId(),
+                    actualUserId,
+                    actualTaskId,
                     userInput,
-                    request.getContextId(),
-                    request.getA2aProtocolProxyEntityCode());
+                    actualContextId,
+                    actualEntityCode);
 
         } catch (Exception e) {
-            log.error("处理动态表单补充信息失败", e);
+            log.error("处理补充信息失败", e);
             return ApiResponse.error("发送补充信息失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 保存上传的文件
+     * @param file 上传的文件
+     * @param filename 保存的文件名
+     * @return 文件访问URL
+     */
+    private String saveFile(MultipartFile file, String filename) throws IOException {
+        // 确保上传目录存在
+        Path uploadPath = Paths.get("uploads");
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+        
+        // 保存文件
+        Path filePath = uploadPath.resolve(filename);
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        
+        // 返回文件访问URL
+        return "/uploads/" + filename;
+    }
+
+    /**
+     * 获取用户实体编码
+     * 
+     * @return 用户实体编码，如果获取失败返回null
+     */
+    private String getUserEntityCode() {
+        // 获取当前用户信息
+        SSOUserInfo currentUser = getCurrentUser();
+        if (currentUser == null) {
+            log.error("无法获取当前用户信息");
+            return null;
+        }
+
+        String userId = currentUser.getUserId();
+        String phonenumber = currentUser.getPhonenumber();
+
+        // 验证必要用户信息
+        if (userId == null || userId.isEmpty()) {
+            log.error("用户ID为空");
+            return null;
+        }
+
+        // 构建并返回用户实体编码
+        return "ENTITY_document_" + userId + "_" + phonenumber;
+    }
+
+    /**
+     * 上传文件到文件仓库
+     *
+     * @param file       要上传的文件
+     * @param contextId  上下文ID
+     * @param taskId     任务ID
+     * @return 文件URL，如果上传失败返回null
+     */
+    private String uploadFileToRepository(MultipartFile file, String contextId, String taskId) {
+        try {
+            // 获取用户实体编码
+            String userEntityCode = getUserEntityCode();
+            if (userEntityCode == null) {
+                return null;
+            }
+
+            // 构建目录结构: contextId/taskId/
+            String directory = buildFileDirectory(contextId, taskId);
+
+            log.info("准备上传文件到仓库: directory={}, originalFilename={}", directory, file.getOriginalFilename());
+
+            // 调用服务层处理文件上传
+            FileUploadResponse response = fileRepositoryService.uploadFile(userEntityCode, directory, file);
+
+            // 检查上传是否成功
+            if (response != null && !"upload_failed".equals(response.getName())) {
+                log.info("文件上传成功: directory={}, fileName={}", directory, response.getName());
+                return response.getUrl();
+            } else {
+                String errorMessage = (response != null && response.getUrl() != null) ? 
+                    response.getUrl() : "文件上传失败";
+                log.error("文件上传失败: directory={}, 错误信息: {}", directory, errorMessage);
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("上传文件到仓库时发生异常", e);
+            return null;
+        }
+    }
+    
+    /**
+     * 构建文件存储目录
+     * 
+     * @param contextId 上下文ID
+     * @param taskId 任务ID
+     * @return 目录路径
+     */
+    private String buildFileDirectory(String contextId, String taskId) {
+        StringBuilder directoryBuilder = new StringBuilder();
+        
+        if (contextId != null && !contextId.isEmpty()) {
+            directoryBuilder.append(contextId);
+            if (taskId != null && !taskId.isEmpty()) {
+                directoryBuilder.append("/").append(taskId);
+            }
+            directoryBuilder.append("/");
+        }
+        
+        return directoryBuilder.toString();
+    }
+
+    /**
+     * 获取当前用户信息
+     * 
+     * @return 当前用户信息
+     */
+    private SSOUserInfo getCurrentUser() {
+        // 这里需要根据实际的用户信息获取方式实现
+        // 可能是通过ThreadLocal、SecurityContext或其他方式获取
+        // 示例实现：
+        // return SecurityUtils.getCurrentUser();
+        return null; // 需要根据实际情况实现
     }
 
 
@@ -677,4 +853,69 @@ public class A2ACommunicationController {
     }
 
 
+    /**
+     * 流式发送消息到A2A平台（支持文件上传）
+     *
+     * @param file 文件
+     * @param userId 用户ID
+     * @param message 消息内容
+     * @param contextId 上下文ID
+     * @param satoken 认证令牌
+     * @return StreamingResponseBody 流式响应体
+     */
+    @PostMapping(value = "/stream-message-with-file", consumes = "multipart/form-data")
+    @Operation(summary = "流式发送消息到A2A平台（支持文件上传）", description = "将用户消息和文件流式发送到上游智平台的协同规划智能体")
+    @Parameters({
+            @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
+    })
+    public StreamingResponseBody streamMessageToA2APlatformWithFile(
+            @Parameter(description = "上传的文件") @RequestParam(value = "file", required = false) MultipartFile file,
+            @Parameter(description = "用户ID") @RequestParam("userId") String userId,
+            @Parameter(description = "消息内容") @RequestParam("message") String message,
+            @Parameter(description = "上下文ID") @RequestParam(value = "contextId", required = false) String contextId,
+            @Parameter(description = "任务ID") @RequestParam(value = "taskId", required = false) String taskId,
+            @Parameter(hidden = true) @SaToken String satoken) {
+        
+        log.info("接收带文件的流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}, contextId: {}, taskId: {}, 是否包含文件: {}",
+                userId, message, contextId, taskId, file != null);
+
+        // 所有参数都由后端生成
+        String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
+        String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
+        
+        // 如果没有提供taskId，则生成一个默认的
+        if (taskId == null || taskId.isEmpty()) {
+            taskId = "task_" + System.currentTimeMillis();
+        }
+        
+        // 如果没有提供contextId，则使用空字符串
+        if (contextId == null) {
+            contextId = "";
+        }
+
+        // 处理文件上传
+        List<Attachment> attachments = new ArrayList<>();
+        if (file != null && !file.isEmpty()) {
+            try {
+                // 上传文件到文件仓库
+                String fileUrl = uploadFileToRepository(file, contextId, taskId);
+                if (fileUrl != null) {
+                    Attachment attachment = new Attachment();
+                    attachment.setMimeType(file.getContentType());
+                    attachment.setName(file.getOriginalFilename());
+                    attachment.setOriginalName(file.getOriginalFilename());
+                    attachment.setUri(fileUrl);
+                    attachments.add(attachment);
+                    
+                    log.info("文件上传成功 - 文件名: {}, URL: {}", file.getOriginalFilename(), fileUrl);
+                } else {
+                    log.warn("文件上传失败 - 文件名: {}", file.getOriginalFilename());
+                }
+            } catch (Exception e) {
+                log.error("处理上传文件时发生异常", e);
+            }
+        }
+
+        return createStreamingResponse(abilityCode, entityCode, userId, message, taskId, contextId, "JSON-RPC", satoken, attachments);
+    }
 }
