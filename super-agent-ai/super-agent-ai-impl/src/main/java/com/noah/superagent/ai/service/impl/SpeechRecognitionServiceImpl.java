@@ -63,9 +63,8 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
     public SpeechRecognitionResponse recognizeAudioStream(InputStream audioStream, String filename, String language, String model) {
         log.debug("开始识别录音文件: {}, 语言: {}", filename, language);
         
-        long totalStartTime = System.currentTimeMillis();
-        long speechRecognitionStartTime = totalStartTime;
-        
+        long speechRecognitionStartTime = System.currentTimeMillis();
+
         try {
             // 直接流式调用FunASR服务进行识别
             String originalText = transcribeByStream(audioStream, filename);
@@ -125,7 +124,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             }
             
             // 计算总耗时
-            long totalDuration = System.currentTimeMillis() - totalStartTime;
+            long totalDuration = System.currentTimeMillis() - speechRecognitionStartTime;
             
             // 格式化打印性能统计
             printPerformanceStatistics(filename, fileId, originalText.length(), estimatedAudioDuration,
@@ -139,9 +138,9 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                     .build();
             
         } catch (Exception e) {
-            long totalDuration = System.currentTimeMillis() - totalStartTime;
+            long totalDuration = System.currentTimeMillis() - speechRecognitionStartTime;
             log.error("语音识别失败 - 文件: {}, 总耗时: {}, 错误: {}", 
-                    filename, formatDuration(totalDuration), e.getMessage());
+                    filename, DurationFormatUtils.formatDurationHMS(totalDuration), e.getMessage());
             return SpeechRecognitionResponse.builder()
                     .status(SpeechRecognitionResponse.RecognitionStatus.FAILED)
                     .errorMessage("语音识别失败: " + e.getMessage())
@@ -240,7 +239,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                 
                 // 兼容其他success格式: {"success": true, "result": [{"text": "..."}]}
                 JsonNode resultArray = jsonNode.get("result");
-                if (resultArray != null && resultArray.isArray() && resultArray.size() > 0) {
+                if (resultArray != null && resultArray.isArray() && !resultArray.isEmpty()) {
                     JsonNode firstResult = resultArray.get(0);
                     return firstResult.get("text").asText();
                 }
@@ -252,7 +251,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             }
             
             // 处理数组格式: [{"text": "..."}]
-            if (jsonNode.isArray() && jsonNode.size() > 0) {
+            if (jsonNode.isArray() && !jsonNode.isEmpty()) {
                 JsonNode firstItem = jsonNode.get(0);
                 if (firstItem.has("text")) {
                     return firstItem.get("text").asText();
@@ -343,8 +342,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             Generation gen = new Generation();
             GenerationResult result = gen.call(param);
             
-            if (result == null || result.getOutput() == null || result.getOutput().getChoices() == null 
-                || result.getOutput().getChoices().isEmpty()) {
+            if (result.getOutput() == null || result.getOutput().getChoices() == null || result.getOutput().getChoices().isEmpty()) {
                 log.error("AI大模型响应异常 - 模型: {}, result={}", correctionConfig.getModel(), result);
                 return originalText;
             }
@@ -369,7 +367,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         // 经验估算：每分钟约产生120-200个中文字符的文本
         // 这里使用保守估计150字符/分钟
         int charCount = text.length();
-        long estimatedByText = (charCount * 60) / 150; // 秒
+        long estimatedByText = (charCount * 60L) / 150; // 秒
         
         // 另一种估算：FunASR处理时间通常是音频时长的1-3倍
         // 使用2倍作为中位数估算
@@ -441,7 +439,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         log.info("  ├─ 文件名: {}", filename);
         log.info("  ├─ 文件ID: {}", fileId);
         log.info("  ├─ 文本长度: {} 字符", textLength);
-            log.info("  └─ 预估音频时长: {}", DurationFormatUtils.formatDurationHMS(estimatedAudioDuration * 1000));
+        log.info("  └─ 预估音频时长: {}", DurationFormatUtils.formatDurationHMS(estimatedAudioDuration * 1000));
         log.info("");
         log.info("耗时统计:");
         log.info("  ├─ 语音识别耗时: {}", DurationFormatUtils.formatDurationHMS(speechRecognitionDuration));
@@ -455,12 +453,12 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         log.info("");
         log.info("处理效率分析:");
         double recognitionRatio = (double) estimatedAudioDuration * 1000 / speechRecognitionDuration;
-        log.info("  ├─ 识别效率: {:.1f}x ({})", recognitionRatio, getEfficiencyDescription(recognitionRatio));
+        log.info("  ├─ 识别效率: {}x ({})", String.format("%.1f", recognitionRatio), getEfficiencyDescription(recognitionRatio));
         if (correctionApplied) {
             double totalRatio = (double) estimatedAudioDuration * 1000 / totalDuration;
-            log.info("  └─ 整体效率: {:.1f}x (含纠错, {})", totalRatio, getEfficiencyDescription(totalRatio));
+            log.info("  └─ 整体效率: {}x (含纠错, {})", String.format("%.1f", totalRatio), getEfficiencyDescription(totalRatio));
         } else {
-            log.info("  └─ 整体效率: {:.1f}x (仅识别, {})", recognitionRatio, getEfficiencyDescription(recognitionRatio));
+            log.info("  └─ 整体效率: {}x (仅识别, {})", String.format("%.1f", recognitionRatio), getEfficiencyDescription(recognitionRatio));
         }
         log.info("=============================");
     }
@@ -482,23 +480,6 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             return "很慢，比实时慢" + String.format("%.1f", 1.0/ratio) + "倍";
         }
     }
-    
 
-    /**
-     * 健康检查
-     */
-    public boolean checkHealth() {
-        try {
-            webClient.get()
-                    .uri("/health")
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .timeout(Duration.ofSeconds(5))
-                    .block();
-            return true;
-        } catch (Exception e) {
-            log.warn("FunASR健康检查失败: {}", e.getMessage());
-            return false;
-        }
-    }
+
 }
