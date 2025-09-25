@@ -440,7 +440,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
     }
 
     @Override
-    public ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId,String A2aProtocolProxyEntityCode) {
+    public ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId,String A2AProtocolProxyEntityCode) {
         log.info("处理补充信息 - 用户ID: {}, 任务ID: {}, 用户输入: {}, 会话ID: {}", userId, taskId, userInput, sessionId);
         
         try {
@@ -449,7 +449,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
 
             // 构建补充信息请求URL - 使用补充信息接口
             String a2aPlatformBaseUrl = kunlunProperties.getA2a().getSupplementInfo().getUrl();
-            String url = buildRequestUrl(a2aPlatformBaseUrl,abilityCode, A2aProtocolProxyEntityCode, userId, null);
+            String url = buildRequestUrl(a2aPlatformBaseUrl,abilityCode, A2AProtocolProxyEntityCode, userId, null);
             log.info("准备发送补充信息 - URL: {}", url);
 
             // 构建JSON-RPC格式的补充信息请求
@@ -472,7 +472,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             }
         } catch (Exception e) {
             log.error("处理补充信息时发生异常 - 用户ID: {}", userId, e);
-            return ApiResponse.error("处理补充信息异常: " + e.getMessage());
+            return ApiResponse.error("补充信息处理失败: " + e.getMessage());
         }
     }
 

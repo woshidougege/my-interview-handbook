@@ -39,9 +39,8 @@ public interface A2ACommunicationService {
      * @param taskId    任务ID
      * @param userInput 用户补充的信息
      * @param sessionId 会话ID
+     * @param A2AProtocolProxy A2A协议代理实体编码
      * @return ApiResponse 响应结果
      */
     ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId, String A2AProtocolProxy);
-    
-
 }

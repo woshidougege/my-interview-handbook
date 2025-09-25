@@ -147,7 +147,7 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     }
 
     @Override
-    public List<String> listObjectNames( String directory, boolean recursive ,String userEntityCode) {
+    public List<String> listObjectNames(String directory, boolean recursive, String userEntityCode) {
         try {
             // 构建请求URL - 使用配置项
             String url = kunlunProperties.getFileRepository().getListObjectNamesPath()
@@ -200,68 +200,69 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
                             Map<String, Object> firstItem = (Map<String, Object>) dataArray.get(0);
                             Object resultObj = firstItem.get("result");
                             if (resultObj instanceof String) {
+                                // 解析JSON字符串数组
                                 String resultStr = (String) resultObj;
-                                List<String> fileNames = objectMapper.readValue(resultStr, new TypeReference<List<String>>() {
-                                });
+                                List<String> fileNames = objectMapper.readValue(resultStr, new TypeReference<List<String>>() {});
                                 return fileNames;
                             }
                         }
                     }
                 }
             }
-
+            
             log.warn("文件列表接口调用失败，返回码: {}", codeObj);
             return new ArrayList<>();
-
+            
         } catch (Exception e) {
             log.error("调用文件列表接口时发生异常", e);
+            // 发生异常时返回空列表
             return new ArrayList<>();
         }
     }
 
     @Override
-    public String getObjectURL(String filename,String userEntityCode) {
+    public String getObjectURL(String filename, String userEntityCode) {
         try {
             // 构建请求URL - 使用配置项
-            String url =kunlunProperties.getFileRepository().getGetObjectUrlPath()
-                            .replace("{userEntityCode}",userEntityCode)
+            String url = kunlunProperties.getFileRepository().getGetObjectUrlPath()
+                            .replace("{userEntityCode}", userEntityCode)
                             .replace("{abilityCode}", kunlunProperties.getAbilityCodes().getDefaultCode());
 
             log.info("调用获取文件URL接口: {}", url);
-
+            
             // 创建RestTemplate实例
             RestTemplate restTemplate = new RestTemplate();
-
+            
             // 设置请求头
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/json");
             headers.set("Content-Type", "application/json");
-
+            
             // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("filename", filename);
-
+            
             // 创建请求实体
             org.springframework.http.HttpEntity<Map<String, Object>> entity = new org.springframework.http.HttpEntity<>(requestBody, headers);
-
+            
             // 使用POST方法
             ResponseEntity<String> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    entity,
-                    String.class
+                url, 
+                HttpMethod.POST, 
+                entity, 
+                String.class
             );
-
+            
             log.info("获取文件URL接口响应: {}", response.getBody());
-
+            
             // 解析响应
             ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {
-            });
-
+            Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {});
+            
             // 检查响应码
             Object codeObj = responseMap.get("code");
-            if (codeObj instanceof Number && ((Number) codeObj).intValue() == 0) {
+            if (codeObj instanceof Number && ((Number) codeObj).intValue() == 0) { // 根据文档，成功码是0
+                // 成功响应
                 Object dataObj = responseMap.get("data");
                 if (dataObj instanceof Map) {
                     Map<String, Object> dataMap = (Map<String, Object>) dataObj;
@@ -272,56 +273,42 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
                             Map<String, Object> firstItem = (Map<String, Object>) dataArray.get(0);
                             Object resultObj = firstItem.get("result");
                             if (resultObj instanceof String) {
+                                // 返回预签名URL
                                 return (String) resultObj;
                             }
                         }
                     }
                 }
             }
-
+            
             log.warn("获取文件URL接口调用失败，返回码: {}", codeObj);
             return "";
-
+            
         } catch (Exception e) {
             log.error("调用获取文件URL接口时发生异常", e);
             return "";
         }
     }
-
-    // 新增方法：校验entityCode格式
-    private boolean isValidEntityCode(String entityCode) {
-        // 示例：检查是否为32位UUID格式（可按实际需求调整）
-        if (entityCode == null || entityCode.length() < 8) {
-            return false;
+    
+    /**
+     * 构建目录路径
+     * 
+     * @param contextId 上下文ID
+     * @param taskId 任务ID
+     * @return 目录路径
+     */
+    @Override
+    public String buildDirectoryPath(String contextId, String taskId) {
+        StringBuilder directoryBuilder = new StringBuilder();
+        
+        if (contextId != null && !contextId.isEmpty()) {
+            directoryBuilder.append(contextId);
+            if (taskId != null && !taskId.isEmpty()) {
+                directoryBuilder.append("/").append(taskId);
+            }
+            directoryBuilder.append("/");
         }
-
-        // 检查是否以ENTITY_开头
-        if (!entityCode.startsWith("ENTITY_")) {
-            log.warn("entityCode必须以ENTITY_开头: {}", entityCode);
-            return false;
-        }
-
-        // 获取实体编码部分（去掉ENTITY_前缀）
-        String entityPart = entityCode.substring(7);
-
-        // 检查实体编码部分是否为空或仅包含空格
-        if (entityPart == null || entityPart.trim().isEmpty()) {
-            log.warn("entityCode的实体编码部分不能为空: {}", entityCode);
-            return false;
-        }
-
-        // 放宽校验规则：允许字母、数字、下划线、连字符等常见字符
-        if (!entityPart.matches("[a-zA-Z0-9_-]+")) {
-            log.warn("entityCode的实体编码部分只能包含字母、数字、下划线和连字符: {}", entityCode);
-            return false;
-        }
-
-        // 验证长度限制（例如最大长度为100）
-        if (entityPart.length() > 100) {
-            log.warn("entityCode的实体编码部分长度不能超过100: {}", entityCode);
-            return false;
-        }
-
-        return true;
+        
+        return directoryBuilder.toString();
     }
 }
