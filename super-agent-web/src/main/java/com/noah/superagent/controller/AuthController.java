@@ -190,12 +190,12 @@ public class AuthController extends SsoClientController {
                 String ticket = String.valueOf(data.get("ticket"));
                 
                 // 获取token，避免前端二次调用
-                SaResult saResult = doLoginByTicket(ticket);
+//                SaResult saResult = doLoginByTicket(ticket);
 
 
                 Map<String, String> responseData = new HashMap<>();
                 responseData.put("ticket", ticket);
-                responseData.put("satoken", StrUtil.toString(saResult.getData()));
+//                responseData.put("satoken", StrUtil.toString(saResult.getData()));
                 handleDailyCreditsOnLogin();
                 return ApiResponse.success("登录成功", responseData);
             } else {
