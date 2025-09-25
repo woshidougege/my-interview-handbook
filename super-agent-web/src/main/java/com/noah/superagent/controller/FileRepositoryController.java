@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import static com.noah.superagent.util.UserContext.getCurrentUser;
-import static com.noah.superagent.util.UserContext.getCurrentUserId;
 
 /**
  * 文档库控制器
@@ -34,20 +33,18 @@ public class FileRepositoryController {
      * 文件上传接口
      *
      * @param file 文件流
+     * @param contextId 上下文ID（必填）
+     * @param taskId 任务ID（可选）
      * @return 上传结果
      */
     @PostMapping(value = "/stream/put", consumes = "multipart/form-data")
     public ApiResponse<FileUploadResponse> uploadFile(
-            @RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "contextId") String contextId,
+            @RequestParam(value = "taskId", required = false) String taskId) throws IOException {
 
-        log.info("接收到文件上传请求: fileIsNull={}, fileIsEmpty={}"
-                , (file == null), (file == null ? "N/A" : file.isEmpty()));
-
-        // 如果文件不为空且非空文件，记录更多文件信息
-        if (file != null && !file.isEmpty()) {
-            log.info("文件信息: originalFilename={}, size={}, contentType={}",
-                    file.getOriginalFilename(), file.getSize(), file.getContentType());
-        }
+        log.info("接收到文件上传请求: fileIsNull={}, fileIsEmpty={}, contextId={}, taskId={}"
+                , (file == null), (file == null ? "N/A" : file.isEmpty()), contextId, taskId);
 
         // 检查文件是否为空
         if (file == null || file.isEmpty()) {
@@ -55,28 +52,22 @@ public class FileRepositoryController {
             return ApiResponse.error(400, "文件不能为空");
         }
 
-
-        String directory = "";
-
-        // 获取当前用户信息
-        SSOUserInfo currentUser = getCurrentUser();
-        if (currentUser == null) {
-            log.error("无法获取当前用户信息");
-            return ApiResponse.error(500, "用户未登录或会话已过期");
-        }
-        
-        String userId = currentUser.getUserId();
-        String phonenumber = currentUser.getPhonenumber();
-        
-        // 验证必要用户信息
-        if (userId == null || userId.isEmpty()) {
-            log.error("用户ID为空");
-            return ApiResponse.error(500, "用户信息不完整");
+        // 检查contextId是否为空
+        if (contextId == null || contextId.isEmpty()) {
+            log.warn("上下文ID不能为空");
+            return ApiResponse.error(400, "上下文ID不能为空");
         }
 
-        // 构建用户实体编码
-        String userEntityCode = "ENTITY_document_" + userId + "_" + phonenumber;
+        // 获取用户实体编码
+        String userEntityCode = getUserEntityCode();
+        if (userEntityCode == null) {
+            return ApiResponse.error(500, "无法获取用户信息");
+        }
 
+        // 构建目录结构: contextId/taskId/
+        String directory = buildDirectoryPath(contextId, taskId);
+
+        log.info("构建文件存储目录: {}", directory);
 
         // 调用服务层处理文件上传
         FileUploadResponse response = fileRepositoryService.uploadFile(userEntityCode, directory, file);
@@ -93,28 +84,32 @@ public class FileRepositoryController {
         return ApiResponse.success("上传成功", response);
     }
 
-
     /**
      * 列出指定目录下的文件名列表
      *
-     * @param directory  目录路径
+     * @param contextId  上下文ID（可选）
+     * @param taskId     任务ID（可选）
      * @param recursive  是否递归
      * @return 文件名列表
      */
     @GetMapping("/listObjectNames")
     public ApiResponse<List<String>> listObjectNames(
-            @RequestParam("directory") String directory,
+            @RequestParam(value = "contextId", required = false) String contextId,
+            @RequestParam(value = "taskId", required = false) String taskId,
             @RequestParam(value = "recursive", defaultValue = "false") boolean recursive) {
         
-        log.info("接收到文件列表请求: directory={}, recursive={}", directory, recursive);
+        log.info("接收到文件列表请求: contextId={}, taskId={}, recursive={}", contextId, taskId, recursive);
         
-        // 参数校验
-        if (directory == null) {
-            log.warn("目录参数不能为空");
-            return ApiResponse.error(400, "目录参数不能为空");
+        // 构建目录路径
+        String directory = buildDirectoryPath(contextId, taskId);
+
+        // 获取用户实体编码
+        String userEntityCode = getUserEntityCode();
+        if (userEntityCode == null) {
+            return ApiResponse.error(500, "无法获取用户信息");
         }
 
-        List<String> fileNames = fileRepositoryService.listObjectNames(directory, recursive);
+        List<String> fileNames = fileRepositoryService.listObjectNames(directory, recursive, userEntityCode);
 
         log.info("文件列表获取成功: directory={}, fileCount={}", directory, 
                 fileNames != null ? fileNames.size() : 0);
@@ -146,7 +141,13 @@ public class FileRepositoryController {
             return ApiResponse.error(400, "文件名参数不能为空");
         }
 
-        String url = fileRepositoryService.getObjectURL(filename);
+        // 获取用户实体编码
+        String userEntityCode = getUserEntityCode();
+        if (userEntityCode == null) {
+            return ApiResponse.error(500, "无法获取用户信息");
+        }
+
+        String url = fileRepositoryService.getObjectURL(filename, userEntityCode);
 
         // 检查获取URL是否成功
         if (url == null || url.isEmpty()) {
@@ -156,5 +157,52 @@ public class FileRepositoryController {
 
         log.info("文件URL获取成功: filename={}, urlLength={}", filename, url.length());
         return ApiResponse.success("获取成功", url);
+    }
+    
+    /**
+     * 构建目录路径
+     * 
+     * @param contextId 上下文ID
+     * @param taskId 任务ID
+     * @return 目录路径
+     */
+    private String buildDirectoryPath(String contextId, String taskId) {
+        StringBuilder directoryBuilder = new StringBuilder();
+        
+        if (contextId != null && !contextId.isEmpty()) {
+            directoryBuilder.append(contextId);
+            if (taskId != null && !taskId.isEmpty()) {
+                directoryBuilder.append("/").append(taskId);
+            }
+            directoryBuilder.append("/");
+        }
+        
+        return directoryBuilder.toString();
+    }
+    
+    /**
+     * 获取用户实体编码
+     * 
+     * @return 用户实体编码，如果获取失败返回null
+     */
+    private String getUserEntityCode() {
+        // 获取当前用户信息
+        SSOUserInfo currentUser = getCurrentUser();
+        if (currentUser == null) {
+            log.error("无法获取当前用户信息");
+            return null;
+        }
+
+        String userId = currentUser.getUserId();
+        String phonenumber = currentUser.getPhonenumber();
+
+        // 验证必要用户信息
+        if (userId == null || userId.isEmpty()) {
+            log.error("用户ID为空");
+            return null;
+        }
+
+        // 构建用户实体编码
+        return "ENTITY_document_" + userId + "_" + phonenumber;
     }
 }

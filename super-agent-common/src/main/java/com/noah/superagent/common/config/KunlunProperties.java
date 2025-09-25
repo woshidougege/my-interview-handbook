@@ -104,10 +104,7 @@ public class KunlunProperties {
          */
         private SupplementInfo supplementInfo = new SupplementInfo();
 
-        /**
-         * 协议代理配置
-         */
-        private ProtocolProxy protocolProxy = new ProtocolProxy();
+
 
         /**
          * 会话执行接口配置
@@ -131,16 +128,6 @@ public class KunlunProperties {
             private String url;
         }
 
-        /**
-         * 协议代理配置
-         */
-        @Data
-        public static class ProtocolProxy {
-            /**
-             * 协议代理实体编码
-             */
-            private String entityCode;
-        }
     }
 
     /**

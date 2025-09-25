@@ -4,7 +4,7 @@ import { SendOutlined, AudioOutlined, AudioMutedOutlined, DownOutlined, UploadOu
 import type { UploadProps } from 'antd';
 import Head from 'next/head';
 import AppLayout from '@/components/Layout/AppLayout';
-import { chatTaskApi, workspaceApi, userApi } from '@/services/api';
+import { chatTaskApi, workspaceApi, userApi, fileRepositoryApi } from '@/services/api';
 import { ChatMessage, ChatTask, ChatSession } from '@/types/chat';
 import * as a2aService from '@/services/a2aService';
 
@@ -20,20 +20,14 @@ const ChatPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [titleGenerating, setTitleGenerating] = useState(false);
-  const [editingSession, setEditingSession] = useState<ChatTask | null>(null);
-  const [currentWorkspace, setCurrentWorkspace] = useState<{ id: string; name: string; description?: string } | null>(null);
-  const [workspaceLoading, setWorkspaceLoading] = useState(true);
-  const [generatingTitleForSession, setGeneratingTitleForSession] = useState<string | null>(null);
+  const [supplementInfo, setSupplementInfo] = useState<any>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [currentStreamMessage, setCurrentStreamMessage] = useState<string>('');
-  const [supplementInfo, setSupplementInfo] = useState<{
-    id: string;
-    text: string;
-    agentEntityCode: string;
-    sessionId: string;
-    taskId?: string;
-  } | null>(null);
-  
+  const [currentStreamMessage, setCurrentStreamMessage] = useState('');
+  const [useSSE, setUseSSE] = useState(true);
+  const [useA2A, setUseA2A] = useState(true);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null); // 添加文件上传状态
+  const [uploadingFile, setUploadingFile] = useState(false); // 添加文件上传进度状态
+
   // 添加用于取消请求的引用
   const cancelRequestRef = useRef<(() => void) | null>(null);
   
@@ -311,7 +305,7 @@ const ChatPage: React.FC = () => {
 
   // 发送消息（使用useCallback优化）
   const sendMessage = useCallback(async () => {
-    if (!inputValue.trim() || loading) return;
+    if ((!inputValue.trim() && !uploadedFile) || loading) return;
     
     // 如果有待处理的补充信息，优先处理
     if (supplementInfo) {
@@ -327,7 +321,7 @@ const ChatPage: React.FC = () => {
       const userMessage: ChatMessage = {
         id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         role: 'user',
-        content: inputValue.trim(),
+        content: inputValue.trim() || (uploadedFile ? `已上传文件: ${uploadedFile.name}` : ''),
         timestamp: messageTimestamp
       };
 
@@ -389,6 +383,26 @@ const ChatPage: React.FC = () => {
       
       // 生成任务ID
       const taskId = `task_${Date.now()}`;
+      
+      // 如果有上传的文件，则先上传文件
+      if (uploadedFile) {
+        setUploadingFile(true);
+        try {
+          const fileResponse = await fileRepositoryApi.uploadFile(uploadedFile, contextId, taskId);
+          console.log('文件上传成功:', fileResponse.data);
+          
+          // 清除已上传的文件
+          setUploadedFile(null);
+        } catch (error) {
+          console.error('文件上传失败:', error);
+          message.error('文件上传失败: ' + (error.message || '未知错误'));
+          setLoading(false);
+          setUploadingFile(false);
+          return;
+        } finally {
+          setUploadingFile(false);
+        }
+      }
       
       // 使用SSE格式发送JSON-RPC请求
       setLoading(true);
@@ -571,7 +585,7 @@ const ChatPage: React.FC = () => {
       setCurrentStreamMessage('');
       setLoading(false);
     }
-  }, [inputValue, loading, supplementInfo, currentSession, handleSupplementInfo, ensureWorkspace, createNewSession]);
+  }, [inputValue, loading, supplementInfo, currentSession, handleSupplementInfo, ensureWorkspace, createNewSession, uploadedFile]);
 
   // 添加调试函数来检查消息顺序
   const debugMessageOrder = useCallback(() => {
@@ -589,13 +603,19 @@ const ChatPage: React.FC = () => {
     }
   }, [messages, debugMessageOrder]);
 
-  // 处理回车发送
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  // 处理回车键发送消息
+  const handleEnterPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 如果按下了 Ctrl+Enter 或 Cmd+Enter，则插入换行符
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      setInputValue(prev => prev + '\n');
+      return;
+    }
+    
+    // 如果只按下了 Enter 键，则发送消息（但需要有内容或者有上传的文件）
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (supplementInfo) {
-        handleSupplementInfo();
-      } else {
+      if (inputValue.trim() || uploadedFile) {
         sendMessage();
       }
     }
@@ -1253,7 +1273,7 @@ const ChatPage: React.FC = () => {
                         ref={inputRef}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        onKeyPress={handleKeyPress}
+                        onKeyPress={handleEnterPress}
                         placeholder={supplementInfo ? `请输入补充信息: ${supplementInfo?.text}` : "输入您的问题..."}
                         autoSize={{ minRows: 1, maxRows: 4 }}
                         style={{ resize: 'none' }}
@@ -1318,7 +1338,7 @@ const ChatPage: React.FC = () => {
                         <TextArea
                           value={inputValue}
                           onChange={(e) => setInputValue(e.target.value)}
-                          onKeyPress={handleKeyPress}
+                          onKeyPress={handleEnterPress}
                           placeholder="输入您的问题，开始与AI助手对话..."
                           autoSize={{ minRows: 3, maxRows: 8 }}
                           style={{ 
@@ -1355,18 +1375,30 @@ const ChatPage: React.FC = () => {
                             </Button>
                           </Tooltip>
 
+                          {/* 文件上传按钮 */}
+                          <Upload
+                            beforeUpload={(file) => {
+                              setUploadedFile(file);
+                              return false; // 阻止自动上传
+                            }}
+                            showUploadList={false}
+                            accept="*"
+                          >
+                            <Button 
+                              icon={<UploadOutlined />} 
+                              disabled={loading || isStreaming || uploadingFile}
+                              loading={uploadingFile}
+                            />
+                          </Upload>
+
                           {/* 发送按钮 */}
                           <Button
                             type="primary"
                             size="large"
-                            icon={<SendOutlined />}
+                            icon={<SendOutlined />} 
                             onClick={sendMessage}
-                            loading={loading}
-                            disabled={!inputValue.trim() || isRecording}
-                            style={{ 
-                              borderRadius: '8px',
-                              fontWeight: '500'
-                            }}
+                            loading={loading || uploadingFile}
+                            disabled={(!inputValue.trim() && !uploadedFile) || isStreaming || uploadingFile}
                           >
                             发送
                           </Button>

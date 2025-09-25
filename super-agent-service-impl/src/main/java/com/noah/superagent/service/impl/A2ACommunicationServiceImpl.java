@@ -163,7 +163,8 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             log.debug("构建的JSON-RPC请求体: {}", requestBody);
 
             // 构建请求URL
-            String url = buildRequestUrl(actualAbilityCode, actualEntityCode, userId, satoken);
+            String a2aPlatformBaseUrl = kunlunProperties.getA2a().getSessionExecution().getUrl();
+            String url = buildRequestUrl(a2aPlatformBaseUrl,actualAbilityCode, actualEntityCode, userId, satoken);
             log.info("准备向A2A平台发送请求 - URL: {}, 方法: POST", url);
             log.debug("完整请求URL: {}", url);
 
@@ -278,40 +279,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             }
         }
     }
-    
-    /**
-     * 构建请求URL
-     */
-    private String buildRequestUrl(String abilityCode, String entityCode, String userId, String satoken) {
-        String a2aPlatformBaseUrl = kunlunProperties.getA2a().getSessionExecution().getUrl();
-        
-        if (a2aPlatformBaseUrl == null || a2aPlatformBaseUrl.trim().isEmpty()) {
-            log.error("A2A平台基础URL未配置");
-            throw new IllegalStateException("A2A平台基础URL未配置");
-        }
 
-        String url;
-        if (satoken != null && !satoken.isEmpty()) {
-            url = a2aPlatformBaseUrl
-                    .replace("{abilityCode}", abilityCode)
-                    .replace("{entityCode}", entityCode)
-                    .replace("{userId}", userId)
-                    .replace("{satoken}", satoken);
-        } else {
-            url = a2aPlatformBaseUrl
-                    .replace("{abilityCode}", abilityCode)
-                    .replace("{entityCode}", entityCode)
-                    .replace("{userId}", userId)
-                    .replace("/{satoken}/{satoken}", ""); // 移除satoken部分
-        }
-
-        if (url.trim().isEmpty()) {
-            log.error("A2A平台URL解析后为空");
-            throw new IllegalStateException("A2A平台URL解析后为空");
-        }
-        
-        return url;
-    }
     
     /**
      * 创建HTTP请求头
@@ -397,21 +365,153 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
         };
     }
 
+    /**
+     * 构建补充信息的请求URL
+     * 使用A2A协议代理实体编码，而不是默认实体编码
+     */
+    private String buildRequestUrl(String a2aPlatformBaseUrl,String abilityCode, String entityCode, String userId, String satoken) {
+        
+        if (a2aPlatformBaseUrl == null || a2aPlatformBaseUrl.trim().isEmpty()) {
+            log.error("A2A平台补充信息URL未配置");
+            throw new IllegalStateException("A2A平台补充信息URL未配置");
+        }
+
+        String url;
+        if (satoken != null && !satoken.isEmpty()) {
+            url = a2aPlatformBaseUrl
+                    .replace("{abilityCode}", abilityCode)
+                    .replace("{entityCode}", entityCode)
+                    .replace("{userId}", userId)
+                    .replace("{satoken}", satoken);
+        } else {
+            url = a2aPlatformBaseUrl
+                    .replace("{abilityCode}", abilityCode)
+                    .replace("{entityCode}", entityCode)
+                    .replace("{userId}", userId)
+                    .replace("/{satoken}/{satoken}", ""); // 移除satoken部分
+        }
+
+        if (url.trim().isEmpty()) {
+            log.error("A2A平台补充信息URL解析后为空");
+            throw new IllegalStateException("A2A平台补充信息URL解析后为空");
+        }
+        
+        return url;
+    }
+
+    /**
+     * 构建补充信息的JSON-RPC请求
+     */
+    private String buildSupplementJsonRpcRequest(String taskId, String contextId, String userInput) {
+        try {
+            ObjectNode root = objectMapper.createObjectNode();
+            root.put("jsonrpc", "2.0");
+            root.put("method", "message/send");
+            root.put("id", "supplementId_" + System.currentTimeMillis());
+
+            ObjectNode params = objectMapper.createObjectNode();
+            ObjectNode messageNode = objectMapper.createObjectNode();
+
+            messageNode.put("role", "user");
+            messageNode.put("kind", "message");
+            messageNode.put("taskId", taskId);
+            
+            if (contextId != null && !contextId.isEmpty()) {
+                messageNode.put("contextId", contextId);
+            }
+
+            ArrayNode parts = objectMapper.createArrayNode();
+            
+            // 添加补充信息作为文本部分
+            ObjectNode textPart = objectMapper.createObjectNode();
+            textPart.put("kind", "text");
+            textPart.put("text", userInput != null ? userInput : "");
+            parts.add(textPart);
+
+            messageNode.set("parts", parts);
+            params.set("message", messageNode);
+            root.set("params", params);
+
+            return objectMapper.writeValueAsString(root);
+        } catch (Exception e) {
+            log.error("构建补充信息JSON-RPC请求时发生异常", e);
+            throw new RuntimeException("构建补充信息请求失败", e);
+        }
+    }
+
     @Override
-    public ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId) {
+    public ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId,String A2aProtocolProxyEntityCode) {
         log.info("处理补充信息 - 用户ID: {}, 任务ID: {}, 用户输入: {}, 会话ID: {}", userId, taskId, userInput, sessionId);
         
-        // TODO: 实现补充信息处理逻辑
-        return ApiResponse.success("处理成功");
+        try {
+            // 使用配置的能力中心编码和A2A协议代理实体编码
+            String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
+
+            // 构建补充信息请求URL - 使用补充信息接口
+            String a2aPlatformBaseUrl = kunlunProperties.getA2a().getSupplementInfo().getUrl();
+            String url = buildRequestUrl(a2aPlatformBaseUrl,abilityCode, A2aProtocolProxyEntityCode, userId, null);
+            log.info("准备发送补充信息 - URL: {}", url);
+
+            // 构建JSON-RPC格式的补充信息请求
+            String requestBody = buildSupplementJsonRpcRequest(taskId, sessionId, userInput);
+            log.debug("构建的补充信息请求体: {}", requestBody);
+
+            // 设置请求头
+            HttpHeaders headers = createHttpHeaders();
+            HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+            
+            // 发送请求
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("补充信息处理成功 - 用户ID: {}, 响应: {}", userId, response.getBody());
+                return ApiResponse.success(response.getBody());
+            } else {
+                log.error("补充信息处理失败 - 用户ID: {}, 状态码: {}", userId, response.getStatusCode());
+                return ApiResponse.error("补充信息处理失败，状态码: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("处理补充信息时发生异常 - 用户ID: {}", userId, e);
+            return ApiResponse.error("处理补充信息异常: " + e.getMessage());
+        }
     }
-    
-    @Override
-    public CompletableFuture<ApiResponse<String>> handleSupplementInfoAsync(String userId, String taskId, String userInput, String sessionId) {
+
+    public CompletableFuture<ApiResponse<String>> handleSupplementInfoAsync(String userId, String taskId, String userInput, String sessionId,String A2aProtocolProxyEntityCode) {
         log.info("异步处理补充信息 - 用户ID: {}, 任务ID: {}, 用户输入: {}, 会话ID: {}", userId, taskId, userInput, sessionId);
         
         return CompletableFuture.supplyAsync(() -> {
-            // TODO: 实现异步补充信息处理逻辑
-            return ApiResponse.success("异步处理成功");
+            try {
+                // 使用配置的能力中心编码和A2A协议代理实体编码
+                String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
+
+                // 构建补充信息请求URL - 使用补充信息接口
+                String a2aPlatformBaseUrl = kunlunProperties.getA2a().getSupplementInfo().getUrl();
+                String url = buildRequestUrl(a2aPlatformBaseUrl,abilityCode, A2aProtocolProxyEntityCode, userId, null);
+                log.info("准备异步发送补充信息 - URL: {}", url);
+
+                // 构建JSON-RPC格式的补充信息请求
+                String requestBody = buildSupplementJsonRpcRequest(taskId, sessionId, userInput);
+                log.debug("构建的异步补充信息请求体: {}", requestBody);
+
+                // 设置请求头
+                HttpHeaders headers = createHttpHeaders();
+                HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+                
+                // 发送请求
+                ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+                
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    log.info("异步补充信息处理成功 - 用户ID: {}, 响应: {}", userId, response.getBody());
+                    return ApiResponse.success(response.getBody());
+                } else {
+                    log.error("异步补充信息处理失败 - 用户ID: {}, 状态码: {}", userId, response.getStatusCode());
+                    return ApiResponse.error("异步补充信息处理失败，状态码: " + response.getStatusCode());
+                }
+            } catch (Exception e) {
+                log.error("异步处理补充信息时发生异常 - 用户ID: {}", userId, e);
+                return ApiResponse.error("异步处理补充信息异常: " + e.getMessage());
+            }
         }, aiChatExecutionExecutor);
     }
+
 }

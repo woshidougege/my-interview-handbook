@@ -27,7 +27,7 @@ public interface FileRepositoryService {
      * @param recursive  是否递归
      * @return 文件名列表
      */
-    List<String> listObjectNames( String directory, boolean recursive);
+    List<String> listObjectNames( String directory, boolean recursive,String userEntityCode);
     
     /**
      * 获取文件的预签名URL
@@ -35,5 +35,5 @@ public interface FileRepositoryService {
      * @param filename   文件名
      * @return 文件的预签名URL
      */
-    String getObjectURL(String filename);
+    String getObjectURL(String filename,String userEntityCode);
 }

@@ -147,11 +147,11 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     }
 
     @Override
-    public List<String> listObjectNames( String directory, boolean recursive) {
+    public List<String> listObjectNames( String directory, boolean recursive ,String userEntityCode) {
         try {
             // 构建请求URL - 使用配置项
             String url = kunlunProperties.getFileRepository().getListObjectNamesPath()
-                            .replace("{entityCode}", kunlunProperties.getEntityCodes().getDefaultCode())
+                            .replace("{userEntityCode}", userEntityCode)
                             .replace("{abilityCode}", kunlunProperties.getAbilityCodes().getDefaultCode());
 
             log.info("调用文件列表接口: {}", url);
@@ -220,11 +220,11 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
     }
 
     @Override
-    public String getObjectURL(String filename) {
+    public String getObjectURL(String filename,String userEntityCode) {
         try {
             // 构建请求URL - 使用配置项
             String url =kunlunProperties.getFileRepository().getGetObjectUrlPath()
-                            .replace("{entityCode}", kunlunProperties.getEntityCodes().getDefaultCode())
+                            .replace("{userEntityCode}",userEntityCode)
                             .replace("{abilityCode}", kunlunProperties.getAbilityCodes().getDefaultCode());
 
             log.info("调用获取文件URL接口: {}", url);
