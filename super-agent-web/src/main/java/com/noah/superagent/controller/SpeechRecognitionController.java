@@ -104,7 +104,7 @@ public class SpeechRecognitionController {
             )
             @RequestParam(value = "language", required = false, defaultValue = "auto") String language) {
         
-        log.info("接收到语音识别请求: 文件名={}, 大小={}KB, 语言={}", 
+        log.info("开始语音识别 - 文件: {}, 大小: {}KB, 语言: {}", 
                 audioFile.getOriginalFilename(), 
                 audioFile.getSize() / 1024, 
                 language);
@@ -123,7 +123,6 @@ public class SpeechRecognitionController {
             
             // 记录开始时间
             long startTime = System.currentTimeMillis();
-            log.info("语音识别开始 - 使用FunASR本地服务, 开始时间: {}", startTime);
             
             // 调用识别服务
             SpeechRecognitionResponse result = speechRecognitionService.recognizeAudioStream(
@@ -136,13 +135,15 @@ public class SpeechRecognitionController {
             // 记录结束时间和耗时
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            log.info("语音识别完成 - 使用FunASR本地服务, 耗时: {}ms", duration);
             
             if (result.getStatus() == SpeechRecognitionResponse.RecognitionStatus.COMPLETED) {
-                log.info("语音识别成功: {}", result.getText());
+                log.info("语音识别完成 - 文件: {}, 识别长度: {}字符, 耗时: {}ms", 
+                    audioFile.getOriginalFilename(), 
+                    result.getText().length(), 
+                    duration);
                 return ResponseEntity.ok(ApiResponse.success(result));
             } else {
-                log.error("语音识别失败: {}", result.getErrorMessage());
+                log.error("语音识别失败 - 文件: {}, 错误: {}", audioFile.getOriginalFilename(), result.getErrorMessage());
                 return ResponseEntity.ok(ApiResponse.error(result.getErrorMessage()));
             }
             

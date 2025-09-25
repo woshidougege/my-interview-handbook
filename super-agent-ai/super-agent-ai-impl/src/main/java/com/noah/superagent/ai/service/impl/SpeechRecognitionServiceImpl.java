@@ -51,7 +51,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
 
     @Override
     public SpeechRecognitionResponse recognizeAudioStream(InputStream audioStream, String filename, String language, String model) {
-        log.info("开始识别录音文件: {}, 语言: {}", filename, language);
+        log.debug("开始识别录音文件: {}, 语言: {}", filename, language);
         
         try {
             // 直接流式调用FunASR服务进行识别
@@ -60,7 +60,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             // 生成文件ID
             String fileId = IdUtil.getSnowflakeNextIdStr();
             
-            log.info("语音识别成功，文件ID: {}, 识别结果: {}", fileId, result);
+            log.info("语音识别成功 - 文件ID: {}, 文本长度: {}字符", fileId, result.length());
             
             return SpeechRecognitionResponse.builder()
                     .status(SpeechRecognitionResponse.RecognitionStatus.COMPLETED)
@@ -84,11 +84,11 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
      */
     private String transcribeByStream(InputStream audioStream, String filename) {
         try {
-            log.info("开始转录音频文件: {}", filename);
+            log.debug("开始转录音频文件: {}", filename);
             
             // 将InputStream转换为byte数组，避免多次读取流的问题
             byte[] audioBytes = readAllBytes(audioStream);
-            log.info("音频文件读取完成，大小: {} bytes", audioBytes.length);
+            log.debug("音频文件读取完成，大小: {} bytes", audioBytes.length);
             
             // 构建multipart/form-data请求
             MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
@@ -99,14 +99,32 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                 }
             });
             
-            String response = webClient.post()
-                    .uri("/transcribe")
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(BodyInserters.fromMultipartData(parts))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .timeout(Duration.ofSeconds(speechProperties.getFunasr().getTimeout()))
-                    .block();
+            // 获取超时配置，如果为0则表示无限制
+            int timeoutSeconds = speechProperties.getFunasr().getTimeout();
+            
+            String response;
+            if (timeoutSeconds <= 0) {
+                // 无限制超时
+                response = webClient.post()
+                        .uri("/transcribe")
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(BodyInserters.fromMultipartData(parts))
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+                log.debug("使用无限制超时进行语音识别");
+            } else {
+                // 有限制超时
+                response = webClient.post()
+                        .uri("/transcribe")
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(BodyInserters.fromMultipartData(parts))
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .timeout(Duration.ofSeconds(timeoutSeconds))
+                        .block();
+                log.debug("使用{}秒超时进行语音识别", timeoutSeconds);
+            }
 
             return parseTranscriptionResult(response);
             
@@ -145,7 +163,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             if (jsonNode.has("success") && jsonNode.get("success").asBoolean()) {
                 if (jsonNode.has("text")) {
                     String result = jsonNode.get("text").asText();
-                    log.info("成功解析FunASR识别结果: {}", result);
+                    log.debug("成功解析FunASR识别结果，长度: {}字符", result.length());
                     return result;
                 }
                 

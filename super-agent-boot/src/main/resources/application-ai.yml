@@ -27,5 +27,5 @@ super-agent:
       # 语音识别配置 - 使用本地FunASR
       speech-recognition:
         funasr:
-          server-url: ${FUNASR_SERVER_URL:http://localhost:5000}
-          timeout: 120
+          server-url: ${FUNASR_SERVER_URL:http://192.168.1.136:5000}
+          timeout: ${FUNASR_TIMEOUT:0}  # 超时时间(秒)：0=无限制，建议根据音频长度设置，如3600(1小时)
