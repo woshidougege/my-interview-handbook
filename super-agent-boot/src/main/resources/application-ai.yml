@@ -29,3 +29,31 @@ super-agent:
         funasr:
           server-url: ${FUNASR_SERVER_URL:http://192.168.1.136:5000}
           timeout: ${FUNASR_TIMEOUT:0}  # 超时时间(秒)：0=无限制，建议根据音频长度设置，如3600(1小时)
+        
+        # 文本纠错配置 - 使用AI大模型纠正长音频识别错误
+        text-correction:
+          enabled: ${SPEECH_TEXT_CORRECTION_ENABLED:true}  # 是否启用文本纠错
+          # 触发条件
+          min-audio-duration: ${SPEECH_TEXT_CORRECTION_MIN_DURATION:300}  # 音频最小时长(秒)，超过此时长才纠错，默认5分钟
+          min-text-length: ${SPEECH_TEXT_CORRECTION_MIN_LENGTH:500}  # 文本最小长度(字符)，超过此长度才纠错，默认500字符
+          # AI模型配置
+          model: ${SPEECH_TEXT_CORRECTION_MODEL:qwen-plus}  # 使用的纠错模型
+          max-tokens: ${SPEECH_TEXT_CORRECTION_MAX_TOKENS:20000}  # 最大token数，支持长文本纠错
+          temperature: ${SPEECH_TEXT_CORRECTION_TEMPERATURE:0.3}  # 较低温度保证准确性
+          # 纠错提示词模板
+          system-prompt: |
+            你是一个专业的语音识别文本纠错助手。你的任务是纠正语音识别产生的错误，包括：
+            
+            1. 同音字错误（如"在"误识别为"再"）
+            2. 标点符号缺失或错误
+            3. 语法不通顺的地方
+            4. 明显的识别错误
+            
+            纠错原则：
+            - 保持原意不变，只修正明显的错误
+            - 添加必要的标点符号，提高可读性
+            - 修正明显的语法错误和逻辑不通的地方
+            - 不要过度修改，保持语音原有的表达风格
+            - 如果文本已经很准确，只需要添加标点符号即可
+            
+            请直接返回纠正后的文本，不要添加任何解释或说明。

@@ -104,10 +104,15 @@ public class SpeechRecognitionController {
             )
             @RequestParam(value = "language", required = false, defaultValue = "auto") String language) {
         
-        log.info("开始语音识别 - 文件: {}, 大小: {}KB, 语言: {}", 
-                audioFile.getOriginalFilename(), 
-                audioFile.getSize() / 1024, 
-                language);
+        log.info("===== 开始语音识别请求 =====");
+        log.info("请求信息:");
+        log.info("  ├─ 文件名: {}", audioFile.getOriginalFilename());
+        log.info("  ├─ 文件大小: {}KB ({} bytes)", audioFile.getSize() / 1024, audioFile.getSize());
+        log.info("  ├─ 语言设置: {}", language);
+        log.info("  └─ 文件类型: {}", audioFile.getContentType());
+        
+        // 记录开始时间（移到try块外）
+        long startTime = System.currentTimeMillis();
         
         try {
             // 验证文件
@@ -120,9 +125,6 @@ public class SpeechRecognitionController {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.error("文件大小不能超过100MB"));
             }
-            
-            // 记录开始时间
-            long startTime = System.currentTimeMillis();
             
             // 调用识别服务
             SpeechRecognitionResponse result = speechRecognitionService.recognizeAudioStream(
@@ -137,24 +139,62 @@ public class SpeechRecognitionController {
             long duration = endTime - startTime;
             
             if (result.getStatus() == SpeechRecognitionResponse.RecognitionStatus.COMPLETED) {
-                log.info("语音识别完成 - 文件: {}, 识别长度: {}字符, 耗时: {}ms", 
-                    audioFile.getOriginalFilename(), 
-                    result.getText().length(), 
-                    duration);
+                log.info("===== 语音识别请求完成 =====");
+                log.info("响应结果:");
+                log.info("  ├─ 文件名: {}", audioFile.getOriginalFilename());
+                log.info("  ├─ 识别文本长度: {} 字符", result.getText().length());
+                log.info("  ├─ 处理耗时: {}", formatDurationSimple(duration));
+                log.info("  └─ 状态: 成功");
+                log.info("最终识别文本结果: {}", result.getText());
+                log.info("===============================");
                 return ResponseEntity.ok(ApiResponse.success(result));
             } else {
-                log.error("语音识别失败 - 文件: {}, 错误: {}", audioFile.getOriginalFilename(), result.getErrorMessage());
+                log.error("===== 语音识别请求失败 =====");
+                log.error("错误信息:");
+                log.error("  ├─ 文件名: {}", audioFile.getOriginalFilename());
+                log.error("  ├─ 错误原因: {}", result.getErrorMessage());
+                log.error("  └─ 耗时: {}", formatDurationSimple(duration));
+                log.error("===============================");
                 return ResponseEntity.ok(ApiResponse.error(result.getErrorMessage()));
             }
             
         } catch (IOException e) {
-            log.error("处理上传文件失败", e);
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("===== 文件处理异常 =====");
+            log.error("异常信息:");
+            log.error("  ├─ 文件名: {}", audioFile.getOriginalFilename());
+            log.error("  ├─ 异常类型: IO异常");
+            log.error("  ├─ 错误信息: {}", e.getMessage());
+            log.error("  └─ 耗时: {}", formatDurationSimple(duration));
+            log.error("===========================");
             return ResponseEntity.internalServerError()
                     .body(ApiResponse.error("处理上传文件失败: " + e.getMessage()));
         } catch (Exception e) {
-            log.error("语音识别服务异常", e);
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("===== 语音识别服务异常 =====");
+            log.error("异常信息:");
+            log.error("  ├─ 文件名: {}", audioFile.getOriginalFilename());
+            log.error("  ├─ 异常类型: 服务异常");
+            log.error("  ├─ 错误信息: {}", e.getMessage());
+            log.error("  └─ 耗时: {}", formatDurationSimple(duration));
+            log.error("===============================");
             return ResponseEntity.internalServerError()
                     .body(ApiResponse.error("语音识别服务异常: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 简单的时间格式化方法，用于Controller层日志
+     */
+    private String formatDurationSimple(long milliseconds) {
+        if (milliseconds < 1000) {
+            return milliseconds + "毫秒";
+        } else if (milliseconds < 60000) {
+            return String.format("%.1f秒", milliseconds / 1000.0);
+        } else {
+            long minutes = milliseconds / 60000;
+            long seconds = (milliseconds % 60000) / 1000;
+            return minutes + "分" + seconds + "秒";
         }
     }
 
