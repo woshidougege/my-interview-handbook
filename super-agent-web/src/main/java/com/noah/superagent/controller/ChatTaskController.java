@@ -97,10 +97,8 @@ public class ChatTaskController {
 
                 log.info("聊天历史接口调用成功，状态码: {}", historyResponse.getStatusCode());
 
-                // 解析聊天历史数据并设置到response中
                 if (historyResponse.getStatusCode().is2xxSuccessful() && historyResponse.getBody() != null) {
-                    List<ChatHistoryItemResponse> chatHistoryList = ChatHistoryParser.parseChatHistory(historyResponse.getBody());
-                    response.setChatHistory(chatHistoryList);
+                    response.setRawChatHistory(historyResponse.getBody());
                 }
             } catch (Exception e) {
                 log.error("调用聊天历史接口失败: ", e);

@@ -36,17 +36,13 @@ public class ChatTaskResponse extends BaseResponse {
 
     @Schema(description = "状态: IN_PROGRESS-进行中 COMPLETED-已完成 ARCHIVED-已归档", example = "IN_PROGRESS")
     private ChatTaskStatusEnum status;
-    
+
     @Schema(description = "是否存在关联的定时任务", example = "true")
     private Boolean hasScheduledTask;
-    
+
     @Schema(description = "关联的定时任务ID")
     private Long scheduledTaskId;
-    
-    @Schema(description = "聊天历史详情")
-    private List<ChatHistoryItemResponse> chatHistory;
-    
-    public void setChatHistory(List<ChatHistoryItemResponse> chatHistory) {
-        this.chatHistory = chatHistory;
-    }
+
+    @Schema(description = "原始聊天历史数据")
+    private String rawChatHistory;
 }
