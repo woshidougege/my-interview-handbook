@@ -433,14 +433,14 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             log.info("  └─ 总耗时: {}", formatDuration(totalDuration));
         }
         log.info("");
-        log.info("处理效率:");
-        double recognitionSpeed = (double) estimatedAudioDuration * 1000 / speechRecognitionDuration;
-        log.info("  ├─ 识别速度: {:.1f}倍速 (音频时长/识别耗时)", recognitionSpeed);
+        log.info("处理效率分析:");
+        double recognitionRatio = (double) estimatedAudioDuration * 1000 / speechRecognitionDuration;
+        log.info("  ├─ 识别效率: {:.1f}x ({})", recognitionRatio, getEfficiencyDescription(recognitionRatio));
         if (correctionApplied) {
-            double totalSpeed = (double) estimatedAudioDuration * 1000 / totalDuration;
-            log.info("  └─ 整体速度: {:.1f}倍速 (含纠错)", totalSpeed);
+            double totalRatio = (double) estimatedAudioDuration * 1000 / totalDuration;
+            log.info("  └─ 整体效率: {:.1f}x (含纠错, {})", totalRatio, getEfficiencyDescription(totalRatio));
         } else {
-            log.info("  └─ 整体速度: {:.1f}倍速 (仅识别)", recognitionSpeed);
+            log.info("  └─ 整体效率: {:.1f}x (仅识别, {})", recognitionRatio, getEfficiencyDescription(recognitionRatio));
         }
         log.info("=============================");
     }
@@ -482,6 +482,23 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         }
         
         return sb.length() > 0 ? sb.toString() : "0毫秒";
+    }
+    
+    /**
+     * 获取处理效率描述
+     */
+    private String getEfficiencyDescription(double ratio) {
+        if (ratio >= 3.0) {
+            return "很快，比实时快" + String.format("%.1f", ratio) + "倍";
+        } else if (ratio >= 2.0) {
+            return "较快，比实时快" + String.format("%.1f", ratio) + "倍";
+        } else if (ratio >= 1.0) {
+            return "正常，比实时快" + String.format("%.1f", ratio) + "倍";
+        } else if (ratio >= 0.5) {
+            return "较慢，比实时慢" + String.format("%.1f", 1.0/ratio) + "倍";
+        } else {
+            return "很慢，比实时慢" + String.format("%.1f", 1.0/ratio) + "倍";
+        }
     }
 
     /**
