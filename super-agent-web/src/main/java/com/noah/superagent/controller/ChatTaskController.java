@@ -1,15 +1,14 @@
 package com.noah.superagent.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.noah.superagent.common.config.KunlunProperties;
 import com.noah.superagent.common.dto.request.ChatTaskCreateRequest;
 import com.noah.superagent.common.dto.request.ChatTaskUpdateRequest;
 import com.noah.superagent.common.dto.request.ChatTitleGenerateRequest;
 import com.noah.superagent.common.dto.request.PageRequest;
-import com.noah.superagent.common.dto.response.ChatHistoryItemResponse;
 import com.noah.superagent.common.dto.response.ChatTaskResponse;
 import com.noah.superagent.common.dto.response.ChatTitleGenerateResponse;
 import com.noah.superagent.common.dto.response.PageResponse;
-import com.noah.superagent.common.util.ChatHistoryParser;
 import com.noah.superagent.convert.ChatTaskWebConvert;
 import com.noah.superagent.model.ChatTaskDTO;
 import com.noah.superagent.response.ApiResponse;
@@ -97,8 +96,21 @@ public class ChatTaskController {
 
                 log.info("聊天历史接口调用成功，状态码: {}", historyResponse.getStatusCode());
 
+                // 从响应中提取data字段并设置到rawChatHistory中
                 if (historyResponse.getStatusCode().is2xxSuccessful() && historyResponse.getBody() != null) {
-                    response.setRawChatHistory(historyResponse.getBody());
+                    try {
+                        ObjectMapper objectMapper = new ObjectMapper();
+                        // 解析响应体
+                        Map<String, Object> responseMap = objectMapper.readValue(historyResponse.getBody(),
+                                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                                });
+                        Object data = responseMap.get("data");
+                        response.setRawChatHistory(data);
+
+                    } catch (Exception e) {
+                        log.warn("解析聊天历史响应失败，使用完整响应体: ", e);
+                        response.setRawChatHistory(historyResponse.getBody());
+                    }
                 }
             } catch (Exception e) {
                 log.error("调用聊天历史接口失败: ", e);
@@ -108,56 +120,6 @@ public class ChatTaskController {
         return ApiResponse.success("查询成功", response);
     }
 
-    @GetMapping("/{id}/history")
-    @Operation(summary = "查询对话任务历史详情", description = "根据会话ID和实体编码查询对话任务历史详情")
-    public ResponseEntity<String> getChatTaskHistoryById(
-            @Parameter(description = "对话任务ID", example = "1234567890123456789")
-            @PathVariable("id") Long id) {
-        log.info("接收查询对话任务历史详情请求: {}", id);
-
-        // Service -> DTO -> Response
-        ChatTaskDTO chatTaskDO = chatTaskService.getChatTaskById(id);
-
-        // 获取默认实体编码
-        String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
-
-        // 构建调用URL，使用配置文件中的URL
-        String url = String.format("%s?sessionId=%s&entityCode=%s",
-                kunlunProperties.getChatHistory().getUrl(), chatTaskDO.getContextId(), entityCode);
-
-        // 调用外部接口获取聊天历史详情
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-
-        return response;
-    }
-
-    @GetMapping("/history/list")
-    @Operation(summary = "查询用户聊天历史列表", description = "根据用户ID和实体编码查询聊天历史列表")
-    public ResponseEntity<String> getChatHistoryList(
-            @Parameter(description = "工作空间ID", example = "1234567890123456789")
-            @PathVariable("workspaceId") Long workspaceId,
-            @Parameter(description = "用户ID")
-            @RequestParam("userId") String userId,
-            @Parameter(description = "实体编码")
-            @RequestParam(value = "entityCode", required = false) String entityCode) {
-        log.info("接收查询聊天历史列表请求: userId={}, entityCode={}", userId, entityCode);
-
-        // 如果未提供实体编码，使用默认实体编码
-        if (entityCode == null || entityCode.isEmpty()) {
-            entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
-        }
-
-        // 构建调用URL，使用配置文件中的URL
-        String url = String.format("%s?userId=%s&entityCode=%s",
-                kunlunProperties.getChatHistory().getListUrl(), userId, entityCode);
-
-        // 调用外部接口获取聊天历史列表
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-
-        return response;
-    }
 
     @GetMapping
     @Operation(summary = "分页查询对话任务", description = "分页查询对话任务列表")
