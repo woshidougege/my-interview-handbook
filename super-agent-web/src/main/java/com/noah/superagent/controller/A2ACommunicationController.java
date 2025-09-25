@@ -78,21 +78,19 @@ public class A2ACommunicationController {
      * 流式发送消息到A2A平台
      *
      * @param request A2A消息请求参数
-     * @param files 上传的文件
      * @return StreamingResponseBody 流式响应体
      */
-    @PostMapping(value = "/stream-message", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/stream-message", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "流式发送消息到A2A平台", description = "将用户消息和附件流式发送到上游智平台的协同规划智能体")
     @Parameters({
             @Parameter(name = "Satoken", description = "认证令牌", in = ParameterIn.HEADER)
     })
     public StreamingResponseBody streamMessageToA2APlatform(
-            @Parameter(description = "A2A消息请求参数") @ModelAttribute A2AMessageRequest request,
-            @Parameter(description = "上传的文件") @RequestPart(value = "files", required = false) MultipartFile[] files,
+            @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
             @Parameter(hidden = true) @SaToken String satoken) {
         
-        log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}, 文件数量: {}", 
-                request.getUserId(), request.getMessage(), files != null ? files.length : 0);
+        log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", 
+                request.getUserId(), request.getMessage());
 
         // 所有参数都由后端生成
         String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
@@ -104,32 +102,7 @@ public class A2ACommunicationController {
         // 修改contextId从请求中获取，如果请求中没有则使用默认值
         String contextId = request.getContextId() != null ? request.getContextId() : "";
 
-        // 处理文件上传
-        List<Attachment> uploadedAttachments = new ArrayList<>();
-        if (files != null && files.length > 0) {
-            for (MultipartFile file : files) {
-                if (file != null && !file.isEmpty()) {
-                    try {
-                        Map<String, String> fileInfo = uploadFileToRepository(file, contextId, taskId);
-                        if (fileInfo != null && "true".equals(fileInfo.get("success"))) {
-                            Attachment attachment = new Attachment();
-                            attachment.setMimeType(file.getContentType());
-                            attachment.setName(fileInfo.get("fileName"));
-                            attachment.setOriginalName(fileInfo.get("originalName"));
-                            attachment.setUri(fileInfo.get("fileUrl"));
-                            uploadedAttachments.add(attachment);
-                            log.info("文件上传成功 - 文件名: {}, URL: {}", fileInfo.get("originalName"), fileInfo.get("fileUrl"));
-                        } else {
-                            log.warn("文件上传失败 - 文件名: {}", file.getOriginalFilename());
-                        }
-                    } catch (Exception e) {
-                        log.error("文件上传异常 - 文件名: {}", file.getOriginalFilename(), e);
-                    }
-                }
-            }
-        }
-
-        return createStreamingResponse(abilityCode, entityCode, userId, message, taskId, contextId, "JSON-RPC", satoken, uploadedAttachments);
+        return createStreamingResponse(abilityCode, entityCode, userId, message, taskId, contextId, "JSON-RPC", satoken, request.getAttachments());
     }
 
 
@@ -641,7 +614,7 @@ public class A2ACommunicationController {
      * 补充信息接口
      * 支持文件上传，自动判断是否有文件
      */
-    @PostMapping(value = "/supplement-info", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    @PostMapping(value = "/supplement-info", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE, MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_FORM_URLENCODED_VALUE})
     @Operation(summary = "补充信息", description = "处理前端收集的动态表单数据并发送到上游智能体，支持文件上传")
     public ApiResponse<String> handleDynamicFormSupplement(
             @Parameter(description = "用户ID") @RequestParam(value = "userId", required = false) String userId,
@@ -649,7 +622,8 @@ public class A2ACommunicationController {
             @Parameter(description = "上下文ID") @RequestParam(value = "contextId", required = false) String contextId,
             @Parameter(description = "A2A协议代理实体编码") @RequestParam(value = "a2aProtocolProxyEntityCode", required = false) String a2aProtocolProxyEntityCode,
             @Parameter(description = "表单数据") @RequestParam Map<String, String> allParams,
-            @Parameter(description = "上传的文件") @RequestPart(value = "files", required = false) MultipartFile[] files) {
+            @Parameter(description = "上传的文件") @RequestPart(value = "files", required = false) MultipartFile[] files,
+            @Parameter(hidden = true) @SaToken String satoken) {
 
         try {
             // 处理文件上传
@@ -704,7 +678,8 @@ public class A2ACommunicationController {
                     actualTaskId,
                     userInput,
                     actualContextId,
-                    actualEntityCode);
+                    actualEntityCode,
+                    satoken);
 
         } catch (Exception e) {
             log.error("处理补充信息失败", e);

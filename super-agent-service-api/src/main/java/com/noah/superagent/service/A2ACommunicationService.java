@@ -42,5 +42,5 @@ public interface A2ACommunicationService {
      * @param A2AProtocolProxy A2A协议代理实体编码
      * @return ApiResponse 响应结果
      */
-    ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId, String A2AProtocolProxy);
+    ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId, String A2AProtocolProxy,String satoken);
 }

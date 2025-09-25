@@ -1,5 +1,6 @@
 package com.noah.superagent.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -422,11 +423,32 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
 
             ArrayNode parts = objectMapper.createArrayNode();
             
-            // 添加补充信息作为文本部分
-            ObjectNode textPart = objectMapper.createObjectNode();
-            textPart.put("kind", "text");
-            textPart.put("text", userInput != null ? userInput : "");
-            parts.add(textPart);
+            // 始终使用"data"字段并包含表单信息
+            ObjectNode dataPart = objectMapper.createObjectNode();
+            dataPart.put("kind", "data");
+            
+            if (userInput != null && !userInput.isEmpty()) {
+                try {
+                    // 尝试解析用户输入为JSON对象
+                    JsonNode userData = objectMapper.readTree(userInput);
+                    if (userData.has("data")) {
+                        // 如果已经是正确格式，直接使用data字段
+                        dataPart.set("data", userData.get("data"));
+                    } else {
+                        // 否则将整个对象作为data字段
+                        dataPart.set("data", userData);
+                    }
+                } catch (Exception e) {
+                    // 如果不是有效的JSON，直接使用原始字符串作为data值
+                    dataPart.put("data", userInput);
+                }
+            } else {
+                // 如果没有用户输入，创建一个空的data对象
+                ObjectNode dataObject = objectMapper.createObjectNode();
+                dataPart.set("data", dataObject);
+            }
+            
+            parts.add(dataPart);
 
             messageNode.set("parts", parts);
             params.set("message", messageNode);
@@ -440,7 +462,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
     }
 
     @Override
-    public ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId,String A2AProtocolProxyEntityCode) {
+    public ApiResponse<String> handleSupplementInfo(String userId, String taskId, String userInput, String sessionId,String A2AProtocolProxyEntityCode,String satoken) {
         log.info("处理补充信息 - 用户ID: {}, 任务ID: {}, 用户输入: {}, 会话ID: {}", userId, taskId, userInput, sessionId);
         
         try {
@@ -449,7 +471,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
 
             // 构建补充信息请求URL - 使用补充信息接口
             String a2aPlatformBaseUrl = kunlunProperties.getA2a().getSupplementInfo().getUrl();
-            String url = buildRequestUrl(a2aPlatformBaseUrl,abilityCode, A2AProtocolProxyEntityCode, userId, null);
+            String url = buildRequestUrl(a2aPlatformBaseUrl,abilityCode, A2AProtocolProxyEntityCode, userId, satoken);
             log.info("准备发送补充信息 - URL: {}", url);
 
             // 构建JSON-RPC格式的补充信息请求
