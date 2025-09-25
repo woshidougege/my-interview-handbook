@@ -20,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -71,8 +72,13 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             long speechRecognitionEndTime = System.currentTimeMillis();
             long speechRecognitionDuration = speechRecognitionEndTime - speechRecognitionStartTime;
             
-            // 打印识别结果
-            log.info("语音识别结果文本: {}", originalText);
+            // 打印识别结果摘要
+            log.info("===== 语音识别结果 =====");
+            log.info("文本统计:");
+            log.info("  ├─ 字符总数: {} 字符", originalText.length());
+            log.info("  ├─ 预估行数: {} 行", Math.max(1, originalText.length() / 65));
+            log.info("  └─ 文本预览: {}", org.apache.commons.lang3.StringUtils.abbreviate(org.apache.commons.lang3.StringUtils.normalizeSpace(originalText), 100));
+            log.info("==========================");
             
             // 计算音频处理时长（估算）
             long estimatedAudioDuration = estimateAudioDuration(originalText, speechRecognitionDuration);
@@ -97,8 +103,22 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
                 if (StringUtils.hasText(correctedText) && !correctedText.equals(originalText)) {
                     finalText = correctedText;
                     correctionApplied = true;
-                    log.info("文本纠错完成 - 原始长度: {}, 纠正后长度: {}", 
-                            originalText.length(), correctedText.length());
+                    
+                    // 详细的纠错对比日志
+                    log.info("===== 文本纠错对比结果 =====");
+                    log.info("纠错统计:");
+                    log.info("  ├─ 原始文本长度: {} 字符", originalText.length());
+                    log.info("  ├─ 纠错后长度: {} 字符", correctedText.length());
+                    log.info("  ├─ 长度变化: {}{} 字符", 
+                            correctedText.length() > originalText.length() ? "+" : "",
+                            correctedText.length() - originalText.length());
+                    log.info("  └─ 纠错效果: {}",
+                            correctedText.length() > originalText.length() ? "增加了标点和格式" : "压缩了冗余内容");
+                    log.info("");
+                    log.info("文本对比预览:");
+                    log.info("  ┌─ 原始文本: {}", org.apache.commons.lang3.StringUtils.abbreviate(org.apache.commons.lang3.StringUtils.normalizeSpace(originalText), 150));
+                    log.info("  └─ 纠错文本: {}", org.apache.commons.lang3.StringUtils.abbreviate(org.apache.commons.lang3.StringUtils.normalizeSpace(correctedText), 150));
+                    log.info("==============================");
                 } else {
                     log.info("文本纠错未产生变化或失败，使用原始识别结果");
                 }
@@ -421,16 +441,16 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         log.info("  ├─ 文件名: {}", filename);
         log.info("  ├─ 文件ID: {}", fileId);
         log.info("  ├─ 文本长度: {} 字符", textLength);
-        log.info("  └─ 预估音频时长: {}", formatDuration(estimatedAudioDuration * 1000));
+            log.info("  └─ 预估音频时长: {}", DurationFormatUtils.formatDurationHMS(estimatedAudioDuration * 1000));
         log.info("");
         log.info("耗时统计:");
-        log.info("  ├─ 语音识别耗时: {}", formatDuration(speechRecognitionDuration));
+        log.info("  ├─ 语音识别耗时: {}", DurationFormatUtils.formatDurationHMS(speechRecognitionDuration));
         if (correctionApplied) {
-            log.info("  ├─ 文本纠错耗时: {}", formatDuration(textCorrectionDuration));
-            log.info("  └─ 总耗时: {}", formatDuration(totalDuration));
+            log.info("  ├─ 文本纠错耗时: {}", DurationFormatUtils.formatDurationHMS(textCorrectionDuration));
+            log.info("  └─ 总耗时: {}", DurationFormatUtils.formatDurationHMS(totalDuration));
         } else {
             log.info("  ├─ 文本纠错: 未触发或跳过");
-            log.info("  └─ 总耗时: {}", formatDuration(totalDuration));
+            log.info("  └─ 总耗时: {}", DurationFormatUtils.formatDurationHMS(totalDuration));
         }
         log.info("");
         log.info("处理效率分析:");
@@ -445,44 +465,6 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
         log.info("=============================");
     }
     
-    /**
-     * 格式化时间显示，自动转换单位
-     * 使用Java Duration类进行格式化
-     */
-    private String formatDuration(long milliseconds) {
-        Duration duration = Duration.ofMillis(milliseconds);
-        
-        long days = duration.toDays();
-        long hours = duration.toHours() % 24;
-        long minutes = duration.toMinutes() % 60;
-        long seconds = duration.getSeconds() % 60;
-        long millis = duration.toMillis() % 1000;
-        
-        StringBuilder sb = new StringBuilder();
-        
-        if (days > 0) {
-            sb.append(days).append("天");
-        }
-        if (hours > 0) {
-            sb.append(hours).append("小时");
-        }
-        if (minutes > 0) {
-            sb.append(minutes).append("分");
-        }
-        if (seconds > 0) {
-            sb.append(seconds).append("秒");
-        }
-        
-        // 如果总时间小于1秒，显示毫秒
-        if (duration.toMillis() < 1000) {
-            sb.append(millis).append("毫秒");
-        } else if (seconds == 0 && minutes == 0 && hours == 0 && days == 0) {
-            // 如果所有大单位都是0，但总时间>=1秒，说明有不足1秒的部分
-            sb.append("1秒");
-        }
-        
-        return sb.length() > 0 ? sb.toString() : "0毫秒";
-    }
     
     /**
      * 获取处理效率描述
@@ -500,6 +482,7 @@ public class SpeechRecognitionServiceImpl implements SpeechRecognitionService {
             return "很慢，比实时慢" + String.format("%.1f", 1.0/ratio) + "倍";
         }
     }
+    
 
     /**
      * 健康检查

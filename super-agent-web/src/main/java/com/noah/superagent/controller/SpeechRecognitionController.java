@@ -3,6 +3,9 @@ package com.noah.superagent.controller;
 import com.noah.superagent.ai.service.SpeechRecognitionService;
 import com.noah.superagent.common.dto.response.ApiResponse;
 import com.noah.superagent.common.dto.response.SpeechRecognitionResponse;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.apache.commons.lang3.StringUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -107,7 +110,7 @@ public class SpeechRecognitionController {
         log.info("===== 开始语音识别请求 =====");
         log.info("请求信息:");
         log.info("  ├─ 文件名: {}", audioFile.getOriginalFilename());
-        log.info("  ├─ 文件大小: {}KB ({} bytes)", audioFile.getSize() / 1024, audioFile.getSize());
+        log.info("  ├─ 文件大小: {}", FileUtils.byteCountToDisplaySize(audioFile.getSize()));
         log.info("  ├─ 语言设置: {}", language);
         log.info("  └─ 文件类型: {}", audioFile.getContentType());
         
@@ -143,9 +146,9 @@ public class SpeechRecognitionController {
                 log.info("响应结果:");
                 log.info("  ├─ 文件名: {}", audioFile.getOriginalFilename());
                 log.info("  ├─ 识别文本长度: {} 字符", result.getText().length());
-                log.info("  ├─ 处理耗时: {}", formatDurationSimple(duration));
+                log.info("  ├─ 处理耗时: {}", DurationFormatUtils.formatDurationHMS(duration));
                 log.info("  └─ 状态: 成功");
-                log.info("最终识别文本结果: {}", result.getText());
+                log.info("最终文本预览: {}", StringUtils.abbreviate(StringUtils.normalizeSpace(result.getText()), 200));
                 log.info("===============================");
                 return ResponseEntity.ok(ApiResponse.success(result));
             } else {
@@ -153,7 +156,7 @@ public class SpeechRecognitionController {
                 log.error("错误信息:");
                 log.error("  ├─ 文件名: {}", audioFile.getOriginalFilename());
                 log.error("  ├─ 错误原因: {}", result.getErrorMessage());
-                log.error("  └─ 耗时: {}", formatDurationSimple(duration));
+                log.error("  └─ 耗时: {}", DurationFormatUtils.formatDurationHMS(duration));
                 log.error("===============================");
                 return ResponseEntity.ok(ApiResponse.error(result.getErrorMessage()));
             }
@@ -165,7 +168,7 @@ public class SpeechRecognitionController {
             log.error("  ├─ 文件名: {}", audioFile.getOriginalFilename());
             log.error("  ├─ 异常类型: IO异常");
             log.error("  ├─ 错误信息: {}", e.getMessage());
-            log.error("  └─ 耗时: {}", formatDurationSimple(duration));
+            log.error("  └─ 耗时: {}", DurationFormatUtils.formatDurationHMS(duration));
             log.error("===========================");
             return ResponseEntity.internalServerError()
                     .body(ApiResponse.error("处理上传文件失败: " + e.getMessage()));
@@ -176,27 +179,12 @@ public class SpeechRecognitionController {
             log.error("  ├─ 文件名: {}", audioFile.getOriginalFilename());
             log.error("  ├─ 异常类型: 服务异常");
             log.error("  ├─ 错误信息: {}", e.getMessage());
-            log.error("  └─ 耗时: {}", formatDurationSimple(duration));
+            log.error("  └─ 耗时: {}", DurationFormatUtils.formatDurationHMS(duration));
             log.error("===============================");
             return ResponseEntity.internalServerError()
                     .body(ApiResponse.error("语音识别服务异常: " + e.getMessage()));
         }
     }
-
-    /**
-     * 简单的时间格式化方法，用于Controller层日志
-     */
-    private String formatDurationSimple(long milliseconds) {
-        if (milliseconds < 1000) {
-            return milliseconds + "毫秒";
-        } else if (milliseconds < 60000) {
-            return String.format("%.1f秒", milliseconds / 1000.0);
-        } else {
-            long minutes = milliseconds / 60000;
-            long seconds = (milliseconds % 60000) / 1000;
-            return minutes + "分" + seconds + "秒";
-        }
-    }
-
+    
 
 }
