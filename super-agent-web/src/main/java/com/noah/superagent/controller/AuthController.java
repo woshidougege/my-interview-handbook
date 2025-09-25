@@ -14,6 +14,7 @@ import com.noah.superagent.common.dto.request.ResetPasswordRequest;
 import com.noah.superagent.response.ApiResponse;
 import com.noah.superagent.service.UserCreditService;
 import com.norinrd.client.controller.SsoClientController;
+import com.norinrd.gttoken.util.SaResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -187,8 +188,14 @@ public class AuthController extends SsoClientController {
             if ("200".equals(String.valueOf(result.get("code")))) {
                 Map<String, Object> data = getDataFromResponse(result);
                 String ticket = String.valueOf(data.get("ticket"));
+                
+                // 获取token，避免前端二次调用
+//                SaResult saResult = doLoginByTicket(ticket);
+
+
                 Map<String, String> responseData = new HashMap<>();
                 responseData.put("ticket", ticket);
+//                responseData.put("satoken", StrUtil.toString(saResult.getData()));
                 handleDailyCreditsOnLogin();
                 return ApiResponse.success("登录成功", responseData);
             } else {
