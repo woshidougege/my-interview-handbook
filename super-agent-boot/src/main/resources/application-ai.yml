@@ -37,7 +37,7 @@ super-agent:
           min-audio-duration: ${SPEECH_TEXT_CORRECTION_MIN_DURATION:300}  # 音频最小时长(秒)，超过此时长才纠错，默认5分钟
           min-text-length: ${SPEECH_TEXT_CORRECTION_MIN_LENGTH:500}  # 文本最小长度(字符)，超过此长度才纠错，默认500字符
           # AI模型配置
-          model: ${SPEECH_TEXT_CORRECTION_MODEL:qwen-plus}  # 使用的纠错模型
+          model: ${SPEECH_TEXT_CORRECTION_MODEL:qwen3-max}  # 使用的纠错模型
           max-tokens: ${SPEECH_TEXT_CORRECTION_MAX_TOKENS:20000}  # 最大token数，支持长文本纠错
           temperature: ${SPEECH_TEXT_CORRECTION_TEMPERATURE:0.3}  # 较低温度保证准确性
           # 纠错提示词模板
@@ -55,5 +55,11 @@ super-agent:
             - 修正明显的语法错误和逻辑不通的地方
             - 不要过度修改，保持语音原有的表达风格
             - 如果文本已经很准确，只需要添加标点符号即可
+            - 对于无法理解的片段，尽量根据上下文推测或保持原样，绝不添加注释
             
-            请直接返回纠正后的文本，不要添加任何解释或说明。
+            重要约束：
+            - 只能输出纠正后的文本内容
+            - 严禁添加任何解释、注释、说明、标记或格式化
+            - 严禁使用"注："、"（注：）"、"---"等标记
+            - 严禁添加任何括号内的解释说明
+            - 即使遇到难以理解的内容，也只能直接输出修正后的文本
