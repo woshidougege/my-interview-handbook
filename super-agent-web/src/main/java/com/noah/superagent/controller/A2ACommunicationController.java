@@ -11,6 +11,7 @@ import com.noah.superagent.common.util.SSEventFormatter;
 import com.noah.superagent.common.util.SecurityUtils;
 import com.noah.superagent.service.A2ACommunicationService;
 import com.noah.superagent.service.FileRepositoryService;
+import com.noah.superagent.util.UserEntityCodeUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
@@ -728,7 +729,7 @@ public class A2ACommunicationController {
             }
             
             // 获取用户实体编码
-            String userEntityCode = fileRepositoryService.validateAndGetUserEntityCode();
+            String userEntityCode = validateAndGetUserEntityCode();
             
             // 构建目录结构: contextId/taskId/
             String directory = fileRepositoryService.buildDirectoryPath(contextId, taskId);
@@ -775,5 +776,20 @@ public class A2ACommunicationController {
             // 如果转换失败，返回空的JSON对象
             return "{}";
         }
+    }
+
+    /**
+     * 验证并获取当前用户实体编码
+     *
+     * @return 用户实体编码
+     * @throws IllegalStateException 如果无法获取用户信息
+     */
+    public String validateAndGetUserEntityCode() {
+        // 使用现有的工具类生成用户实体编码
+        String userEntityCode = UserEntityCodeUtil.getCurrentUserEntityCode();
+        if (userEntityCode == null) {
+            throw new IllegalStateException("无法获取当前用户信息");
+        }
+        return userEntityCode;
     }
 }
