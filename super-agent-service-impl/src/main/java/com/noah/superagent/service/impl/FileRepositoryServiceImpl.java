@@ -210,13 +210,15 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
                 }
             }
             
+            // 当返回码不是成功状态时，抛出异常
+            String errorMsg = (String) responseMap.getOrDefault("msg", "文件列表接口调用失败");
             log.warn("文件列表接口调用失败，返回码: {}", codeObj);
-            return new ArrayList<>();
+            throw new RuntimeException("文件列表接口调用失败，错误码: " + codeObj + "，错误信息: " + errorMsg);
             
         } catch (Exception e) {
             log.error("调用文件列表接口时发生异常", e);
-            // 发生异常时返回空列表
-            return new ArrayList<>();
+            // 发生异常时重新抛出，让上层处理
+            throw new RuntimeException("调用文件列表接口时发生异常: " + e.getMessage(), e);
         }
     }
 
@@ -281,12 +283,15 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
                 }
             }
             
+            // 当返回码不是成功状态时，抛出异常
+            String errorMsg = (String) responseMap.getOrDefault("msg", "获取文件URL接口调用失败");
             log.warn("获取文件URL接口调用失败，返回码: {}", codeObj);
-            return "";
+            throw new RuntimeException("获取文件URL接口调用失败，错误码: " + codeObj + "，错误信息: " + errorMsg);
             
         } catch (Exception e) {
             log.error("调用获取文件URL接口时发生异常", e);
-            return "";
+            // 发生异常时重新抛出，让上层处理
+            throw new RuntimeException("调用获取文件URL接口时发生异常: " + e.getMessage(), e);
         }
     }
     
@@ -306,7 +311,6 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
             if (taskId != null && !taskId.isEmpty()) {
                 directoryBuilder.append("/").append(taskId);
             }
-            directoryBuilder.append("/");
         }
         
         return directoryBuilder.toString();
