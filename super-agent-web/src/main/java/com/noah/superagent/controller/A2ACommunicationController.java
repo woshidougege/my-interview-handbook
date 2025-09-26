@@ -22,8 +22,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.validation.Valid;
 import java.io.ByteArrayOutputStream;
@@ -58,6 +60,8 @@ public class A2ACommunicationController {
     private final Executor aiChatExecutionExecutor;
 
     private final KunlunProperties kunlunProperties;
+    
+    private final RestTemplate restTemplate;
 
     private final FileRepositoryService fileRepositoryService;
 
@@ -71,6 +75,7 @@ public class A2ACommunicationController {
         this.aiChatExecutionExecutor = aiChatExecutionExecutor;
         this.kunlunProperties = kunlunProperties;
         this.fileRepositoryService = fileRepositoryService;
+        this.restTemplate = new RestTemplate();
     }
 
 
@@ -766,5 +771,49 @@ public class A2ACommunicationController {
             throw new IllegalStateException("无法获取当前用户信息");
         }
         return userEntityCode;
+    }
+    
+    /**
+     * 根据任务ID获取任务状态
+     *
+     * @param taskId 任务ID
+     * @return 任务状态信息
+     */
+    @GetMapping("/task-status")
+    @Operation(summary = "获取任务状态", description = "根据任务ID获取任务状态信息")
+    public ResponseEntity<Map<String, Object>> getTaskStatus(
+            @Parameter(description = "任务ID", required = true)
+            @RequestParam String taskId) {
+        
+        log.info("接收到获取任务状态请求，任务ID: {}", taskId);
+        
+        try {
+            // 构建请求URL
+            String baseUrl = kunlunProperties.getA2a().getTaskStatus().getUrl();
+            String url = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                    .queryParam("taskId", taskId)
+                    .toUriString();
+            
+            log.info("获取任务状态，请求URL: {}", url);
+            
+            // 直接调用任务状态接口
+            String response = restTemplate.getForObject(url, String.class);
+            
+            // 解析响应为Map
+            Map<String, Object> result = new HashMap<>();
+            if (response != null) {
+                result = objectMapper.readValue(response, Map.class);
+            }
+            
+            log.info("获取任务状态成功，任务ID: {}, 响应: {}", taskId, result);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("获取任务状态失败，任务ID: {}", taskId, e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("code", 500);
+            errorResponse.put("message", "获取任务状态失败: " + e.getMessage());
+            errorResponse.put("data", new ArrayList<>());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
     }
 }

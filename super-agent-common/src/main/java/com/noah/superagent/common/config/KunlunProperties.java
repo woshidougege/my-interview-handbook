@@ -103,8 +103,11 @@ public class KunlunProperties {
          * 补充信息接口配置
          */
         private SupplementInfo supplementInfo = new SupplementInfo();
-
-
+        
+        /**
+         * 任务状态获取接口配置
+         */
+        private TaskStatus taskStatus = new TaskStatus();
 
         /**
          * 会话执行接口配置
@@ -124,6 +127,17 @@ public class KunlunProperties {
         public static class SupplementInfo {
             /**
              * 补充信息URL
+             */
+            private String url;
+        }
+        
+        /**
+         * 任务状态获取接口配置
+         */
+        @Data
+        public static class TaskStatus {
+            /**
+             * 任务状态获取URL
              */
             private String url;
         }
@@ -162,4 +176,5 @@ public class KunlunProperties {
          */
         private String getObjectUrlPath;
     }
+
 }
