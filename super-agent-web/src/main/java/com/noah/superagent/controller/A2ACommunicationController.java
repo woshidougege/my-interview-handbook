@@ -803,6 +803,10 @@ public class A2ACommunicationController {
             Map<String, Object> result = new HashMap<>();
             if (response != null) {
                 result = objectMapper.readValue(response, Map.class);
+                // 如果code是10000，替换为200表示成功
+                if (result.containsKey("code") && "10000".equals(String.valueOf(result.get("code")))) {
+                    result.put("code", 200);
+                }
             }
             
             log.info("获取任务状态成功，任务ID: {}, 响应: {}", taskId, result);
