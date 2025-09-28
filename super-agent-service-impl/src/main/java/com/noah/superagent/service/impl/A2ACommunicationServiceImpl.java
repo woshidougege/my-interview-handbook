@@ -232,7 +232,8 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             messageNode.put("role", "user");
             messageNode.put("kind", "message");
             messageNode.put("taskId", taskId);
-            
+            messageNode.put("messageId", java.util.UUID.randomUUID().toString());
+
             if (!contextId.isEmpty()) {
                 messageNode.put("contextId", contextId);
             }
@@ -416,6 +417,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             messageNode.put("role", "user");
             messageNode.put("kind", "message");
             messageNode.put("taskId", taskId);
+            messageNode.put("messageId", java.util.UUID.randomUUID().toString());
             
             if (contextId != null && !contextId.isEmpty()) {
                 messageNode.put("contextId", contextId);
