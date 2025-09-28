@@ -804,7 +804,7 @@ public class A2ACommunicationController {
             if (response != null) {
                 result = objectMapper.readValue(response, Map.class);
                 // 如果code是10000，替换为200表示成功
-                if (result.containsKey("code") && "10000".equals(String.valueOf(result.get("code")))) {
+                if (result.containsKey("code") && "100000".equals(String.valueOf(result.get("code")))) {
                     result.put("code", 200);
                 }
             }
