@@ -528,9 +528,19 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
                 // 不返回实际的响应体，而是返回自定义的成功消息
                 return ApiResponse.success("补充信息已成功提交");
             } else {
-                log.error("补充信息处理失败 - 用户ID: {}, 状态码: {}", userId, response.getStatusCode());
-                return ApiResponse.error("补充信息处理失败，状态码: " + response.getStatusCode());
+                log.error("补充信息处理失败 - 用户ID: {}, 状态码: {}, 响应体: {}", 
+                         userId, response.getStatusCode(), response.getBody());
+                return ApiResponse.error("补充信息处理失败，状态码: " + response.getStatusCode() + 
+                                       (response.getBody() != null ? ", 响应内容: " + response.getBody() : ""));
             }
+        } catch (org.springframework.web.client.HttpServerErrorException e) {
+            log.error("处理补充信息时A2A平台发生内部服务器错误 - 用户ID: {}, 状态码: {}, 响应内容: {}", 
+                     userId, e.getStatusCode(), e.getResponseBodyAsString(), e);
+            return ApiResponse.error("A2A平台处理失败，请稍后重试");
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("处理补充信息时向A2A平台发送请求出现客户端错误 - 用户ID: {}, 状态码: {}, 响应内容: {}", 
+                     userId, e.getStatusCode(), e.getResponseBodyAsString(), e);
+            return ApiResponse.error("请求参数有误: " + e.getMessage());
         } catch (Exception e) {
             log.error("处理补充信息时发生异常 - 用户ID: {}", userId, e);
             return ApiResponse.error("补充信息处理失败: " + e.getMessage());
