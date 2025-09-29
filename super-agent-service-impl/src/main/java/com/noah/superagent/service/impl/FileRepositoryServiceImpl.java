@@ -95,35 +95,44 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
             String responseString = EntityUtils.toString(response.getEntity());
             log.info("文件上传接口响应: {}", responseString);
 
-            // 解析响应
-            Map<String, Object> responseMap = objectMapper.readValue(responseString, new TypeReference<Map<String, Object>>() {
-            });
+            // 尝试解析JSON响应
+            try {
+                Map<String, Object> responseMap = objectMapper.readValue(responseString, new TypeReference<Map<String, Object>>() {
+                });
 
-            // 检查响应码
-            Object codeObj = responseMap.get("code");
-            if (codeObj instanceof Number && ((Number) codeObj).intValue() == 100000) {
-                Object dataObj = responseMap.get("data");
-                if (dataObj instanceof Map) {
-                    Map<String, Object> dataMap = (Map<String, Object>) dataObj;
+                // 检查响应码
+                Object codeObj = responseMap.get("code");
+                if (codeObj instanceof Number && ((Number) codeObj).intValue() == 100000) {
+                    Object dataObj = responseMap.get("data");
+                    if (dataObj instanceof Map) {
+                        Map<String, Object> dataMap = (Map<String, Object>) dataObj;
 
-                    FileUploadResponse fileUploadResponse = new FileUploadResponse();
-                    fileUploadResponse.setName((String) dataMap.get("name"));
-                    fileUploadResponse.setUrl((String) dataMap.get("url"));
-                    return fileUploadResponse;
+                        FileUploadResponse fileUploadResponse = new FileUploadResponse();
+                        fileUploadResponse.setName((String) dataMap.get("name"));
+                        fileUploadResponse.setUrl((String) dataMap.get("url"));
+                        return fileUploadResponse;
+                    }
                 }
-            }
 
-            // 获取原始错误信息
-            String errorMessage = (String) responseMap.get("message");
-            if (errorMessage == null || errorMessage.isEmpty()) {
-                errorMessage = "文件上传接口调用失败";
+                // 获取原始错误信息
+                String errorMessage = (String) responseMap.get("message");
+                if (errorMessage == null || errorMessage.isEmpty()) {
+                    errorMessage = "文件上传接口调用失败";
+                }
+
+                log.warn("文件上传接口调用失败，返回码: {}，错误信息: {}", codeObj, errorMessage);
+                FileUploadResponse errorResponse = new FileUploadResponse();
+                errorResponse.setName("upload_failed");
+                errorResponse.setUrl(errorMessage); // 将原始错误信息传递回去
+                return errorResponse;
+            } catch (Exception jsonException) {
+                // 如果不是有效的JSON响应，将原始响应内容作为错误信息返回
+                log.warn("文件上传接口返回非JSON格式响应: {}", responseString);
+                FileUploadResponse errorResponse = new FileUploadResponse();
+                errorResponse.setName("upload_failed");
+                errorResponse.setUrl(responseString); // 将原始响应内容传递给前端
+                return errorResponse;
             }
-            
-            log.warn("文件上传接口调用失败，返回码: {}，错误信息: {}", codeObj, errorMessage);
-            FileUploadResponse errorResponse = new FileUploadResponse();
-            errorResponse.setName("upload_failed");
-            errorResponse.setUrl(errorMessage); // 将原始错误信息传递回去
-            return errorResponse;
 
         } catch (Exception e) {
             log.error("调用文件上传接口时发生异常", e);
@@ -182,39 +191,46 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
 
             log.info("文件列表接口响应: {}", response.getBody());
 
-            // 解析响应
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {
-            });
+            // 尝试解析JSON响应
+            try {
+                // 解析响应
+                ObjectMapper objectMapper = new ObjectMapper();
+                Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {
+                });
 
-            // 检查响应码
-            Object codeObj = responseMap.get("code");
-            if (codeObj instanceof Number && ((Number) codeObj).intValue() == 0) {
-                Object dataObj = responseMap.get("data");
-                if (dataObj instanceof Map) {
-                    Map<String, Object> dataMap = (Map<String, Object>) dataObj;
-                    Object dataArrayObj = dataMap.get("data");
-                    if (dataArrayObj instanceof List) {
-                        List<Object> dataArray = (List<Object>) dataArrayObj;
-                        if (!dataArray.isEmpty() && dataArray.get(0) instanceof Map) {
-                            Map<String, Object> firstItem = (Map<String, Object>) dataArray.get(0);
-                            Object resultObj = firstItem.get("result");
-                            if (resultObj instanceof String) {
-                                // 解析JSON字符串数组
-                                String resultStr = (String) resultObj;
-                                List<String> fileNames = objectMapper.readValue(resultStr, new TypeReference<List<String>>() {});
-                                return fileNames;
+                // 检查响应码
+                Object codeObj = responseMap.get("code");
+                if (codeObj instanceof Number && ((Number) codeObj).intValue() == 0) {
+                    Object dataObj = responseMap.get("data");
+                    if (dataObj instanceof Map) {
+                        Map<String, Object> dataMap = (Map<String, Object>) dataObj;
+                        Object dataArrayObj = dataMap.get("data");
+                        if (dataArrayObj instanceof List) {
+                            List<Object> dataArray = (List<Object>) dataArrayObj;
+                            if (!dataArray.isEmpty() && dataArray.get(0) instanceof Map) {
+                                Map<String, Object> firstItem = (Map<String, Object>) dataArray.get(0);
+                                Object resultObj = firstItem.get("result");
+                                if (resultObj instanceof String) {
+                                    // 解析JSON字符串数组
+                                    String resultStr = (String) resultObj;
+                                    List<String> fileNames = objectMapper.readValue(resultStr, new TypeReference<List<String>>() {});
+                                    return fileNames;
+                                }
                             }
                         }
                     }
                 }
+
+                // 当返回码不是成功状态时，抛出异常
+                String errorMsg = (String) responseMap.getOrDefault("msg", "文件列表接口调用失败");
+                log.warn("文件列表接口调用失败，返回码: {}", codeObj);
+                throw new RuntimeException("文件列表接口调用失败，错误码: " + codeObj + "，错误信息: " + errorMsg);
+            } catch (Exception jsonException) {
+                // 如果不是有效的JSON响应，将原始响应内容作为异常信息抛出
+                log.warn("文件列表接口返回非JSON格式响应: {}", response.getBody());
+                throw new RuntimeException("文件列表接口返回非JSON格式响应: " + response.getBody());
             }
-            
-            // 当返回码不是成功状态时，抛出异常
-            String errorMsg = (String) responseMap.getOrDefault("msg", "文件列表接口调用失败");
-            log.warn("文件列表接口调用失败，返回码: {}", codeObj);
-            throw new RuntimeException("文件列表接口调用失败，错误码: " + codeObj + "，错误信息: " + errorMsg);
-            
+
         } catch (Exception e) {
             log.error("调用文件列表接口时发生异常", e);
             // 发生异常时重新抛出，让上层处理
@@ -257,36 +273,43 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
             
             log.info("获取文件URL接口响应: {}", response.getBody());
             
-            // 解析响应
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {});
-            
-            // 检查响应码
-            Object codeObj = responseMap.get("code");
-            if (codeObj instanceof Number && ((Number) codeObj).intValue() == 0) { // 根据文档，成功码是0
-                // 成功响应
-                Object dataObj = responseMap.get("data");
-                if (dataObj instanceof Map) {
-                    Map<String, Object> dataMap = (Map<String, Object>) dataObj;
-                    Object dataArrayObj = dataMap.get("data");
-                    if (dataArrayObj instanceof List) {
-                        List<Object> dataArray = (List<Object>) dataArrayObj;
-                        if (!dataArray.isEmpty() && dataArray.get(0) instanceof Map) {
-                            Map<String, Object> firstItem = (Map<String, Object>) dataArray.get(0);
-                            Object resultObj = firstItem.get("result");
-                            if (resultObj instanceof String) {
-                                // 返回预签名URL
-                                return (String) resultObj;
+            // 尝试解析JSON响应
+            try {
+                // 解析响应
+                ObjectMapper objectMapper = new ObjectMapper();
+                Map<String, Object> responseMap = objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {});
+                
+                // 检查响应码
+                Object codeObj = responseMap.get("code");
+                if (codeObj instanceof Number && ((Number) codeObj).intValue() == 0) { // 根据文档，成功码是0
+                    // 成功响应
+                    Object dataObj = responseMap.get("data");
+                    if (dataObj instanceof Map) {
+                        Map<String, Object> dataMap = (Map<String, Object>) dataObj;
+                        Object dataArrayObj = dataMap.get("data");
+                        if (dataArrayObj instanceof List) {
+                            List<Object> dataArray = (List<Object>) dataArrayObj;
+                            if (!dataArray.isEmpty() && dataArray.get(0) instanceof Map) {
+                                Map<String, Object> firstItem = (Map<String, Object>) dataArray.get(0);
+                                Object resultObj = firstItem.get("result");
+                                if (resultObj instanceof String) {
+                                    // 返回预签名URL
+                                    return (String) resultObj;
+                                }
                             }
                         }
                     }
                 }
+                
+                // 当返回码不是成功状态时，抛出异常
+                String errorMsg = (String) responseMap.getOrDefault("msg", "获取文件URL接口调用失败");
+                log.warn("获取文件URL接口调用失败，返回码: {}", codeObj);
+                throw new RuntimeException("获取文件URL接口调用失败，错误码: " + codeObj + "，错误信息: " + errorMsg);
+            } catch (Exception jsonException) {
+                // 如果不是有效的JSON响应，将原始响应内容作为异常信息抛出
+                log.warn("获取文件URL接口返回非JSON格式响应: {}", response.getBody());
+                throw new RuntimeException("获取文件URL接口返回非JSON格式响应: " + response.getBody());
             }
-            
-            // 当返回码不是成功状态时，抛出异常
-            String errorMsg = (String) responseMap.getOrDefault("msg", "获取文件URL接口调用失败");
-            log.warn("获取文件URL接口调用失败，返回码: {}", codeObj);
-            throw new RuntimeException("获取文件URL接口调用失败，错误码: " + codeObj + "，错误信息: " + errorMsg);
             
         } catch (Exception e) {
             log.error("调用获取文件URL接口时发生异常", e);
