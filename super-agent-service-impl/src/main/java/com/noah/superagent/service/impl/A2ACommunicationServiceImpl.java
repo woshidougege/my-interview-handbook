@@ -522,9 +522,11 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             // 发送请求
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
             
+            // 检查响应状态码
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("补充信息处理成功 - 用户ID: {}, 响应: {}", userId, response.getBody());
-                return ApiResponse.success(response.getBody());
+                log.info("补充信息处理成功 - 用户ID: {}, 状态码: {}", userId, response.getStatusCode());
+                // 不返回实际的响应体，而是返回自定义的成功消息
+                return ApiResponse.success("补充信息已成功提交");
             } else {
                 log.error("补充信息处理失败 - 用户ID: {}, 状态码: {}", userId, response.getStatusCode());
                 return ApiResponse.error("补充信息处理失败，状态码: " + response.getStatusCode());
