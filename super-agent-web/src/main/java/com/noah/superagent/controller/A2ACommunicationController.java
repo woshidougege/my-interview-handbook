@@ -425,7 +425,7 @@ public class A2ACommunicationController {
 
             // 将表单数据转换为JSON字符串作为用户输入
             String userInput = buildSupplementMessageFromForm(formData);
-
+            log.info("构建补充信息JSON: {}", userInput);
             // 使用现有的补充信息处理方法
             return a2aCommunicationService.handleSupplementInfo(
                     actualUserId,
@@ -560,7 +560,9 @@ public class A2ACommunicationController {
             result.put("data", dataList);
             
             // 使用共享的ObjectMapper实例将表单数据转换为JSON字符串
-            return objectMapper.writeValueAsString(result);
+            String jsonResult = objectMapper.writeValueAsString(result);
+            log.info("构建补充信息JSON: {}", jsonResult); // 添加日志记录
+            return jsonResult;
         } catch (Exception e) {
             log.error("构建补充信息JSON时发生异常", e);
             // 如果转换失败，返回空的JSON对象

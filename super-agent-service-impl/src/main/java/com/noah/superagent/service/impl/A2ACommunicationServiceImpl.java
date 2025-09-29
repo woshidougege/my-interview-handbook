@@ -460,40 +460,131 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
 
             ArrayNode parts = objectMapper.createArrayNode();
             
-            // 始终使用"data"字段并包含表单信息
-            ObjectNode dataPart = objectMapper.createObjectNode();
-            dataPart.put("kind", "data");
+            if (userInput != null && !userInput.isEmpty()) {
+                try {
+                    // 尝试解析用户输入为JSON对象
+                    JsonNode userData = objectMapper.readTree(userInput);
+                    log.debug("解析后的用户输入数据: {}", userData.toString());
+                    if (userData.has("kind") && "data".equals(userData.get("kind").asText()) && userData.has("data")) {
+                        // 如果是标准格式，处理data数组中的每个元素，每个元素封装为一个独立的part
+                        JsonNode dataArray = userData.get("data");
+                        if (dataArray.isArray()) {
+                            for (JsonNode item : dataArray) {
+                                ObjectNode part = objectMapper.createObjectNode();
+                                part.put("kind", "data");
+                                part.set("data", item);
+                                parts.add(part);
+                            }
+                        }
+                    } else {
+                        // 如果不是标准格式，将整个对象封装在一个part中
+                        ObjectNode part = objectMapper.createObjectNode();
+                        part.put("kind", "data");
+                        part.set("data", userData);
+                        parts.add(part);
+                    }
+                } catch (Exception e) {
+                    log.warn("解析用户输入为JSON时发生异常: {}", e.getMessage());
+                    // 如果不是有效的JSON，将原始字符串封装在一个part中
+                    ObjectNode part = objectMapper.createObjectNode();
+                    part.put("kind", "data");
+                    part.put("data", userInput);
+                    parts.add(part);
+                }
+            } else {
+                // 如果没有用户输入，创建一个空的data part
+                ObjectNode part = objectMapper.createObjectNode();
+                part.put("kind", "data");
+                part.set("data", objectMapper.createObjectNode());
+                parts.add(part);
+            }
+            
+            messageNode.set("parts", parts);
+            params.set("message", messageNode);
+            root.set("params", params);
+
+            String result = objectMapper.writeValueAsString(root);
+            log.debug("最终构建的JSON-RPC请求: {}", result);
+            return result;
+        } catch (Exception e) {
+            log.error("构建补充信息JSON-RPC请求时发生异常", e);
+            throw new RuntimeException("构建补充信息请求失败", e);
+        }
+    }
+
+    /**
+     * 构建补充信息的JSON-RPC请求
+     */
+    private String buildSupplementJsonRpcRequestForAsync(String taskId, String contextId, String userInput) {
+        try {
+            ObjectNode root = objectMapper.createObjectNode();
+            root.put("jsonrpc", "2.0");
+            root.put("method", "message/send");
+            root.put("id", "supplementId_" + System.currentTimeMillis());
+
+            ObjectNode params = objectMapper.createObjectNode();
+            ObjectNode messageNode = objectMapper.createObjectNode();
+
+            messageNode.put("role", "user");
+            messageNode.put("kind", "message");
+            messageNode.put("taskId", taskId);
+            messageNode.put("messageId", java.util.UUID.randomUUID().toString());
+            
+            if (contextId != null && !contextId.isEmpty()) {
+                messageNode.put("contextId", contextId);
+            }
+
+            ArrayNode parts = objectMapper.createArrayNode();
             
             if (userInput != null && !userInput.isEmpty()) {
                 try {
                     // 尝试解析用户输入为JSON对象
                     JsonNode userData = objectMapper.readTree(userInput);
+                    log.debug("解析后的异步用户输入数据: {}", userData.toString());
                     if (userData.has("kind") && "data".equals(userData.get("kind").asText()) && userData.has("data")) {
-                        // 如果已经符合规范格式，直接使用data字段
-                        dataPart.set("data", userData.get("data"));
+                        // 如果是标准格式，处理data数组中的每个元素，每个元素封装为一个独立的part
+                        JsonNode dataArray = userData.get("data");
+                        if (dataArray.isArray()) {
+                            for (JsonNode item : dataArray) {
+                                ObjectNode part = objectMapper.createObjectNode();
+                                part.put("kind", "data");
+                                part.set("data", item);
+                                parts.add(part);
+                            }
+                        }
                     } else {
-                        // 否则将整个对象作为data字段
-                        dataPart.set("data", userData);
+                        // 如果不是标准格式，将整个对象封装在一个part中
+                        ObjectNode part = objectMapper.createObjectNode();
+                        part.put("kind", "data");
+                        part.set("data", userData);
+                        parts.add(part);
                     }
                 } catch (Exception e) {
-                    // 如果不是有效的JSON，直接使用原始字符串作为data值
-                    dataPart.put("data", userInput);
+                    log.warn("解析异步用户输入为JSON时发生异常: {}", e.getMessage());
+                    // 如果不是有效的JSON，将原始字符串封装在一个part中
+                    ObjectNode part = objectMapper.createObjectNode();
+                    part.put("kind", "data");
+                    part.put("data", userInput);
+                    parts.add(part);
                 }
             } else {
-                // 如果没有用户输入，创建一个空的data数组
-                dataPart.set("data", objectMapper.createArrayNode());
+                // 如果没有用户输入，创建一个空的data part
+                ObjectNode part = objectMapper.createObjectNode();
+                part.put("kind", "data");
+                part.set("data", objectMapper.createObjectNode());
+                parts.add(part);
             }
             
-            parts.add(dataPart);
-
             messageNode.set("parts", parts);
             params.set("message", messageNode);
             root.set("params", params);
 
-            return objectMapper.writeValueAsString(root);
+            String result = objectMapper.writeValueAsString(root);
+            log.debug("最终构建的异步JSON-RPC请求: {}", result);
+            return result;
         } catch (Exception e) {
-            log.error("构建补充信息JSON-RPC请求时发生异常", e);
-            throw new RuntimeException("构建补充信息请求失败", e);
+            log.error("构建异步补充信息JSON-RPC请求时发生异常", e);
+            throw new RuntimeException("构建异步补充信息请求失败", e);
         }
     }
 
@@ -512,7 +603,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
 
             // 构建JSON-RPC格式的补充信息请求
             String requestBody = buildSupplementJsonRpcRequest(taskId, sessionId, userInput);
-            log.debug("构建的补充信息请求体: {}", requestBody);
+            log.info("构建的补充信息请求体: {}", requestBody);
 
             // 设置请求头
             HttpHeaders headers = createHttpHeaders();
@@ -560,7 +651,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
                 log.info("准备异步发送补充信息 - URL: {}", url);
 
                 // 构建JSON-RPC格式的补充信息请求
-                String requestBody = buildSupplementJsonRpcRequest(taskId, sessionId, userInput);
+                String requestBody = buildSupplementJsonRpcRequestForAsync(taskId, sessionId, userInput);
                 log.debug("构建的异步补充信息请求体: {}", requestBody);
 
                 // 设置请求头
