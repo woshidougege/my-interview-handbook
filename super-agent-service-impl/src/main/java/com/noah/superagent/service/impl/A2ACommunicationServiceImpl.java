@@ -20,6 +20,8 @@ import org.springframework.web.client.ResponseExtractor;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
@@ -145,19 +147,18 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             String abilityCode, String entityCode, String userId,
             String message, String taskId, String contextId, String satoken, List<Attachment> attachments) {
         long startTime = System.currentTimeMillis();
-        log.info("开始发送JSON-RPC消息到A2A平台 - 能力中心编码: {}, 实体编码: {}, 用户ID: {}, 任务ID: {}, 上下文ID: {}, 消息长度: {}, 附件数量: {}",
-                abilityCode, entityCode, userId, taskId, contextId, message != null ? message.length() : 0, 
-                attachments != null ? attachments.size() : 0);
+        log.info("开始发送JSON-RPC格式消息到A2A平台 - 用户ID: {}, 消息: {}", userId, message);
 
         try {
             // 参数验证
             validateParameters(userId);
 
-            // 处理默认值
+            // 获取实际参数值
             String actualAbilityCode = getOrDefault(abilityCode, kunlunProperties.getAbilityCodes().getDefaultCode());
             String actualEntityCode = getOrDefault(entityCode, kunlunProperties.getEntityCodes().getDefaultCode());
-            String actualTaskId = (taskId == null || taskId.isEmpty()) ? "task_" + System.currentTimeMillis() : taskId;
-            String actualContextId = (contextId == null || "null".equals(contextId) || contextId.isEmpty()) ? "" : contextId;
+            String actualTaskId = getOrDefault(taskId, "task_" + System.currentTimeMillis());
+            String actualContextId = getOrDefault(contextId, "");
+            String actualSatoken = getOrDefault(satoken, "");
 
             // 构建JSON-RPC请求体
             String requestBody = buildJsonRpcRequest(message, actualTaskId, actualContextId, attachments);
@@ -169,21 +170,71 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
             log.info("准备向A2A平台发送请求 - URL: {}, 方法: POST", url);
             log.debug("完整请求URL: {}", url);
 
-            // 设置请求头
-            HttpHeaders headers = createHttpHeaders();
-            log.debug("请求头信息: Content-Type={}, Accept={}", headers.getContentType(), headers.getAccept());
-
-            // 创建请求回调
-            RequestCallback requestCallback = createRequestCallback(headers, requestBody, userId);
-
-            // 创建响应提取器
-            ResponseExtractor<InputStream> responseExtractor = createResponseExtractor(userId, startTime);
-
-            // 执行请求并返回输入流
-            InputStream result = restTemplate.execute(url, HttpMethod.POST, requestCallback, responseExtractor);
-            long totalTime = System.currentTimeMillis() - startTime;
-            log.info("成功执行A2A平台请求 - 总耗时: {}ms, 返回流对象: {}", totalTime, result);
-            return result;
+            // 使用低级API直接获取连接，以便立即返回流
+            try {
+                URL urlObj = new URL(url);
+                HttpURLConnection connection = (HttpURLConnection) urlObj.openConnection();
+                
+                // 设置请求方法
+                connection.setRequestMethod("POST");
+                
+                // 设置请求头
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setRequestProperty("Accept", "text/event-stream");
+                connection.setRequestProperty("Connection", "keep-alive");
+                connection.setRequestProperty("Cache-Control", "no-cache");
+                connection.setRequestProperty("X-Accel-Buffering", "no");
+                connection.setRequestProperty("User-Agent", "SuperAgent/1.0");
+                
+                // 如果有satoken，添加到请求头
+                if (satoken != null && !satoken.isEmpty()) {
+                    connection.setRequestProperty("Satoken", satoken);
+                }
+                
+                // 启用输出
+                connection.setDoOutput(true);
+                
+                // 写入请求体
+                try (OutputStream os = connection.getOutputStream()) {
+                    byte[] requestBytes = requestBody.getBytes(StandardCharsets.UTF_8);
+                    log.debug("写入请求体，字节数: {}", requestBytes.length);
+                    os.write(requestBytes);
+                    os.flush();
+                }
+                
+                // 检查响应码
+                int responseCode = connection.getResponseCode();
+                long responseTime = System.currentTimeMillis() - startTime;
+                log.info("收到A2A平台响应 - 状态码: {}, 响应时间: {}ms", responseCode, responseTime);
+                
+                if (responseCode >= 200 && responseCode < 300) {
+                    log.info("流式消息发送成功 - 用户ID: {}, 响应时间: {}ms", userId, responseTime);
+                    log.debug("成功获取响应流，准备开始传输数据 - 用户ID: {}", userId);
+                    // 直接返回连接的输入流，实现实时流式传输
+                    return connection.getInputStream();
+                } else {
+                    log.error("流式消息发送失败 - 用户ID: {}, 状态码: {}, 响应时间: {}ms", userId, responseCode, responseTime);
+                    
+                    // 读取错误响应内容
+                    try (InputStream errorStream = connection.getErrorStream()) {
+                        if (errorStream != null) {
+                            String errorContent = new String(errorStream.readAllBytes(), StandardCharsets.UTF_8);
+                            log.error("A2A平台错误响应内容: {}", errorContent);
+                            return new ByteArrayInputStream(("[ERROR] " + errorContent).getBytes(StandardCharsets.UTF_8));
+                        }
+                    } catch (Exception e) {
+                        log.error("读取错误响应内容时发生异常 - 用户ID: {}", userId, e);
+                    }
+                    
+                    String errorResponse = String.format("[ERROR] 流式消息发送失败，状态码: %d，耗时: %dms", responseCode, responseTime);
+                    return new ByteArrayInputStream(errorResponse.getBytes(StandardCharsets.UTF_8));
+                }
+            } catch (Exception e) {
+                long totalTime = System.currentTimeMillis() - startTime;
+                log.error("发送JSON-RPC消息时发生异常 - 用户ID: {}, 总耗时: {}ms", userId, totalTime, e);
+                String errorResponse = String.format("[ERROR] 发送请求异常: %s，耗时: %dms", e.getMessage(), totalTime);
+                return new ByteArrayInputStream(errorResponse.getBytes(StandardCharsets.UTF_8));
+            }
 
         } catch (IllegalArgumentException e) {
             log.error("参数验证失败 - 用户ID: {}, 异常: {}", userId, e.getMessage());
@@ -328,24 +379,8 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
                 log.info("流式消息发送成功 - 用户ID: {}, 响应时间: {}ms", userId, responseTime);
                 InputStream body = response.getBody();
                 log.debug("成功获取响应流，准备开始传输数据 - 用户ID: {}", userId);
-                // 直接读取数据到缓冲区，避免连接关闭问题
-                try {
-                    // 创建一个新的ByteArrayInputStream包装原始数据
-                    // 这样可以避免底层连接关闭的问题
-                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                    int nRead;
-                    byte[] data = new byte[1024];
-                    while ((nRead = body.read(data, 0, data.length)) != -1) {
-                        buffer.write(data, 0, nRead);
-                    }
-                    buffer.flush();
-                    byte[] byteArray = buffer.toByteArray();
-                    log.info("预读取数据成功 - 大小: {} 字节", byteArray.length);
-                    return new ByteArrayInputStream(byteArray);
-                } catch (IOException e) {
-                    log.error("预读取响应流时发生异常 - 用户ID: {}", userId, e);
-                    return new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8));
-                }
+                // 直接返回原始输入流，实现实时流式传输
+                return body;
             } else {
                 log.error("流式消息发送失败 - 用户ID: {}, 状态码: {}, 响应时间: {}ms",
                         userId, response.getStatusCode(), responseTime);
