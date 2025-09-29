@@ -365,6 +365,13 @@ public class A2ACommunicationController {
             @Parameter(hidden = true) @SaToken String satoken) {
 
         try {
+            // 使用JSON格式处理参数
+            String actualUserId = userId != null ? userId : allParams.get("userId");
+            String actualTaskId = taskId != null ? taskId : allParams.get("taskId");
+            String actualContextId = contextId != null ? contextId : allParams.get("contextId");
+            String actualEntityCode = a2aProtocolProxyEntityCode != null ?
+                    a2aProtocolProxyEntityCode : allParams.get("a2aProtocolProxyEntityCode");
+
             // 处理文件上传
             Map<String, String> fileUrls = new HashMap<>();
             if (files != null && files.length > 0) {
@@ -375,7 +382,8 @@ public class A2ACommunicationController {
                         // 上传文件到文件仓库
                         Map<String, String> fileInfo = uploadFileToRepository(file, contextId, taskId);
                         if (fileInfo != null && "true".equals(fileInfo.get("success"))) {
-                            fileUrls.put("file_" + (i + 1), fileInfo.get("fileUrl"));
+                            // 使用原始文件名作为键，符合规范要求
+                            fileUrls.put(file.getOriginalFilename(), fileInfo.get("fileUrl"));
                             log.info("文件 {} 上传成功: {}", fileInfo.get("originalName"), fileInfo.get("fileUrl"));
                         } else {
                             log.warn("文件上传失败: {}", file.getOriginalFilename());
@@ -386,17 +394,24 @@ public class A2ACommunicationController {
 
             // 构建完整的formData
             Map<String, Object> formData = new HashMap<>(allParams);
-            if (!fileUrls.isEmpty()) {
-                formData.put("uploadedFiles", fileUrls);
-                formData.put("fileCount", String.valueOf(fileUrls.size()));
-            }
+            // 从表单数据中移除接口自身需要的参数，避免放入data数组中
+            formData.remove("userId");
+            formData.remove("taskId");
+            formData.remove("contextId");
+            formData.remove("a2aProtocolProxyEntityCode");
 
-            // 使用JSON格式处理参数
-            String actualUserId = userId != null ? userId : allParams.get("userId");
-            String actualTaskId = taskId != null ? taskId : allParams.get("taskId");
-            String actualContextId = contextId != null ? contextId : allParams.get("contextId");
-            String actualEntityCode = a2aProtocolProxyEntityCode != null ?
-                    a2aProtocolProxyEntityCode : allParams.get("a2aProtocolProxyEntityCode");
+            // 将上传的文件URL添加到formData中，包含filename信息
+            if (!fileUrls.isEmpty()) {
+                for (Map.Entry<String, String> entry : fileUrls.entrySet()) {
+                    String originalFilename = entry.getKey();
+                    String fileUrl = entry.getValue();
+                    // 将文件信息作为Map添加，以便后续处理时能包含filename字段
+                    Map<String, String> fileData = new HashMap<>();
+                    fileData.put("url", fileUrl);
+                    fileData.put("filename", originalFilename);
+                    formData.put(originalFilename, fileData);
+                }
+            }
 
             // 验证必填参数
             if (actualUserId == null || actualTaskId == null ||
@@ -483,12 +498,73 @@ public class A2ACommunicationController {
      */
     private String buildSupplementMessageFromForm(Map<String, Object> formData) {
         try {
+            // 创建符合规范的data结构
+            Map<String, Object> result = new HashMap<>();
+            result.put("kind", "data");
+            
+            List<Map<String, Object>> dataList = new ArrayList<>();
+            
+            // 遍历表单数据，按规范格式组织
+            for (Map.Entry<String, Object> entry : formData.entrySet()) {
+                String paramName = entry.getKey();
+                Object paramValue = entry.getValue();
+                
+                Map<String, Object> dataItem = new HashMap<>();
+                dataItem.put("param", paramName);
+                
+                // 处理三种特定类型的数据
+                if (paramValue instanceof String) {
+                    String stringValue = (String) paramValue;
+                    // 检查是否为文件URL（以http开头）
+                    if (stringValue.startsWith("http")) {
+                        dataItem.put("value", stringValue);
+                        // 尝试从URL中提取文件名
+                        try {
+                            String fileName = stringValue.substring(stringValue.lastIndexOf("/") + 1);
+                            if (fileName.contains("?")) {
+                                fileName = fileName.substring(0, fileName.indexOf("?"));
+                            }
+                            if (!fileName.isEmpty()) {
+                                dataItem.put("filename", fileName);
+                            }
+                        } catch (Exception e) {
+                            // 如果无法提取文件名，就不添加filename字段
+                        }
+                    } else {
+                        // 普通文本或日期值
+                        dataItem.put("value", stringValue);
+                    }
+                } else if (paramValue instanceof List) {
+                    // 处理多选值（如checkbox）
+                    dataItem.put("value", paramValue);
+                } else if (paramValue instanceof Map) {
+                    // 处理包含额外信息的对象，如文件上传
+                    Map<?, ?> valueMap = (Map<?, ?>) paramValue;
+                    if (valueMap.containsKey("url")) {
+                        dataItem.put("value", valueMap.get("url"));
+                        if (valueMap.containsKey("filename")) {
+                            dataItem.put("filename", valueMap.get("filename"));
+                        }
+                    } else {
+                        // 其他Map类型直接转换为字符串
+                        dataItem.put("value", paramValue.toString());
+                    }
+                } else {
+                    // 其他类型直接转换为字符串
+                    dataItem.put("value", paramValue != null ? paramValue.toString() : "");
+                }
+                
+                dataList.add(dataItem);
+            }
+            
+            result.put("data", dataList);
+            
             // 使用共享的ObjectMapper实例将表单数据转换为JSON字符串
-            return objectMapper.writeValueAsString(formData);
+            return objectMapper.writeValueAsString(result);
         } catch (Exception e) {
             log.error("构建补充信息JSON时发生异常", e);
             // 如果转换失败，返回空的JSON对象
-            return "{}";
+            return "{\"kind\": \"data\", \"data\": []}";
         }
     }
 

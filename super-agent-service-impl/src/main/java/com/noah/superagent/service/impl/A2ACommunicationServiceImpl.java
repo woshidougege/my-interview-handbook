@@ -468,8 +468,8 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
                 try {
                     // 尝试解析用户输入为JSON对象
                     JsonNode userData = objectMapper.readTree(userInput);
-                    if (userData.has("data")) {
-                        // 如果已经是正确格式，直接使用data字段
+                    if (userData.has("kind") && "data".equals(userData.get("kind").asText()) && userData.has("data")) {
+                        // 如果已经符合规范格式，直接使用data字段
                         dataPart.set("data", userData.get("data"));
                     } else {
                         // 否则将整个对象作为data字段
@@ -480,9 +480,8 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
                     dataPart.put("data", userInput);
                 }
             } else {
-                // 如果没有用户输入，创建一个空的data对象
-                ObjectNode dataObject = objectMapper.createObjectNode();
-                dataPart.set("data", dataObject);
+                // 如果没有用户输入，创建一个空的data数组
+                dataPart.set("data", objectMapper.createArrayNode());
             }
             
             parts.add(dataPart);
