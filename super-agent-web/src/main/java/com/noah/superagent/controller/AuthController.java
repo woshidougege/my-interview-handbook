@@ -252,7 +252,8 @@ public class AuthController extends SsoClientController {
                         value = "{\n" +
                                 "  \"phone\": \"13800138000\",\n" +
                                 "  \"phoneCode\": \"123456\",\n" +
-                                "  \"servicecode\": \"super_agent\"\n" +
+                                "  \"servicecode\": \"super_agent\",\n" +
+                                "  \"isFirstLogin\": true\n" +
                                 "}"
                     )
                 )
@@ -271,7 +272,32 @@ public class AuthController extends SsoClientController {
                     .put("servicecode", ssoProperties.getServicecode())
                     .build();
 
-            return getMapApiResponse(url, requestBody);
+            HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(requestBody);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url, HttpMethod.POST, requestEntity, MAP_TYPE_REFERENCE);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> result = response.getBody();
+                if ("200".equals(String.valueOf(result.get("code")))) {
+                    Map<String, Object> data = getDataFromResponse(result);
+                    String ticket = String.valueOf(data.get("ticket"));
+                    
+                    // 如果是首次登录，执行注册回调
+                    if (Boolean.TRUE.equals(loginRequest.getIsFirstLogin())) {
+                        log.info("首次登录，执行注册回调 - 手机号: {}", loginRequest.getPhone());
+                        executeRegistrationCallback(data, loginRequest.getPhone());
+                    }
+
+                    Map<String, String> responseData = new HashMap<>();
+                    responseData.put("ticket", ticket);
+                    handleDailyCreditsOnLogin();
+                    return ApiResponse.success("登录成功", responseData);
+                } else {
+                    return ApiResponse.error(String.valueOf(result.get("msg")));
+                }
+            }
+
+            return ApiResponse.error("登录失败，请稍后重试");
 
         } catch (Exception e) {
             log.error("手机验证码登录失败: {}", e.getMessage(), e);

@@ -13,4 +13,7 @@ public class PhoneLoginRequest {
 
     @Schema(description = "服务代码", required = true, example = "super_agent")
     private String servicecode;
+    
+    @Schema(description = "是否首次登录", example = "true")
+    private Boolean isFirstLogin;
 }
