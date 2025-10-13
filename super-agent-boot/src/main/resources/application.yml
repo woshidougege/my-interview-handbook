@@ -59,6 +59,7 @@ spring:
       - classpath:application-scheduler.yml   # 任务调度配置
       - classpath:application-sso.yml         # 单点登录配置
       - classpath:application-ai.yml          # AI服务配置
+      - classpath:application-kunlun.yml      # Kunlun平台配置
 
 # 应用信息配置
 info:
@@ -85,36 +86,3 @@ management:
   info:
     env:
       enabled: true
-
-# Kunlun平台配置
-kunlun:
-  # 能力中心编码配置
-  ability-codes:
-    defaultCode: "18961714392032"
-  # 实体编码配置
-  entity-codes:
-    defaultCode: "ENTITY_test_pp_dispatch"
-  # 聊天历史相关配置
-  chat-history:
-    url: ${KUNLUN_CHAT_HISTORY_DETAIL_URL:http://192.168.1.137:7667/kunlun/chatHistory/getById}
-    list-url: ${KUNLUN_CHAT_HISTORY_LIST_URL:http://192.168.1.137:7667/kunlun/chatHistory/list}
-    delete-url: ${KUNLUN_CHAT_HISTORY_DELETE_URL:http://192.168.1.137:7667/kunlun/chatHistory/deleteById}
-  # 规划智能体改造相关配置
-  a2a:
-    # 会话执行接口
-    session-execution:
-      url: ${KUNLUN_A2A_SESSION_EXECUTION_URL:http://192.168.1.66:8000/kunlun/a2a/api/{abilityCode}/entity/{entityCode}/userid/{userId}/satoken/{satoken}}
-    # 补充信息接口
-    supplement-info:
-      url: ${KUNLUN_A2A_SUPPLEMENT_INFO_URL:http://192.168.1.66:8000/kunlun/a2a/api/{abilityCode}/entity/{entityCode}/userid/{userId}/satoken/{satoken}}
-    # 任务状态获取接口
-    task-status:
-      url: ${KUNLUN_A2A_TASK_STATUS_URL:http://192.168.1.137:7667/kunlun/task/getById}
-  # 注册回调配置
-  registration:
-    callback-url: ${REGISTRATION_CALLBACK_URL:http://192.168.1.66:8000/kl-dt-gateway/user/generatePlanAgentAndDocs}
-  # 文档库配置
-  file-repository:
-    upload-path: ${FILE_REPOSITORY_UPLOAD_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/twin/FileRepository/stream/put}
-    list-object-names-path: ${FILE_REPOSITORY_LIST_OBJECT_NAMES_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/{abilityCode}/twin/FileRepository/entity/{userEntityCode}/service/listObjectNames}
-    get-object-url-path: ${FILE_REPOSITORY_GET_OBJECT_URL_PATH:http://192.168.1.66:8000/kl-dt-gateway/gateway/{abilityCode}/twin/FileRepository/entity/{userEntityCode}/service/getObjectURL}
