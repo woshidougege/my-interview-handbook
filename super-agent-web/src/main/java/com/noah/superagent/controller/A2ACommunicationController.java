@@ -373,6 +373,8 @@ public class A2ACommunicationController {
             String actualEntityCode = a2aProtocolProxyEntityCode != null ?
                     a2aProtocolProxyEntityCode : allParams.get("a2aProtocolProxyEntityCode");
 
+            // 构建完整的formData
+            Map<String, Object> formData = new HashMap<>(allParams);
             // 处理直接放在FormData中的文件（前端将文件直接放在FormData中）
             // 从request中获取所有文件
             Map<String, String> fileUrls = new HashMap<>();
@@ -382,7 +384,7 @@ public class A2ACommunicationController {
             for (Map.Entry<String, MultipartFile> entry : fileMap.entrySet()) {
                 String fieldName = entry.getKey();
                 MultipartFile file = entry.getValue();
-                
+
                 // 检查是否是文件（通过文件名和大小判断）
                 if (file != null && !file.isEmpty() && file.getOriginalFilename() != null) {
                     // 检查这个字段是否已经在allParams中存在（避免重复处理普通表单字段）
@@ -396,6 +398,12 @@ public class A2ACommunicationController {
                             // 使用原始文件名作为键，符合规范要求
                             fileUrls.put(file.getOriginalFilename(), fileInfo.get("fileUrl"));
                             log.info("FormData中的文件 {} 上传成功: {}", fileInfo.get("originalName"), fileInfo.get("fileUrl"));
+                            
+                            // 将文件信息添加到formData中，使用前端传递的字段名作为键
+                            Map<String, String> fileData = new HashMap<>();
+                            fileData.put("url", fileInfo.get("fileUrl"));
+                            fileData.put("filename", file.getOriginalFilename());
+                            formData.put(fieldName, fileData);
                         } else {
                             log.warn("FormData中的文件上传失败: {}", file.getOriginalFilename());
                         }
@@ -403,26 +411,11 @@ public class A2ACommunicationController {
                 }
             }
 
-            // 构建完整的formData
-            Map<String, Object> formData = new HashMap<>(allParams);
             // 从表单数据中移除接口自身需要的参数，避免放入data数组中
             formData.remove("userId");
             formData.remove("taskId");
             formData.remove("contextId");
             formData.remove("a2aProtocolProxyEntityCode");
-
-            // 将上传的文件URL添加到formData中，包含filename信息
-            if (!fileUrls.isEmpty()) {
-                for (Map.Entry<String, String> entry : fileUrls.entrySet()) {
-                    String originalFilename = entry.getKey();
-                    String fileUrl = entry.getValue();
-                    // 将文件信息作为Map添加，以便后续处理时能包含filename字段
-                    Map<String, String> fileData = new HashMap<>();
-                    fileData.put("url", fileUrl);
-                    fileData.put("filename", originalFilename);
-                    formData.put(originalFilename, fileData);
-                }
-            }
 
             // 验证必填参数
             if (actualUserId == null || actualTaskId == null ||
