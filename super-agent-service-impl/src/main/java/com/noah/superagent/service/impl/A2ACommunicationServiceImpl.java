@@ -155,7 +155,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
 
             // 获取实际参数值
             String actualAbilityCode = getOrDefault(abilityCode, kunlunProperties.getAbilityCodes().getDefaultCode());
-            String actualEntityCode = getOrDefault(entityCode, kunlunProperties.getEntityCodes().getDefaultCode());
+
             String actualTaskId = getOrDefault(taskId, "task_" + System.currentTimeMillis());
             String actualContextId = getOrDefault(contextId, "");
             String actualSatoken = getOrDefault(satoken, "");
@@ -166,7 +166,7 @@ public class A2ACommunicationServiceImpl implements A2ACommunicationService {
 
             // 构建请求URL
             String a2aPlatformBaseUrl = kunlunProperties.getA2a().getSessionExecution().getUrl();
-            String url = buildRequestUrl(a2aPlatformBaseUrl,actualAbilityCode, actualEntityCode, userId, satoken);
+            String url = buildRequestUrl(a2aPlatformBaseUrl,actualAbilityCode, entityCode, userId, satoken);
             log.info("准备向A2A平台发送请求 - URL: {}, 方法: POST", url);
             log.debug("完整请求URL: {}", url);
 

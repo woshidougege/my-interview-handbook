@@ -38,6 +38,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static com.noah.superagent.util.UserEntityCodeUtil.getCurrentUserAgentEntityCode;
+
 /**
  * A2A通信控制器
  * 用于处理与上游智平台的Agent-to-Agent通信
@@ -70,125 +72,6 @@ public class A2ACommunicationController {
     }
 
 
-    /**
-     * 创建统一的流式响应处理逻辑
-     *
-     * @param abilityCode  能力中心编码
-     * @param entityCode   实体编码
-     * @param userId       用户ID
-     * @param message      消息内容
-     * @param taskId       任务ID
-     * @param contextId    上下文ID
-     * @param responseType 响应类型（用于日志）
-     * @param satoken      认证令牌
-     * @param attachments  附件列表
-     * @return StreamingResponseBody 流式响应体
-     */
-    private StreamingResponseBody createStreamingResponse(String abilityCode, String entityCode, String userId,
-                                                          String message, String taskId, String contextId, String responseType, String satoken, List<Attachment> attachments) {
-        return outputStream -> {
-            long startTime = System.currentTimeMillis();
-            log.info("开始处理{}格式流式响应 - 用户ID: {}, 消息: {}", responseType, userId, message);
-
-            try (InputStream inputStream = a2aCommunicationService.sendJsonRpcMessageToA2APlatform(
-                    abilityCode, entityCode, userId, message, taskId, contextId, satoken, attachments)) {
-
-                if (inputStream != null) {
-                    log.info("成功获取A2A平台输入流，开始流式传输数据");
-
-                    // 使用缓冲区读取数据并实时传输，类似CollaborativePlanningAgent中的处理方式
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    int totalBytes = 0;
-                    int chunkCount = 0;
-                    boolean hasReceivedData = false;
-
-                    try {
-                        // 持续读取数据直到流结束
-                        while ((bytesRead = inputStream.read(buffer)) != -1) {
-                            // 标记已收到数据
-                            hasReceivedData = true;
-
-                            try {
-                                // 实时写入数据到输出流
-                                outputStream.write(buffer, 0, bytesRead);
-                                outputStream.flush();
-
-                                totalBytes += bytesRead;
-                                chunkCount++;
-
-                                // 每10个数据块记录一次详细日志
-                                if (chunkCount % 10 == 0) {
-                                    long currentTime = System.currentTimeMillis();
-                                    log.debug("已传输数据块数量: {}, 总字节数: {}, 已用时间: {}ms",
-                                            chunkCount, totalBytes, (currentTime - startTime));
-                                }
-
-                                // 让出CPU时间片，避免过度占用CPU
-                                Thread.yield();
-                            } catch (IOException e) {
-                                // 客户端可能已经断开连接
-                                if (e.getMessage() != null && e.getMessage().contains("stream is closed")) {
-                                    log.info("客户端连接已断开，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}",
-                                            userId, chunkCount, totalBytes);
-                                } else {
-                                    log.warn("客户端连接已断开或发生IO异常，停止数据传输 - 用户ID: {}, 已传输数据块数: {}, 总字节数: {}, 异常: {}",
-                                            userId, chunkCount, totalBytes, e.getMessage());
-                                }
-                                // 退出循环，不再尝试写入数据
-                                break;
-                            }
-                        }
-
-                        // 如果没有读取到任何数据，记录警告信息并向客户端发送错误信息
-                        if (!hasReceivedData) {
-                            log.warn("从未A2A平台输入流中读取到任何数据，可能上游服务未返回有效数据");
-                            try {
-                                writeErrorToStream(outputStream, SecurityUtils.getSafeErrorMessage("STREAM_READ_ERROR"));
-                            } catch (Exception e) {
-                                log.warn("向已断开的客户端写入错误信息失败: {}", e.getMessage());
-                            }
-                        }
-
-                        long endTime = System.currentTimeMillis();
-                        log.info("{}格式流式传输完成 - 总数据块数: {}, 总字节数: {}, 总耗时: {}ms",
-                                responseType, chunkCount, totalBytes, (endTime - startTime));
-                    } catch (IOException e) {
-                        long errorTime = System.currentTimeMillis();
-                        if (e.getMessage() != null && e.getMessage().contains("stream is closed")) {
-                            log.info("读取A2A平台响应数据时检测到流已关闭 - 耗时: {}ms，用户ID: {}",
-                                    (errorTime - startTime), userId);
-                        } else {
-                            log.error("读取A2A平台响应数据时发生异常 - 耗时: {}ms", (errorTime - startTime), e);
-                        }
-
-                        try {
-                            writeErrorToStream(outputStream, SecurityUtils.sanitizeErrorMessage(e));
-                        } catch (Exception writeException) {
-                            log.warn("向已断开的客户端写入错误信息失败: {}", writeException.getMessage());
-                        }
-                    }
-                } else {
-                    long errorTime = System.currentTimeMillis();
-                    log.error("从A2A平台获取的输入流为空，耗时: {}ms", (errorTime - startTime));
-                    try {
-                        writeErrorToStream(outputStream, SecurityUtils.getSafeErrorMessage("CONNECTION_ERROR"));
-                    } catch (Exception e) {
-                        log.warn("向已断开的客户端写入错误信息失败: {}", e.getMessage());
-                    }
-                }
-            } catch (Exception e) {
-                long errorTime = System.currentTimeMillis();
-                log.error("{}格式流式传输过程中发生异常 - 耗时: {}ms", responseType, (errorTime - startTime), e);
-                try {
-                    writeErrorToStream(outputStream, SecurityUtils.sanitizeErrorMessage(e));
-                } catch (Exception writeException) {
-                    log.warn("向已断开的客户端写入错误信息失败: {}", writeException.getMessage());
-                }
-            }
-            // 确保输入流被关闭
-        };
-    }
 
 
     /**
@@ -229,21 +112,20 @@ public class A2ACommunicationController {
 
         // 所有参数都由后端生成
         String abilityCode = kunlunProperties.getAbilityCodes().getDefaultCode();
-        String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
         String userId = request.getUserId();
         String message = request.getMessage();
         // 由后端生成默认值
         String taskId = "task_" + System.currentTimeMillis();
         // 修改contextId从请求中获取，如果请求中没有则使用默认值
         String contextId = request.getContextId() != null ? request.getContextId() : "";
-
+        String currentUserAgentEntityCode = getCurrentUserAgentEntityCode();
         // 创建一个输出流，用于发布实时数据流
         StreamingResponseBody responseBody = outputStream -> {
             long startTime = System.currentTimeMillis();
             log.info("开始处理JSON-RPC格式流式响应 - 用户ID: {}, 消息: {}", userId, message);
 
             try (InputStream inputStream = a2aCommunicationService.sendJsonRpcMessageToA2APlatform(
-                    abilityCode, entityCode, userId, message, taskId, contextId, satoken, request.getAttachments())) {
+                    abilityCode, currentUserAgentEntityCode, userId, message, taskId, contextId, satoken, request.getAttachments())) {
 
                 if (inputStream != null) {
                     log.info("成功获取A2A平台输入流，开始流式传输数据");
