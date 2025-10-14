@@ -23,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -361,8 +362,8 @@ public class A2ACommunicationController {
             @Parameter(description = "上下文ID") @RequestParam(value = "contextId", required = false) String contextId,
             @Parameter(description = "A2A协议代理实体编码") @RequestParam(value = "a2aProtocolProxyEntityCode", required = false) String a2aProtocolProxyEntityCode,
             @Parameter(description = "表单数据") @RequestParam Map<String, String> allParams,
-            @Parameter(description = "上传的文件") @RequestPart(value = "files", required = false) MultipartFile[] files,
-            @Parameter(hidden = true) @SaToken String satoken) {
+            @Parameter(hidden = true) @SaToken String satoken,
+            @Parameter(hidden = true) MultipartHttpServletRequest request) {
 
         try {
             // 使用JSON格式处理参数
@@ -372,21 +373,31 @@ public class A2ACommunicationController {
             String actualEntityCode = a2aProtocolProxyEntityCode != null ?
                     a2aProtocolProxyEntityCode : allParams.get("a2aProtocolProxyEntityCode");
 
-            // 处理文件上传
+            // 处理直接放在FormData中的文件（前端将文件直接放在FormData中）
+            // 从request中获取所有文件
             Map<String, String> fileUrls = new HashMap<>();
-            if (files != null && files.length > 0) {
-                log.info("接收到 {} 个文件上传", files.length);
-                for (int i = 0; i < files.length; i++) {
-                    MultipartFile file = files[i];
-                    if (!file.isEmpty()) {
+            Map<String, MultipartFile> fileMap = request.getFileMap();
+            
+            // 遍历所有文件字段
+            for (Map.Entry<String, MultipartFile> entry : fileMap.entrySet()) {
+                String fieldName = entry.getKey();
+                MultipartFile file = entry.getValue();
+                
+                // 检查是否是文件（通过文件名和大小判断）
+                if (file != null && !file.isEmpty() && file.getOriginalFilename() != null) {
+                    // 检查这个字段是否已经在allParams中存在（避免重复处理普通表单字段）
+                    // 同时排除接口需要的参数字段
+                    if (!"userId".equals(fieldName) && !"taskId".equals(fieldName) && 
+                        !"contextId".equals(fieldName) && !"a2aProtocolProxyEntityCode".equals(fieldName) &&
+                        !allParams.containsKey(fieldName)) {
                         // 上传文件到文件仓库
-                        Map<String, String> fileInfo = uploadFileToRepository(file, contextId, taskId);
-                        if (fileInfo != null && "true".equals(fileInfo.get("success"))) {
+                        Map<String, String> fileInfo = uploadFileToRepository(file, actualContextId, actualTaskId);
+                        if (fileInfo != null && isUploadSuccess(fileInfo)) {
                             // 使用原始文件名作为键，符合规范要求
                             fileUrls.put(file.getOriginalFilename(), fileInfo.get("fileUrl"));
-                            log.info("文件 {} 上传成功: {}", fileInfo.get("originalName"), fileInfo.get("fileUrl"));
+                            log.info("FormData中的文件 {} 上传成功: {}", fileInfo.get("originalName"), fileInfo.get("fileUrl"));
                         } else {
-                            log.warn("文件上传失败: {}", file.getOriginalFilename());
+                            log.warn("FormData中的文件上传失败: {}", file.getOriginalFilename());
                         }
                     }
                 }
@@ -441,6 +452,41 @@ public class A2ACommunicationController {
         }
     }
 
+    /**
+     * 检查文件上传是否成功
+     * 通过检查状态码是否为200来判断上传是否成功
+     * 
+     * @param fileInfo 文件信息Map
+     * @return 上传是否成功
+     */
+    private boolean isUploadSuccess(Map<String, String> fileInfo) {
+        if (fileInfo == null) {
+            return false;
+        }
+        
+        // 通过检查状态码是否为200来判断上传是否成功
+        String code = fileInfo.get("code");
+        if (code != null && "200".equals(code)) {
+            return true;
+        }
+        
+        // 兼容原有的success字段检查
+        Object successObj = fileInfo.get("success");
+        if (successObj != null) {
+            // 支持字符串"true"
+            if ("true".equals(successObj)) {
+                return true;
+            }
+            
+            // 支持布尔值true
+            if (successObj instanceof Boolean && (Boolean) successObj) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
     /**
      * 通用文件上传方法
      * 用于补充信息、发送对话等场景的文件上传
