@@ -97,7 +97,7 @@ public class FileRepositoryController {
      * @param taskId    任务ID（可选）
      * @return 上传结果
      */
-    @PostMapping(value = "/stream/put", consumes = "multipart/form-data")
+    @PostMapping(value = "/stream/put", consumes = "multipart/form-data;charset=UTF-8")
     public ApiResponse<FileUploadResponse> uploadFile(
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "contextId") String contextId,

@@ -7,15 +7,12 @@ import com.noah.superagent.common.dto.response.FileUploadResponse;
 import com.noah.superagent.service.FileRepositoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.mime.content.StringBody;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -44,9 +41,8 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
 
     @Override
     public FileUploadResponse uploadFile(String userEntityCode ,String directory, MultipartFile file) {
-        CloseableHttpClient httpClient = null;
-        CloseableHttpResponse response = null;
-
+        OkHttpClient client = new OkHttpClient();
+        
         try {
             // 构建请求URL - 使用配置项
             String uploadUrl = kunlunProperties.getFileRepository().getUploadPath();
@@ -57,16 +53,6 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
             }
 
             log.info("调用文件上传接口: {}", uploadUrl);
-
-            // 创建HttpClient实例
-            httpClient = HttpClients.createDefault();
-
-            // 创建HttpPost请求
-            HttpPost httpPost = new HttpPost(uploadUrl);
-
-            // 设置请求头
-            httpPost.setHeader("Accept", "*/*");
-
 
             // 构建params参数
             Map<String, String> paramsMap = new HashMap<>();
@@ -80,58 +66,64 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
             log.info("发送到远程服务的请求体: params={}", paramsJson);
 
             // 构建multipart请求体
-            HttpEntity multipartEntity = MultipartEntityBuilder.create()
-                    .addPart("params", new StringBody(paramsJson, ContentType.APPLICATION_JSON))
-                    .addBinaryBody("file", file.getInputStream(), ContentType.APPLICATION_OCTET_STREAM, file.getOriginalFilename())
+            RequestBody requestBody = new MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart("params", null, RequestBody.create(paramsJson, MediaType.parse("application/json")))
+                    .addFormDataPart("file", file.getOriginalFilename(), 
+                            RequestBody.create(file.getBytes(), MediaType.parse("application/octet-stream")))
                     .build();
 
-            // 设置请求体
-            httpPost.setEntity(multipartEntity);
+            // 创建请求
+            Request request = new Request.Builder()
+                    .url(uploadUrl)
+                    .addHeader("Accept", "*/*")
+                    .post(requestBody)
+                    .build();
 
             // 执行请求
-            response = httpClient.execute(httpPost);
+            try (Response response = client.newCall(request).execute()) {
+                // 获取响应
+                String responseString = response.body() != null ? response.body().string() : "";
+                log.info("文件上传接口响应: {}", responseString);
 
-            // 获取响应
-            String responseString = EntityUtils.toString(response.getEntity());
-            log.info("文件上传接口响应: {}", responseString);
+                // 尝试解析JSON响应
+                try {
+                    Map<String, Object> responseMap = objectMapper.readValue(responseString, new TypeReference<Map<String, Object>>() {
+                    });
 
-            // 尝试解析JSON响应
-            try {
-                Map<String, Object> responseMap = objectMapper.readValue(responseString, new TypeReference<Map<String, Object>>() {
-                });
+                    // 检查响应码
+                    Object codeObj = responseMap.get("code");
+                    if (codeObj instanceof Number && ((Number) codeObj).intValue() == 100000) {
+                        Object dataObj = responseMap.get("data");
+                        if (dataObj instanceof Map) {
+                            Map<String, Object> dataMap = (Map<String, Object>) dataObj;
 
-                // 检查响应码
-                Object codeObj = responseMap.get("code");
-                if (codeObj instanceof Number && ((Number) codeObj).intValue() == 100000) {
-                    Object dataObj = responseMap.get("data");
-                    if (dataObj instanceof Map) {
-                        Map<String, Object> dataMap = (Map<String, Object>) dataObj;
-
-                        FileUploadResponse fileUploadResponse = new FileUploadResponse();
-                        fileUploadResponse.setName((String) dataMap.get("name"));
-                        fileUploadResponse.setUrl((String) dataMap.get("url"));
-                        return fileUploadResponse;
+                            FileUploadResponse fileUploadResponse = new FileUploadResponse();
+                            fileUploadResponse.setName((String) dataMap.get("name"));
+                            fileUploadResponse.setUrl((String) dataMap.get("url"));
+                            return fileUploadResponse;
+                        }
                     }
-                }
 
-                // 获取原始错误信息
-                String errorMessage = (String) responseMap.get("message");
-                if (errorMessage == null || errorMessage.isEmpty()) {
-                    errorMessage = "文件上传接口调用失败";
-                }
+                    // 获取原始错误信息
+                    String errorMessage = (String) responseMap.get("message");
+                    if (errorMessage == null || errorMessage.isEmpty()) {
+                        errorMessage = "文件上传接口调用失败";
+                    }
 
-                log.warn("文件上传接口调用失败，返回码: {}，错误信息: {}", codeObj, errorMessage);
-                FileUploadResponse errorResponse = new FileUploadResponse();
-                errorResponse.setName("upload_failed");
-                errorResponse.setUrl(errorMessage); // 将原始错误信息传递回去
-                return errorResponse;
-            } catch (Exception jsonException) {
-                // 如果不是有效的JSON响应，将原始响应内容作为错误信息返回
-                log.warn("文件上传接口返回非JSON格式响应: {}", responseString);
-                FileUploadResponse errorResponse = new FileUploadResponse();
-                errorResponse.setName("upload_failed");
-                errorResponse.setUrl(responseString); // 将原始响应内容传递给前端
-                return errorResponse;
+                    log.warn("文件上传接口调用失败，返回码: {}，错误信息: {}", codeObj, errorMessage);
+                    FileUploadResponse errorResponse = new FileUploadResponse();
+                    errorResponse.setName("upload_failed");
+                    errorResponse.setUrl(errorMessage); // 将原始错误信息传递回去
+                    return errorResponse;
+                } catch (Exception jsonException) {
+                    // 如果不是有效的JSON响应，将原始响应内容作为错误信息返回
+                    log.warn("文件上传接口返回非JSON格式响应: {}", responseString);
+                    FileUploadResponse errorResponse = new FileUploadResponse();
+                    errorResponse.setName("upload_failed");
+                    errorResponse.setUrl(responseString); // 将原始响应内容传递给前端
+                    return errorResponse;
+                }
             }
 
         } catch (Exception e) {
@@ -140,18 +132,6 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
             errorResponse.setName("upload_failed");
             errorResponse.setUrl("调用文件上传接口时发生异常: " + e.getMessage());
             return errorResponse;
-        } finally {
-            // 关闭资源
-            try {
-                if (response != null) {
-                    response.close();
-                }
-                if (httpClient != null) {
-                    httpClient.close();
-                }
-            } catch (IOException e) {
-                log.error("关闭HttpClient资源时发生异常", e);
-            }
         }
     }
 
