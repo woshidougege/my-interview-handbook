@@ -3,9 +3,6 @@ kunlun:
   # 能力中心编码配置
   ability-codes:
     defaultCode: "18961714392032"
-  # 实体编码配置
-  entity-codes:
-    defaultCode: "ENTITY_test_pp_dispatch"
   # 聊天历史相关配置
   chat-history:
     url: ${KUNLUN_CHAT_HISTORY_DETAIL_URL:http://192.168.1.137:7667/kunlun/chatHistory/getById}

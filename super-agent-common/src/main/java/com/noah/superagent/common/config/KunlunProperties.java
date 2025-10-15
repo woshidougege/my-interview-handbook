@@ -22,11 +22,6 @@ public class KunlunProperties {
     private AbilityCodes abilityCodes = new AbilityCodes();
 
     /**
-     * 实体编码配置
-     */
-    private EntityCodes entityCodes = new EntityCodes();
-
-    /**
      * 聊天历史配置
      */
     private ChatHistory chatHistory = new ChatHistory();
@@ -57,16 +52,6 @@ public class KunlunProperties {
         private String defaultCode;
     }
 
-    /**
-     * 实体编码配置
-     */
-    @Data
-    public static class EntityCodes {
-        /**
-         * 默认实体编码
-         */
-        private String defaultCode;
-    }
 
     /**
      * 聊天历史配置

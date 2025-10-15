@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.noah.superagent.util.UserEntityCodeUtil.getCurrentUserAgentEntityCode;
+
 /**
  * 对话任务管理控制器
  *
@@ -83,8 +85,8 @@ public class ChatTaskController {
         // 使用默认实体编码调用聊天历史接口并将结果合并到返回数据中
         if (chatTaskDO.getContextId() != null) {
             try {
-                // 获取默认实体编码
-                String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
+                // 获取实体编码
+                String entityCode = getCurrentUserAgentEntityCode();
 
                 // 构建调用URL，使用配置文件中的URL
                 String url = String.format("%s?sessionId=%s&entityCode=%s",
@@ -196,9 +198,8 @@ public class ChatTaskController {
         // 如果存在contextId，则调用删除历史会话接口
         if (chatTaskDO != null && chatTaskDO.getContextId() != null) {
             try {
-                // 获取默认实体编码
-                String entityCode = kunlunProperties.getEntityCodes().getDefaultCode();
-
+                // 获取实体编码
+                String entityCode = getCurrentUserAgentEntityCode();
                 // 构建调用URL，使用配置文件中的URL
                 String url = String.format("%s?sessionId=%s&entityCode=%s",
                         kunlunProperties.getChatHistory().getDeleteUrl(), chatTaskDO.getContextId(), entityCode);
