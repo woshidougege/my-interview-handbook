@@ -72,8 +72,6 @@ public class A2ACommunicationController {
     }
 
 
-
-
     /**
      * 向输出流写入错误信息
      *
@@ -106,8 +104,8 @@ public class A2ACommunicationController {
     public ResponseEntity<StreamingResponseBody> streamMessageToA2APlatform(
             @Parameter(description = "A2A消息请求参数") @Valid @RequestBody A2AMessageRequest request,
             @Parameter(hidden = true) @SaToken String satoken) {
-        
-        log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}", 
+
+        log.info("接收流式发送消息到A2A平台请求 - 用户ID: {}, 消息: {}",
                 request.getUserId(), request.getMessage());
 
         // 所有参数都由后端生成
@@ -261,7 +259,7 @@ public class A2ACommunicationController {
             // 从request中获取所有文件
             Map<String, String> fileUrls = new HashMap<>();
             Map<String, MultipartFile> fileMap = request.getFileMap();
-            
+
             // 遍历所有文件字段
             for (Map.Entry<String, MultipartFile> entry : fileMap.entrySet()) {
                 String fieldName = entry.getKey();
@@ -271,16 +269,16 @@ public class A2ACommunicationController {
                 if (file != null && !file.isEmpty() && file.getOriginalFilename() != null) {
                     // 检查这个字段是否已经在allParams中存在（避免重复处理普通表单字段）
                     // 同时排除接口需要的参数字段
-                    if (!"userId".equals(fieldName) && !"taskId".equals(fieldName) && 
-                        !"contextId".equals(fieldName) && !"a2aProtocolProxyEntityCode".equals(fieldName) &&
-                        !allParams.containsKey(fieldName)) {
+                    if (!"userId".equals(fieldName) && !"taskId".equals(fieldName) &&
+                            !"contextId".equals(fieldName) && !"a2aProtocolProxyEntityCode".equals(fieldName) &&
+                            !allParams.containsKey(fieldName)) {
                         // 上传文件到文件仓库
                         Map<String, String> fileInfo = uploadFileToRepository(file, actualContextId, actualTaskId);
                         if (fileInfo != null && isUploadSuccess(fileInfo)) {
                             // 使用原始文件名作为键，符合规范要求
                             fileUrls.put(file.getOriginalFilename(), fileInfo.get("fileUrl"));
                             log.info("FormData中的文件 {} 上传成功: {}", fileInfo.get("originalName"), fileInfo.get("fileUrl"));
-                            
+
                             // 将文件信息添加到formData中，使用前端传递的字段名作为键
                             Map<String, String> fileData = new HashMap<>();
                             fileData.put("url", fileInfo.get("fileUrl"));
@@ -330,7 +328,7 @@ public class A2ACommunicationController {
     /**
      * 检查文件上传是否成功
      * 通过检查状态码是否为200来判断上传是否成功
-     * 
+     *
      * @param fileInfo 文件信息Map
      * @return 上传是否成功
      */
@@ -338,13 +336,13 @@ public class A2ACommunicationController {
         if (fileInfo == null) {
             return false;
         }
-        
+
         // 通过检查状态码是否为200来判断上传是否成功
         String code = fileInfo.get("code");
         if (code != null && "200".equals(code)) {
             return true;
         }
-        
+
         // 兼容原有的success字段检查
         Object successObj = fileInfo.get("success");
         if (successObj != null) {
@@ -352,16 +350,16 @@ public class A2ACommunicationController {
             if ("true".equals(successObj)) {
                 return true;
             }
-            
+
             // 支持布尔值true
             if (successObj instanceof Boolean && (Boolean) successObj) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * 通用文件上传方法
      * 用于补充信息、发送对话等场景的文件上传
@@ -422,17 +420,17 @@ public class A2ACommunicationController {
             // 创建符合规范的data结构
             Map<String, Object> result = new HashMap<>();
             result.put("kind", "data");
-            
+
             List<Map<String, Object>> dataList = new ArrayList<>();
-            
+
             // 遍历表单数据，按规范格式组织
             for (Map.Entry<String, Object> entry : formData.entrySet()) {
                 String paramName = entry.getKey();
                 Object paramValue = entry.getValue();
-                
+
                 Map<String, Object> dataItem = new HashMap<>();
                 dataItem.put("param", paramName);
-                
+
                 // 处理三种特定类型的数据
                 if (paramValue instanceof String) {
                     String stringValue = (String) paramValue;
@@ -474,12 +472,12 @@ public class A2ACommunicationController {
                     // 其他类型直接转换为字符串
                     dataItem.put("value", paramValue != null ? paramValue.toString() : "");
                 }
-                
+
                 dataList.add(dataItem);
             }
-            
+
             result.put("data", dataList);
-            
+
             // 使用共享的ObjectMapper实例将表单数据转换为JSON字符串
             String jsonResult = objectMapper.writeValueAsString(result);
             log.info("构建补充信息JSON: {}", jsonResult); // 添加日志记录
@@ -549,6 +547,70 @@ public class A2ACommunicationController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("code", 500);
             errorResponse.put("message", "获取任务状态失败: " + e.getMessage());
+            errorResponse.put("data", new ArrayList<>());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+
+    /**
+     * 取消任务执行
+     *
+     * @param contextId 会话ID
+     * @return 取消任务结果
+     */
+    @PostMapping("/cancel-task")
+    @Operation(summary = "取消任务执行", description = "取消指定任务的执行")
+    public ResponseEntity<Map<String, Object>> cancelTask(
+            @Parameter(description = "会话ID", required = true)
+            @RequestParam String contextId) {
+
+        log.info("接收到取消执行任务请求，会话ID: {}", contextId);
+        
+        // 自动生成entityCode和abilityCode参数
+        String entityCode = UserEntityCodeUtil.getCurrentUserAgentEntityCode();
+        String abilityCode = "18961714392032"; // 写死
+
+        try {
+            // 构建请求URL
+            String url = kunlunProperties.getA2a().getCancelTask().getUrl();
+            
+            // 构建请求体
+            Map<String, String> requestBody = new HashMap<>();
+            requestBody.put("sessionId", contextId);
+            requestBody.put("entityCode", entityCode);
+            requestBody.put("abilityCode", abilityCode);
+            
+            // 将请求体转换为JSON
+            String jsonBody = objectMapper.writeValueAsString(requestBody);
+            
+            // 设置请求头
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(jsonBody, headers);
+
+            log.info("取消任务执行，请求URL: {}, 请求体: {}", url, jsonBody);
+
+            // 直接调用取消任务接口
+            String response = restTemplate.postForObject(url, entity, String.class);
+
+            // 解析响应为Map
+            Map<String, Object> result = new HashMap<>();
+            if (response != null) {
+                result = objectMapper.readValue(response, Map.class);
+                // 如果code是10000，替换为200表示成功
+                if (result.containsKey("code") && "100000".equals(String.valueOf(result.get("code")))) {
+                    result.put("code", 200);
+                }
+            }
+
+            log.info("取消任务执行成功，会话ID: {}, 响应: {}", contextId, result);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("取消任务执行失败，会话ID: {}", contextId, e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("code", 500);
+            errorResponse.put("message", "取消任务执行失败: " + e.getMessage());
             errorResponse.put("data", new ArrayList<>());
             return ResponseEntity.status(500).body(errorResponse);
         }

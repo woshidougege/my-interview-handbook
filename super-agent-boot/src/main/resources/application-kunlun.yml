@@ -19,6 +19,8 @@ kunlun:
     # 任务状态获取接口
     task-status:
       url: ${KUNLUN_A2A_TASK_STATUS_URL:http://192.168.1.137:7667/kunlun/task/getById}
+    cancel-task:
+        url: ${KUNLUN_A2A_CANCEL_TASK_URL:http://192.168.1.137:7667/kunlun/dt/api/entity/CollaborativePlanningAgent/Services/cancelTask}
   # 注册回调配置
   registration:
     callback-url: ${REGISTRATION_CALLBACK_URL:http://192.168.1.66:8000/kl-dt-gateway/user/generatePlanAgentAndDocs}

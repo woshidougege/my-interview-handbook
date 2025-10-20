@@ -94,6 +94,12 @@ public class KunlunProperties {
          */
         private TaskStatus taskStatus = new TaskStatus();
 
+
+        /**
+         * 任务状态获取接口配置
+         */
+        private CancelTask cancelTask = new CancelTask();
+
         /**
          * 会话执行接口配置
          */
@@ -123,6 +129,17 @@ public class KunlunProperties {
         public static class TaskStatus {
             /**
              * 任务状态获取URL
+             */
+            private String url;
+        }
+
+        /**
+         * 任务状态获取接口配置
+         */
+        @Data
+        public static class CancelTask {
+            /**
+             * 取消任务URL
              */
             private String url;
         }
