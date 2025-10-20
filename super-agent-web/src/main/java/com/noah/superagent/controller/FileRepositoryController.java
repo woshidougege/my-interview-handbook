@@ -472,6 +472,12 @@ public class FileRepositoryController {
         try {
             String path = new URL(uri).getPath();
             String fileName = path.substring(path.lastIndexOf('/') + 1);
+            
+            // 根据项目约定，取第一个下划线之后的部分作为文件名
+            if (fileName.contains("_")) {
+                fileName = fileName.substring(fileName.indexOf("_") + 1);
+            }
+            
             return fileName.isEmpty() ? "unknown_file" : fileName;
         } catch (Exception e) {
             log.warn("无法从URI中提取文件名: uri={}, 错误信息: {}", uri, e.getMessage());
