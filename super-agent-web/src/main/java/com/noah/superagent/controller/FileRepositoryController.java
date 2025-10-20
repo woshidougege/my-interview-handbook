@@ -369,11 +369,10 @@ public class FileRepositoryController {
 
             // 如果只有一个文件且不压缩，直接下载
             if (fileUris.size() == 1 && !compress) {
-                String fileUri = fileUris.get(0);
-                downloadSingleFileByUri(fileUri, response);
+                fileRepositoryService.downloadSingleFile(fileUris.get(0), response);
             } else {
                 // 如果有多个文件或需要压缩，打包下载
-                downloadMultipleFilesAsZipByUris(fileUris, response);
+                fileRepositoryService.downloadMultipleFilesAsZip(fileUris, response);
             }
         } catch (Exception e) {
             log.error("按文件URI下载过程中发生异常", e);
@@ -386,104 +385,7 @@ public class FileRepositoryController {
         }
     }
 
-    /**
-     * 下载单个文件通过URI
-     *
-     * @param fileUri  文件URI
-     * @param response HttpServletResponse对象
-     * @throws IOException IO异常
-     */
-    private void downloadSingleFileByUri(String fileUri, HttpServletResponse response) throws IOException {
-        try {
-            // 下载文件
-            URL url = new URL(fileUri);
-            try (InputStream in = url.openStream()) {
-                // 从URI中提取文件名
-                String fileName = extractFileNameFromUri(fileUri);
-                
-                // 设置响应头
-                response.setContentType("application/octet-stream");
-                response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
 
-                // 将文件内容写入响应
-                IOUtils.copy(in, response.getOutputStream());
-                response.flushBuffer();
-            }
-        } catch (Exception e) {
-            log.error("下载单个文件时发生异常: fileUri={}", fileUri, e);
-            throw e;
-        }
-    }
-
-    /**
-     * 下载多个文件并打包成ZIP通过URI
-     *
-     * @param fileUris 文件URI列表
-     * @param response HttpServletResponse对象
-     * @throws IOException IO异常
-     */
-    private void downloadMultipleFilesAsZipByUris(List<String> fileUris, HttpServletResponse response) throws IOException {
-        try (ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream())) {
-            // 设置响应头
-            response.setContentType("application/zip");
-            response.setHeader("Content-Disposition", "attachment; filename=download.zip");
-
-            // 下载并添加每个文件到ZIP
-            for (String fileUri : fileUris) {
-                try {
-                    // 下载文件
-                    URL url = new URL(fileUri);
-                    try (InputStream in = url.openStream()) {
-                        // 从URI中提取文件名
-                        String fileName = extractFileNameFromUri(fileUri);
-                        
-                        // 添加文件到ZIP
-                        ZipEntry zipEntry = new ZipEntry(fileName);
-                        zipOut.putNextEntry(zipEntry);
-
-                        byte[] buffer = new byte[1024];
-                        int len;
-                        while ((len = in.read(buffer)) > 0) {
-                            zipOut.write(buffer, 0, len);
-                        }
-                        zipOut.closeEntry();
-                    }
-                } catch (Exception e) {
-                    log.error("处理文件时发生异常: fileUri={}", fileUri, e);
-                    // 继续处理其他文件
-                }
-            }
-
-            zipOut.finish();
-            log.info("多文件打包下载完成: fileCount={}", fileUris.size());
-        } catch (Exception e) {
-            log.error("多文件打包下载过程中发生异常", e);
-            throw e;
-        }
-    }
-    
-    /**
-     * 从URI中提取文件名
-     * 
-     * @param uri 文件URI
-     * @return 文件名
-     */
-    private String extractFileNameFromUri(String uri) {
-        try {
-            String path = new URL(uri).getPath();
-            String fileName = path.substring(path.lastIndexOf('/') + 1);
-            
-            // 根据项目约定，取第一个下划线之后的部分作为文件名
-            if (fileName.contains("_")) {
-                fileName = fileName.substring(fileName.indexOf("_") + 1);
-            }
-            
-            return fileName.isEmpty() ? "unknown_file" : fileName;
-        } catch (Exception e) {
-            log.warn("无法从URI中提取文件名: uri={}, 错误信息: {}", uri, e.getMessage());
-            return "unknown_file";
-        }
-    }
 
     /**
      * 获取文件的预签名URL
@@ -722,20 +624,5 @@ public class FileRepositoryController {
         }
         return userEntityCode;
     }
-    
-    /**
-     * 处理异常情况并返回错误信息
-     *
-     * @param response HttpServletResponse对象
-     * @param message 错误信息
-     */
-    private void handleException(HttpServletResponse response, String message) {
-        try {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.setContentType("text/plain");
-            response.getWriter().write(message);
-        } catch (IOException e) {
-            log.error("处理异常时发生错误", e);
-        }
-    }
+
 }

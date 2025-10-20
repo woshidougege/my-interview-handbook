@@ -13,6 +13,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.apache.commons.io.IOUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -20,11 +21,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * 文件仓库服务实现类
@@ -317,5 +324,106 @@ public class FileRepositoryServiceImpl implements FileRepositoryService {
         }
         
         return directoryBuilder.toString();
+    }
+    
+    /**
+     * 下载多个文件并打包成ZIP
+     *
+     * @param fileUris 文件URI列表
+     * @param response HttpServletResponse对象
+     * @throws IOException IO异常
+     */
+    @Override
+    public void downloadMultipleFilesAsZip(List<String> fileUris, HttpServletResponse response) throws IOException {
+        try (ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream())) {
+            // 设置响应头
+            response.setContentType("application/zip");
+            response.setHeader("Content-Disposition", "attachment; filename=download.zip");
+
+            // 下载并添加每个文件到ZIP
+            for (String fileUri : fileUris) {
+                try {
+                    // 下载文件
+                    URL url = new URL(fileUri);
+                    try (InputStream in = url.openStream()) {
+                        // 从URI中提取文件名
+                        String fileName = extractFileNameFromUri(fileUri);
+                        
+                        // 添加文件到ZIP
+                        ZipEntry zipEntry = new ZipEntry(fileName);
+                        zipOut.putNextEntry(zipEntry);
+
+                        byte[] buffer = new byte[1024];
+                        int len;
+                        while ((len = in.read(buffer)) > 0) {
+                            zipOut.write(buffer, 0, len);
+                        }
+                        zipOut.closeEntry();
+                    }
+                } catch (Exception e) {
+                    log.error("处理文件时发生异常: fileUri={}", fileUri, e);
+                    // 继续处理其他文件
+                }
+            }
+
+            zipOut.finish();
+            log.info("多文件打包下载完成: fileCount={}", fileUris.size());
+        } catch (Exception e) {
+            log.error("多文件打包下载过程中发生异常", e);
+            throw e;
+        }
+    }
+    
+    /**
+     * 下载单个文件
+     *
+     * @param fileUri  文件URI
+     * @param response HttpServletResponse对象
+     * @throws IOException IO异常
+     */
+    @Override
+    public void downloadSingleFile(String fileUri, HttpServletResponse response) throws IOException {
+        try {
+            // 下载文件
+            URL url = new URL(fileUri);
+            try (InputStream in = url.openStream()) {
+                // 从URI中提取文件名
+                String fileName = extractFileNameFromUri(fileUri);
+                
+                // 设置响应头
+                response.setContentType("application/octet-stream");
+                response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
+
+                // 将文件内容写入响应
+                IOUtils.copy(in, response.getOutputStream());
+                response.flushBuffer();
+            }
+        } catch (Exception e) {
+            log.error("下载单个文件时发生异常: fileUri={}", fileUri, e);
+            throw e;
+        }
+    }
+    
+    /**
+     * 从URI中提取文件名
+     * 
+     * @param uri 文件URI
+     * @return 文件名
+     */
+    private String extractFileNameFromUri(String uri) {
+        try {
+            String path = new URL(uri).getPath();
+            String fileName = path.substring(path.lastIndexOf('/') + 1);
+            
+            // 根据项目约定，取第一个下划线之后的部分作为文件名
+            if (fileName.contains("_")) {
+                fileName = fileName.substring(fileName.indexOf("_") + 1);
+            }
+            
+            return fileName.isEmpty() ? "unknown_file" : fileName;
+        } catch (Exception e) {
+            log.warn("无法从URI中提取文件名: uri={}, 错误信息: {}", uri, e.getMessage());
+            return "unknown_file";
+        }
     }
 }

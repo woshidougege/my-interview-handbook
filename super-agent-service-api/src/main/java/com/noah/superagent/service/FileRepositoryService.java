@@ -2,6 +2,8 @@ package com.noah.superagent.service;
 
 import com.noah.superagent.common.dto.response.FileUploadResponse;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -49,5 +51,21 @@ public interface FileRepositoryService {
      */
     String buildDirectoryPath(String contextId, String taskId);
     
-
+    /**
+     * 下载多个文件并打包成ZIP
+     *
+     * @param fileUris 文件URI列表
+     * @param response HttpServletResponse对象
+     * @throws IOException IO异常
+     */
+    void downloadMultipleFilesAsZip(List<String> fileUris, HttpServletResponse response) throws IOException;
+    
+    /**
+     * 下载单个文件
+     *
+     * @param fileUri  文件URI
+     * @param response HttpServletResponse对象
+     * @throws IOException IO异常
+     */
+    void downloadSingleFile(String fileUri, HttpServletResponse response) throws IOException;
 }
