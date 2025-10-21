@@ -33,6 +33,15 @@
             </includes>
         </fileSet>
 
+        <!-- 国际化资源文件 -->
+        <fileSet>
+            <directory>src/main/resources/i18n</directory>
+            <outputDirectory>super-agent/conf/i18n</outputDirectory>
+            <includes>
+                <include>**/*.properties</include>
+            </includes>
+        </fileSet>
+
         <!-- 数据库迁移脚本 -->
         <fileSet>
             <directory>src/main/resources/db</directory>
