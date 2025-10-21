@@ -31,10 +31,12 @@ public class InternationalizationConfig implements WebMvcConfigurer {
         // 设置默认语言为中文
         resolver.setDefaultLocale(Locale.SIMPLIFIED_CHINESE);
         
-        // 设置支持的语言列表
+        // 设置支持的语言列表（支持多种语言标识）
         resolver.setSupportedLocales(Arrays.asList(
-            Locale.SIMPLIFIED_CHINESE,  // zh-CN
-            Locale.US                    // en-US
+            Locale.SIMPLIFIED_CHINESE,  // zh-CN, zh
+            Locale.CHINESE,              // zh (通用中文)
+            Locale.US,                   // en-US
+            Locale.ENGLISH               // en (通用英文)
         ));
         
         return resolver;
