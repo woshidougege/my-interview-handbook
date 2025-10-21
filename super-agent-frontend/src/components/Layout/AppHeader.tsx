@@ -3,6 +3,7 @@ import { Layout, Typography, Space, Menu } from 'antd';
 import { useRouter } from 'next/router';
 import { HomeOutlined, ShoppingOutlined, UnorderedListOutlined, MessageOutlined, RobotOutlined } from '@ant-design/icons';
 import UserProfile from '../UserProfile';
+import LanguageSwitcher from '../LanguageSwitcher';
 
 const { Header } = Layout;
 const { Title } = Typography;
@@ -77,8 +78,11 @@ const AppHeader: React.FC = () => {
         disabledOverflow={true}
       />
 
-      {/* 右侧用户信息 */}
-      <UserProfile />
+      {/* 右侧：语言切换和用户信息 */}
+      <Space size="middle">
+        <LanguageSwitcher />
+        <UserProfile />
+      </Space>
     </Header>
   );
 };

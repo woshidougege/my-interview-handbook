@@ -11,6 +11,11 @@ const LANGUAGE_KEY = 'app_language';
  * 获取当前语言
  */
 export function getCurrentLanguage(): Language {
+  // 检查是否在浏览器环境（避免SSR错误）
+  if (typeof window === 'undefined') {
+    return 'zh-CN'; // 服务端默认返回中文
+  }
+  
   // 优先从 localStorage 读取用户选择的语言
   const savedLanguage = localStorage.getItem(LANGUAGE_KEY) as Language;
   if (savedLanguage) {
@@ -29,6 +34,11 @@ export function getCurrentLanguage(): Language {
  * 设置语言
  */
 export function setLanguage(language: Language): void {
+  // 检查是否在浏览器环境
+  if (typeof window === 'undefined') {
+    return;
+  }
+  
   localStorage.setItem(LANGUAGE_KEY, language);
   // 刷新页面以应用新语言
   window.location.reload();
