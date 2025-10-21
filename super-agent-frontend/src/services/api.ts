@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
 import { ApiResponse } from '@/types/user';
 import { API_CONFIG, API_ENDPOINTS } from '@/config/apiEndpoints';
+import { getCurrentLanguage } from '@/utils/i18n';
 import {
   ApiPromise,
   LoginRequest,
@@ -42,11 +43,16 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
-    // 可以在这里添加token等认证信息
+    // 添加token认证信息
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // 添加国际化语言参数（通过 Accept-Language 请求头）
+    const language = getCurrentLanguage();
+    config.headers['Accept-Language'] = language;
+    
     return config;
   },
   (error) => {

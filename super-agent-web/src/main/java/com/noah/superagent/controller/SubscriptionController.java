@@ -3,6 +3,8 @@ package com.noah.superagent.controller;
 import com.noah.superagent.common.dto.response.PlansListResponse;
 import com.noah.superagent.common.dto.response.CreditPurchaseConfigResponse;
 import com.noah.superagent.common.config.CreditPurchaseConfig;
+import com.noah.superagent.common.enums.MessageKeyEnum;
+import com.noah.superagent.common.util.MessageUtils;
 import com.noah.superagent.convert.SubscriptionPlanWebConvert;
 import com.noah.superagent.model.UserSubscriptionDTO;
 import com.noah.superagent.response.ApiResponse;
@@ -41,6 +43,7 @@ public class SubscriptionController {
     private final UserSubscriptionService userSubscriptionService;
     private final UserCreditService userCreditService;
     private final CreditPurchaseConfig creditPurchaseConfig;
+    private final MessageUtils messageUtils;
 
     private final BillingProperties billingProperties;
 
@@ -220,7 +223,9 @@ public class SubscriptionController {
         response.setDiscountPercentageText(Math.round(yearlyDiscountRate * 100) + "%");
         response.setPlans(webConvert.toResponseList(planDTOs));
         
-        return ApiResponse.success("获取套餐列表成功", response);
+        // 使用国际化消息（枚举方式，类型安全）
+        String message = messageUtils.getMessage(MessageKeyEnum.SUBSCRIPTION_PLANS_SUCCESS);
+        return ApiResponse.success(message, response);
     }
 
     @Operation(
@@ -375,8 +380,9 @@ public class SubscriptionController {
                 try {
                     var plan = subscriptionPlanService.getPlanById(subscription.getPlanId());
                     if (plan != null) {
-                        planName = plan.getPlanName();
                         planCode = plan.getPlanCode() != null ? plan.getPlanCode().getCode() : null;
+                        // 使用国际化获取套餐名称（根据语言自动返回中文或英文）
+                        planName = messageUtils.getPlanName(planCode);
                     }
                 } catch (Exception e) {
                     log.warn("查询套餐信息失败 - planId: {}, 错误: {}", subscription.getPlanId(), e.getMessage());
@@ -389,7 +395,9 @@ public class SubscriptionController {
             response.setPlanName(planName);
             response.setPlanCode(planCode);
             
-            return ApiResponse.success("获取订阅信息成功", response);
+            // 使用国际化消息
+            String message = messageUtils.getMessage(MessageKeyEnum.SUBSCRIPTION_CURRENT_SUCCESS);
+            return ApiResponse.success(message, response);
             
         } catch (Exception e) {
             log.error("获取用户订阅信息失败 - userId: {}, 错误: {}", userId, e.getMessage(), e);

@@ -40,18 +40,22 @@ public class PlansConfig {
         private String id;
 
         /**
-         * 套餐名称
-         */
-        private String name;
-
-        /**
-         * 套餐代码
+         * 套餐代码（用于关联国际化文件）
          */
         private String code;
 
         /**
-         * 套餐描述
+         * 套餐名称（已废弃，从国际化文件获取）
+         * @deprecated 使用 code 通过国际化获取名称
          */
+        @Deprecated
+        private String name;
+
+        /**
+         * 套餐描述（已废弃，从国际化文件获取）
+         * @deprecated 使用 code 通过国际化获取描述
+         */
+        @Deprecated
         private String description;
 
         /**
@@ -106,8 +110,15 @@ public class PlansConfig {
     @Data
     public static class FeatureConfig {
         /**
-         * 功能描述文本
+         * 功能key（用于关联国际化文件）
          */
+        private String key;
+
+        /**
+         * 功能描述文本（已废弃，从国际化文件获取）
+         * @deprecated 使用 key 通过国际化获取描述
+         */
+        @Deprecated
         private String text;
 
         /**

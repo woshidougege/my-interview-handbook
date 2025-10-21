@@ -2,6 +2,7 @@ package com.noah.superagent.service.impl;
 
 import com.noah.superagent.common.config.PlansConfig;
 import com.noah.superagent.common.enums.PlanCodeEnum;
+import com.noah.superagent.common.util.MessageUtils;
 import com.noah.superagent.model.PlanFeatureDTO;
 import com.noah.superagent.model.SubscriptionPlanDTO;
 import com.noah.superagent.service.SubscriptionPlanService;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 /**
  * 基于配置文件的订阅套餐服务实现类
  * 替代数据库查询，从配置文件读取套餐信息
+ * 支持国际化：套餐名称、描述和功能特性从国际化文件获取
  *
  * @author 任相鹏
  * @since 1.0.0
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanService {
 
     private final PlansConfig plansConfig;
+    private final MessageUtils messageUtils;
 
     @Override
     public List<SubscriptionPlanDTO> getEnabledPlans() {
@@ -54,16 +57,19 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
     }
 
     /**
-     * 将配置转换为DTO
+     * 将配置转换为DTO（支持国际化）
      */
     private SubscriptionPlanDTO convertToDTO(PlansConfig.PlanConfig config) {
         SubscriptionPlanDTO dto = new SubscriptionPlanDTO();
         
         // 基础信息
         dto.setId(Long.parseLong(config.getId()));
-        dto.setPlanName(config.getName());
         dto.setPlanCode(parsePlanCode(config.getCode()));
-        dto.setDescription(config.getDescription());
+        
+        // 从国际化文件获取名称和描述（根据当前请求的语言自动选择）
+        String planCode = config.getCode();
+        dto.setPlanName(messageUtils.getPlanName(planCode));
+        dto.setDescription(messageUtils.getPlanDescription(planCode));
         
         // 价格信息将在calculatePriceFields中设置
         
@@ -78,8 +84,8 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
         dto.setIsCurrentPlan(false); // 默认为false，在Controller层设置
         dto.setCreditsAmount(config.getCreditsAmount());
         
-        // 转换功能特性
-        dto.setFeatures(convertFeatures(config.getFeatures()));
+        // 转换功能特性（支持国际化）
+        dto.setFeatures(convertFeatures(planCode, config.getFeatures()));
         
         return dto;
     }
@@ -259,9 +265,13 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
     }
 
     /**
-     * 转换功能特性
+     * 转换功能特性（支持国际化）
+     * 
+     * @param planCode 套餐代码（用于关联国际化key）
+     * @param featureConfigs 功能配置列表
+     * @return 国际化后的功能特性列表
      */
-    private List<PlanFeatureDTO> convertFeatures(List<PlansConfig.FeatureConfig> featureConfigs) {
+    private List<PlanFeatureDTO> convertFeatures(String planCode, List<PlansConfig.FeatureConfig> featureConfigs) {
         if (featureConfigs == null) {
             return List.of();
         }
@@ -269,7 +279,15 @@ public class ConfigBasedSubscriptionPlanServiceImpl implements SubscriptionPlanS
         return featureConfigs.stream()
                 .map(config -> {
                     PlanFeatureDTO feature = new PlanFeatureDTO();
-                    feature.setText(config.getText());
+                    // 从国际化文件获取功能描述（优先使用key，兼容旧的text）
+                    String featureKey = config.getKey();
+                    if (featureKey != null && !featureKey.isEmpty()) {
+                        // 使用key从国际化文件获取
+                        feature.setText(messageUtils.getPlanFeature(planCode, featureKey));
+                    } else {
+                        // 兼容旧配置：直接使用text
+                        feature.setText(config.getText());
+                    }
                     feature.setHighlight(config.getHighlight());
                     return feature;
                 })

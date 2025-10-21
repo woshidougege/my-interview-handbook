@@ -52,6 +52,7 @@ spring:
       - classpath:application-logging.yml     # 日志配置
       - classpath:application-api-docs.yml    # API文档配置
       - classpath:application-async.yml       # 异步处理配置
+      - classpath:application-i18n.yml        # 国际化配置
       # === 业务功能配置 ===
       - classpath:application-billing.yml     # 计费系统配置
       - classpath:application-payment.yml     # 支付系统配置

@@ -1,0 +1,16 @@
+# ========== 国际化配置 ==========
+spring:
+  messages:
+    # 国际化资源文件路径（不含扩展名和语言标识）
+    basename: i18n/messages
+    # 字符编码
+    encoding: UTF-8
+    # 缓存时间（生产环境建议设置，开发环境可设为-1禁用缓存）
+    cache-duration: 3600
+    # 找不到消息时是否返回key（开发环境建议true）
+    fallback-to-system-locale: true
+    # 是否始终应用MessageFormat规则
+    always-use-message-format: false
+    # 找不到消息时是否使用消息代码作为默认消息
+    use-code-as-default-message: false
+
