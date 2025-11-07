@@ -1,0 +1,64 @@
+{
+  "name": "任相鹏",
+  "title": "AI开发工程师 / 数据开发",
+  "avatar": "/avatars/renxiangpeng.jpg",
+  "tabs": [
+    {
+      "id": "resume",
+      "title": "个人简历",
+      "icon": "📋",
+      "file": "01-resume.md",
+      "order": 1
+    },
+    {
+      "id": "ai-tech",
+      "title": "AI技术详解",
+      "icon": "🤖",
+      "file": "02-ai-tech.md",
+      "order": 2
+    },
+    {
+      "id": "big-data",
+      "title": "大数据技术",
+      "icon": "💾",
+      "file": "03-big-data.md",
+      "order": 3
+    },
+    {
+      "id": "java-backend",
+      "title": "Java后端",
+      "icon": "☕",
+      "file": "04-java-backend.md",
+      "order": 4
+    },
+    {
+      "id": "frontend",
+      "title": "前端基础",
+      "icon": "🎨",
+      "file": "05-frontend.md",
+      "order": 5
+    },
+    {
+      "id": "python",
+      "title": "Python基础",
+      "icon": "🐍",
+      "file": "06-python.md",
+      "order": 6
+    },
+    {
+      "id": "projects",
+      "title": "项目介绍",
+      "icon": "💼",
+      "file": "07-projects.md",
+      "order": 7
+    },
+    {
+      "id": "strategies",
+      "title": "应对策略",
+      "icon": "🎯",
+      "file": "08-strategies.md",
+      "order": 8
+    }
+  ]
+}
+

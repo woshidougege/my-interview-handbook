@@ -1,0 +1,36 @@
+{
+  "name": "张晓雪",
+  "title": "测试工程师",
+  "avatar": "/avatars/zhangxiaoxue.jpg",
+  "tabs": [
+    {
+      "id": "resume",
+      "title": "个人简历",
+      "icon": "📋",
+      "file": "01-resume.md",
+      "order": 1
+    },
+    {
+      "id": "testing",
+      "title": "测试技术",
+      "icon": "🧪",
+      "file": "02-testing.md",
+      "order": 2
+    },
+    {
+      "id": "automation",
+      "title": "自动化测试",
+      "icon": "🤖",
+      "file": "03-automation.md",
+      "order": 3
+    },
+    {
+      "id": "strategies",
+      "title": "应对策略",
+      "icon": "🎯",
+      "file": "04-strategies.md",
+      "order": 4
+    }
+  ]
+}
+
